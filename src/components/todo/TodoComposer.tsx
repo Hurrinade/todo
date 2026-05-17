@@ -17,10 +17,7 @@ export function TodoComposer({
   onCreateTodo,
 }: TodoComposerProps) {
   return (
-    <form
-      className="flex flex-col gap-2 p-3 sm:flex-row"
-      onSubmit={onCreateTodo}
-    >
+    <form className="flex gap-2 p-2 items-center" onSubmit={onCreateTodo}>
       <Input
         aria-label="New todo title"
         value={title}
@@ -28,12 +25,12 @@ export function TodoComposer({
           onTitleChange(event.target.value);
         }}
         placeholder="Add the next thing"
-        className="min-w-0 flex-1 p-5"
+        className="min-w-0 flex-1 bg-background/80 h-10 py-2"
       />
       <Button
         type="submit"
         disabled={isCreatingTodo || !title.trim()}
-        className="w-full sm:w-auto py-5 px-3"
+        className="h-10"
       >
         <Plus data-icon="inline-start" />
         Add todo

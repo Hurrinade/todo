@@ -4,7 +4,6 @@ import { useMemo, useState } from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
-import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
 import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
@@ -53,6 +52,13 @@ export function TodoWorkspace() {
   const isReorderEnabled = activeFilter === "all";
   const visibleListTitle =
     listTitleDraft ?? activeList?.title ?? "Untitled list";
+  const normalizedDraftTitle = visibleListTitle.trim();
+  const normalizedActiveListTitle = activeList?.title.trim() ?? "";
+  const canSaveListTitleChange = Boolean(
+    activeList &&
+    normalizedDraftTitle &&
+    normalizedDraftTitle !== normalizedActiveListTitle,
+  );
 
   const handleCreateList = async (event: React.SubmitEvent) => {
     event.preventDefault();
@@ -86,7 +92,7 @@ export function TodoWorkspace() {
   const handleRenameList = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
-    if (!activeList || !visibleListTitle.trim()) {
+    if (!activeList || !canSaveListTitleChange) {
       return;
     }
 
@@ -94,7 +100,7 @@ export function TodoWorkspace() {
     setErrorMessage(null);
 
     try {
-      await renameList({ listId: activeList._id, title: visibleListTitle });
+      await renameList({ listId: activeList._id, title: normalizedDraftTitle });
       setListTitleDraft(null);
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
@@ -103,22 +109,22 @@ export function TodoWorkspace() {
     }
   };
 
-  const handleDeleteList = () => {
-    if (!activeList) {
-      return;
-    }
-
+  const handleDeleteList = (list: TodoListWithStats) => {
     openModal("confirm", {
       title: "Delete todo list",
-      message: `Delete "${activeList.title}" and every todo inside it?`,
+      message: `Delete "${list.title}" and every todo inside it?`,
       confirmText: "Delete list",
       cancelText: "Keep list",
       variant: "danger",
       onConfirm: async () => {
         setErrorMessage(null);
-        await deleteList({ listId: activeList._id });
-        setActiveListId(null);
-        setListTitleDraft(null);
+        await deleteList({ listId: list._id });
+
+        if (activeListId === list._id) {
+          setActiveListId(null);
+          setListTitleDraft(null);
+          setActiveFilter("all");
+        }
       },
     });
   };
@@ -210,6 +216,7 @@ export function TodoWorkspace() {
           isCreatingList={isCreatingList}
           onNewListTitleChange={setNewListTitle}
           onCreateList={handleCreateList}
+          onDeleteList={handleDeleteList}
           onSelectList={handleSelectList}
         />
 
@@ -223,26 +230,14 @@ export function TodoWorkspace() {
           )}
 
           {activeList ? (
-            <>
-              <TodoListHeader
-                titleDraft={visibleListTitle}
-                isRenaming={isRenamingList}
-                onTitleDraftChange={setListTitleDraft}
-                onRenameList={handleRenameList}
-                onDeleteList={handleDeleteList}
-              />
-
-              <div className="flex justify-between items-center mt-2 flex-wrap px-4">
-                <div className="flex-1 min-w-60">
-                  <TodoComposer
-                    title={newTodoTitle}
-                    isCreatingTodo={isCreatingTodo}
-                    onTitleChange={setNewTodoTitle}
-                    onCreateTodo={handleCreateTodo}
-                  />
-                </div>
-
-                <TodoFilterTabs
+            <div className="relative flex flex-col justify-between min-h-0">
+              <div className="flex justify-between">
+                <TodoListHeader
+                  titleDraft={visibleListTitle}
+                  canSave={canSaveListTitleChange}
+                  isRenaming={isRenamingList}
+                  onTitleDraftChange={setListTitleDraft}
+                  onRenameList={handleRenameList}
                   list={activeList}
                   activeFilter={activeFilter}
                   onFilterChange={setActiveFilter}
@@ -268,7 +263,15 @@ export function TodoWorkspace() {
                   )}
                 </div>
               </ScrollArea>
-            </>
+              <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 p-2">
+                <TodoComposer
+                  title={newTodoTitle}
+                  isCreatingTodo={isCreatingTodo}
+                  onTitleChange={setNewTodoTitle}
+                  onCreateTodo={handleCreateTodo}
+                />
+              </div>
+            </div>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center p-4">
               <TodoEmptyState

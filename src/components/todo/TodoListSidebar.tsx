@@ -1,4 +1,4 @@
-import { ListChecks, Plus, Search } from "lucide-react";
+import { ListChecks, Plus, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
 
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
@@ -11,9 +11,11 @@ import {
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
+  SidebarMenuAction,
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import type { TodoListWithStats } from "@/types";
 
@@ -24,6 +26,7 @@ type TodoListSidebarProps = {
   isCreatingList: boolean;
   onNewListTitleChange: (title: string) => void;
   onCreateList: (event: React.SubmitEvent) => void;
+  onDeleteList: (list: TodoListWithStats) => void;
   onSelectList: (listId: TodoListWithStats["_id"]) => void;
 };
 
@@ -34,8 +37,10 @@ export function TodoListSidebar({
   isCreatingList,
   onNewListTitleChange,
   onCreateList,
+  onDeleteList,
   onSelectList,
 }: TodoListSidebarProps) {
+  const { isMobile } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const visibleLists = useMemo(() => {
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -133,7 +138,7 @@ export function TodoListSidebar({
                           onSelectList(list._id);
                         }}
                         className={
-                          "h-auto flex-col items-stretch gap-2 rounded-lg border p-3 " +
+                          "h-auto flex-col items-stretch gap-2 rounded-lg border p-3 pr-10 " +
                           (isActive
                             ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
                             : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60")
@@ -147,6 +152,18 @@ export function TodoListSidebar({
                           <span>{list.completedTodoCount} done</span>
                         </span>
                       </SidebarMenuButton>
+                      <SidebarMenuAction
+                        type="button"
+                        showOnHover={!isMobile}
+                        aria-label={`Delete ${list.title}`}
+                        className={isMobile ? "opacity-100" : undefined}
+                        onClick={(event) => {
+                          event.stopPropagation();
+                          onDeleteList(list);
+                        }}
+                      >
+                        <Trash2 />
+                      </SidebarMenuAction>
                     </SidebarMenuItem>
                   );
                 })}

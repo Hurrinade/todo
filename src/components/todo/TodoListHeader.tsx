@@ -1,42 +1,47 @@
-import { Pencil, Save, Trash2 } from "lucide-react";
+import { Pencil, Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import type { TodoFilter, TodoListWithStats } from "@/types/todo/todo.types";
+import { TodoFilterTabs } from "./TodoFilterTabs";
 
 type TodoListHeaderProps = {
   titleDraft: string;
+  canSave: boolean;
   isRenaming: boolean;
+  list: TodoListWithStats;
+  activeFilter: TodoFilter;
+  onFilterChange: (filter: TodoFilter) => void;
   onTitleDraftChange: (title: string) => void;
   onRenameList: (event: React.SubmitEvent) => void;
-  onDeleteList: () => void;
 };
 
 export function TodoListHeader({
   titleDraft,
+  list,
+  canSave,
   isRenaming,
   onTitleDraftChange,
   onRenameList,
-  onDeleteList,
+  activeFilter,
+  onFilterChange,
 }: TodoListHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 border-b border-border bg-card/55 p-4 md:p-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0 space-y-3">
-          <p className="text-xs font-semibold tracking-[0.28em] text-primary uppercase">
-            Active list
-          </p>
-          <form
-            className="flex max-w-3xl flex-col gap-2 sm:flex-row"
-            onSubmit={onRenameList}
-          >
-            <Input
-              aria-label="Todo list title"
-              value={titleDraft}
-              onChange={(event) => {
-                onTitleDraftChange(event.target.value);
-              }}
-              className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-0 py-1 text-3xl leading-tight font-semibold focus-visible:bg-background focus-visible:px-3"
-            />
+    <header className="flex w-full justify-between items-center gap-4 border-b border-border bg-card/55 p-4 flex-wrap">
+      <div className="min-w-0 space-y-3 w-full md:w-fit">
+        <form
+          className="flex max-w-3xl flex-col gap-2 sm:flex-row"
+          onSubmit={onRenameList}
+        >
+          <Input
+            aria-label="Todo list title"
+            value={titleDraft}
+            onChange={(event) => {
+              onTitleDraftChange(event.target.value);
+            }}
+            className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-4 py-2 text-xl leading-tight font-semibold focus-visible:bg-background focus-visible:px-3 text-center"
+          />
+          {canSave ? (
             <Button
               type="submit"
               variant="outline"
@@ -50,19 +55,14 @@ export function TodoListHeader({
               )}
               Save
             </Button>
-          </form>
-        </div>
-
-        <Button
-          type="button"
-          variant="destructive"
-          onClick={onDeleteList}
-          className="w-full xl:w-auto"
-        >
-          <Trash2 data-icon="inline-start" />
-          Delete list
-        </Button>
+          ) : null}
+        </form>
       </div>
+      <TodoFilterTabs
+        list={list}
+        activeFilter={activeFilter}
+        onFilterChange={onFilterChange}
+      />
     </header>
   );
 }
