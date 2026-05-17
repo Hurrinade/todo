@@ -8,12 +8,14 @@
  * @module
  */
 
+import type * as http from "../http.js";
 import type * as mutations_todoLists from "../mutations/todoLists.js";
 import type * as mutations_todos from "../mutations/todos.js";
 import type * as queries_todoLists from "../queries/todoLists.js";
 import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_todo from "../shared/todo.js";
+import type * as system_users from "../system/users.js";
 import type * as triggers_todolistFunctions from "../triggers/todolistFunctions.js";
 
 import type {
@@ -23,12 +25,14 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  http: typeof http;
   "mutations/todoLists": typeof mutations_todoLists;
   "mutations/todos": typeof mutations_todos;
   "queries/todoLists": typeof queries_todoLists;
   "queries/todos": typeof queries_todos;
   "shared/auth": typeof shared_auth;
   "shared/todo": typeof shared_todo;
+  "system/users": typeof system_users;
   "triggers/todolistFunctions": typeof triggers_todolistFunctions;
 }>;
 
