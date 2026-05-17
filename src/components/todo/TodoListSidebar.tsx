@@ -11,11 +11,8 @@ import {
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
-  SidebarMenuAction,
-  SidebarMenuButton,
   SidebarMenuItem,
   SidebarSeparator,
-  useSidebar,
 } from "@/components/ui/sidebar";
 import type { TodoListWithStats } from "@/types";
 
@@ -40,7 +37,6 @@ export function TodoListSidebar({
   onDeleteList,
   onSelectList,
 }: TodoListSidebarProps) {
-  const { isMobile } = useSidebar();
   const [searchQuery, setSearchQuery] = useState("");
   const visibleLists = useMemo(() => {
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
