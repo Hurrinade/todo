@@ -30,14 +30,9 @@ export default function Root() {
 
         <div className="flex flex-col gap-3 sm:flex-row">
           <Authenticated>
-            <>
-              <Button asChild>
-                <Link to="/home">Open authenticated home</Link>
-              </Button>
-              <Button variant="outline" asChild>
-                <Link to="/public">Open public route example</Link>
-              </Button>
-            </>
+            <Button asChild>
+              <Link to="/home">Open authenticated home</Link>
+            </Button>
           </Authenticated>
 
           <Unauthenticated>
@@ -48,9 +43,6 @@ export default function Root() {
               <SignUpButton mode="modal">
                 <Button variant="outline">Create account</Button>
               </SignUpButton>
-              <Button variant="ghost" asChild>
-                <Link to="/public">Open public route example</Link>
-              </Button>
             </>
           </Unauthenticated>
         </div>

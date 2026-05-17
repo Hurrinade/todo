@@ -147,3 +147,4 @@ Examples
   - react hooks, instead use dayjs().valueOf()
   - convex queries, instead check https://docs.convex.dev/understanding/best-practices/#date-in-queries for official recommended way to handle those
 - don't use filtering, use indexes for convex queries
+- for any new component you want to add like sidebar, button or some generic components always first check if it exists in shadcn https://ui.shadcn.com/docs/components
