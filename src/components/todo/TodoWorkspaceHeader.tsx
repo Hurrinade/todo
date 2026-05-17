@@ -2,6 +2,7 @@ import { SignOutButton } from "@clerk/react";
 
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
+import ThemeToggle from "@/components/common/ThemeToggle";
 
 export function TodoWorkspaceHeader() {
   return (
@@ -10,9 +11,15 @@ export function TodoWorkspaceHeader() {
         <TodoSidebarToggle placement="header" />
       </div>
 
-      <SignOutButton>
-        <Button variant="outline">Log out</Button>
-      </SignOutButton>
+      <div className="flex items-center gap-3">
+        <ThemeToggle />
+
+        <SignOutButton>
+          <Button variant="outline" className="h-9">
+            Log out
+          </Button>
+        </SignOutButton>
+      </div>
     </div>
   );
 }

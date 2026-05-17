@@ -27,7 +27,7 @@ export function TodoListHeader({
   onFilterChange,
 }: TodoListHeaderProps) {
   return (
-    <header className="flex w-full justify-between items-center gap-4 border-b border-border bg-card/55 p-4 flex-wrap">
+    <header className="flex w-full justify-between items-center gap-4 border-b border-border bg-card/55 px-4 py-2 flex-wrap">
       <div className="min-w-0 space-y-3 w-full md:w-fit">
         <form
           className="flex max-w-3xl flex-col gap-2 sm:flex-row"

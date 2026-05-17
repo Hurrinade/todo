@@ -130,40 +130,32 @@ export function TodoListSidebar({
                   const isActive = list._id === activeListId;
 
                   return (
-                    <SidebarMenuItem key={list._id}>
-                      <SidebarMenuButton
-                        type="button"
-                        isActive={isActive}
-                        onClick={() => {
-                          onSelectList(list._id);
-                        }}
-                        className={
-                          "h-auto flex-col items-stretch gap-2 rounded-lg border p-3 pr-10 " +
-                          (isActive
-                            ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
-                            : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60")
-                        }
-                      >
-                        <span className="block truncate text-sm font-semibold">
-                          {list.title}
-                        </span>
-                        <span className="flex items-center justify-between gap-3 text-xs">
-                          <span>{list.openTodoCount} open</span>
-                          <span>{list.completedTodoCount} done</span>
-                        </span>
-                      </SidebarMenuButton>
-                      <SidebarMenuAction
-                        type="button"
-                        showOnHover={!isMobile}
+                    <SidebarMenuItem
+                      key={list._id}
+                      onClick={() => {
+                        onSelectList(list._id);
+                      }}
+                      className={
+                        "h-auto flex items-center justify-between gap-2 rounded-lg border py-1 pr-2 pl-3 cursor-pointer " +
+                        (isActive
+                          ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
+                          : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60")
+                      }
+                    >
+                      <span className="block truncate text-sm font-semibold">
+                        {list.title}
+                      </span>
+                      <Button
+                        variant="ghost"
                         aria-label={`Delete ${list.title}`}
-                        className={isMobile ? "opacity-100" : undefined}
+                        className="cursor-pointer"
                         onClick={(event) => {
                           event.stopPropagation();
                           onDeleteList(list);
                         }}
                       >
                         <Trash2 />
-                      </SidebarMenuAction>
+                      </Button>
                     </SidebarMenuItem>
                   );
                 })}
