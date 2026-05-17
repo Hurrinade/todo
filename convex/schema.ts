@@ -27,6 +27,7 @@ export default defineSchema({
     title: v.string(),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
+    order: v.optional(v.number()),
     updatedAt: v.number(),
   })
     .index("by_list_id", ["listId"])

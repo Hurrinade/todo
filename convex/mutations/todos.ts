@@ -36,10 +36,20 @@ export const create = mutation({
     await requireOwnedList(ctx, args.listId, userId);
 
     const now = Date.now();
+    const todos = await ctx.db
+      .query("todos")
+      .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
+      .collect();
+    const orderedTodos = todos.filter((todo) => todo.order !== undefined);
+    const nextOrder =
+      orderedTodos.length > 0
+        ? Math.min(...orderedTodos.map((todo) => todo.order!)) - 1
+        : 0;
     const todoId = await ctx.db.insert("todos", {
       listId: args.listId,
       title: normalizeTodoTitle(args.title),
       isCompleted: false,
+      order: nextOrder,
       updatedAt: now,
     });
 
@@ -123,6 +133,48 @@ export const remove = mutation({
     await ctx.db.delete(args.todoId);
     await ctx.db.patch(todo.listId, {
       updatedAt: Date.now(),
+    });
+  },
+});
+
+export const reorder = mutation({
+  args: {
+    listId: v.id("todoLists"),
+    todoIds: v.array(v.id("todos")),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    await requireOwnedList(ctx, args.listId, userId);
+
+    const todos = await ctx.db
+      .query("todos")
+      .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
+      .collect();
+
+    if (todos.length !== args.todoIds.length) {
+      throw new Error("Todo order is out of date.");
+    }
+
+    const todoIds = new Set(todos.map((todo) => todo._id));
+
+    for (const todoId of args.todoIds) {
+      if (!todoIds.has(todoId)) {
+        throw new Error("Todo order contains an invalid item.");
+      }
+    }
+
+    const now = Date.now();
+
+    await Promise.all(
+      args.todoIds.map((todoId, index) =>
+        ctx.db.patch(todoId, {
+          order: index,
+          updatedAt: now,
+        }),
+      ),
+    );
+    await ctx.db.patch(args.listId, {
+      updatedAt: now,
     });
   },
 });

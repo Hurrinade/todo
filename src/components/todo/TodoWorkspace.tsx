@@ -25,6 +25,7 @@ export function TodoWorkspace() {
   const toggleTodo = useMutation(todoApi.mutations.todos.toggle);
   const renameTodo = useMutation(todoApi.mutations.todos.rename);
   const deleteTodo = useMutation(todoApi.mutations.todos.remove);
+  const reorderTodos = useMutation(todoApi.mutations.todos.reorder);
 
   const [activeListId, setActiveListId] = useState<
     TodoListWithStats["_id"] | null
@@ -49,6 +50,7 @@ export function TodoWorkspace() {
     () => filterTodos(todos, activeFilter),
     [todos, activeFilter],
   );
+  const isReorderEnabled = activeFilter === "all";
   const visibleListTitle =
     listTitleDraft ?? activeList?.title ?? "Untitled list";
 
@@ -172,6 +174,21 @@ export function TodoWorkspace() {
     }
   };
 
+  const handleReorderTodos = async (todoIds: TodoItem["_id"][]) => {
+    if (!activeList || !isReorderEnabled) {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await reorderTodos({ listId: activeList._id, todoIds });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
   if (listsResult === undefined) {
     return (
       <main className="flex h-full w-full items-center justify-center bg-background p-6">
@@ -242,9 +259,11 @@ export function TodoWorkspace() {
                     <TodoTaskList
                       todos={visibleTodos}
                       activeFilter={activeFilter}
+                      isReorderEnabled={isReorderEnabled}
                       onToggleTodo={handleToggleTodo}
                       onRenameTodo={handleRenameTodo}
                       onDeleteTodo={handleDeleteTodo}
+                      onReorderTodos={handleReorderTodos}
                     />
                   )}
                 </div>

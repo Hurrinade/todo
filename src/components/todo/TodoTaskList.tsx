@@ -1,24 +1,41 @@
+import { PointerActivationConstraints } from "@dnd-kit/dom";
+import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
+import { isSortable } from "@dnd-kit/react/sortable";
 import { ClipboardList } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
-import { TodoTaskItem } from "@/components/todo/TodoTaskItem";
+import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
 import type { TodoFilter, TodoItem } from "@/types";
 
 type TodoTaskListProps = {
   todos: TodoItem[];
   activeFilter: TodoFilter;
+  isReorderEnabled: boolean;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
+  onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
 };
 
 export function TodoTaskList({
   todos,
   activeFilter,
+  isReorderEnabled,
   onToggleTodo,
   onRenameTodo,
   onDeleteTodo,
+  onReorderTodos,
 }: TodoTaskListProps) {
+  const [orderedTodos, setOrderedTodos] = useState(todos);
+  const isDraggingRef = useRef(false);
+
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setOrderedTodos(todos);
+    }
+  }, [todos]);
+
   if (todos.length === 0) {
     return (
       <TodoEmptyState
@@ -30,17 +47,75 @@ export function TodoTaskList({
   }
 
   return (
-    <ul className="flex flex-col gap-2">
-      {todos.map((todo) => (
-        <TodoTaskItem
-          key={todo._id}
-          todo={todo}
-          onToggleTodo={onToggleTodo}
-          onRenameTodo={onRenameTodo}
-          onDeleteTodo={onDeleteTodo}
-        />
-      ))}
-    </ul>
+    <DragDropProvider
+      sensors={(defaults) => [
+        ...defaults.filter((sensor) => sensor !== PointerSensor),
+        PointerSensor.configure({
+          activationConstraints() {
+            return [
+              new PointerActivationConstraints.Delay({
+                value: 300,
+                tolerance: 8,
+              }),
+            ];
+          },
+        }),
+      ]}
+      onDragStart={() => {
+        isDraggingRef.current = true;
+      }}
+      onDragEnd={(event) => {
+        isDraggingRef.current = false;
+
+        if (event.canceled) {
+          setOrderedTodos(todos);
+          return;
+        }
+
+        const { source } = event.operation;
+
+        if (!isReorderEnabled || !isSortable(source)) {
+          setOrderedTodos(todos);
+          return;
+        }
+
+        const { initialIndex, index } = source;
+
+        if (initialIndex === index) {
+          setOrderedTodos(todos);
+          return;
+        }
+
+        const nextTodos = [...orderedTodos];
+        const [movedTodo] = nextTodos.splice(initialIndex, 1);
+
+        if (!movedTodo) {
+          setOrderedTodos(todos);
+          return;
+        }
+
+        nextTodos.splice(index, 0, movedTodo);
+        setOrderedTodos(nextTodos);
+
+        void onReorderTodos(nextTodos.map((todo) => todo._id)).catch(() => {
+          setOrderedTodos(todos);
+        });
+      }}
+    >
+      <ul className="flex flex-col gap-2">
+        {orderedTodos.map((todo, index) => (
+          <SortableTodoTaskItem
+            key={todo._id}
+            index={index}
+            isReorderEnabled={isReorderEnabled}
+            todo={todo}
+            onToggleTodo={onToggleTodo}
+            onRenameTodo={onRenameTodo}
+            onDeleteTodo={onDeleteTodo}
+          />
+        ))}
+      </ul>
+    </DragDropProvider>
   );
 }
 

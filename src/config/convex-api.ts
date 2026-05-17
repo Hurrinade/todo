@@ -69,6 +69,12 @@ type TodoApi = {
         { todoId: Id<"todos"> },
         null
       >;
+      reorder: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists">; todoIds: Id<"todos">[] },
+        null
+      >;
     };
   };
 };

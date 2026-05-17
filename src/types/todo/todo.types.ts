@@ -20,6 +20,7 @@ export type TodoItem = {
   title: string;
   isCompleted: boolean;
   completedAt?: number;
+  order?: number;
   createdAt: number;
   updatedAt: number;
 };
