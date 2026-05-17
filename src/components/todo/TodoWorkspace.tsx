@@ -219,26 +219,25 @@ export function TodoWorkspace() {
                 onDeleteList={handleDeleteList}
               />
 
-              <ScrollArea className="min-h-0 flex-1">
-                <div className="flex flex-col gap-4 p-4 md:p-6">
+              <div className="flex justify-between items-center mt-2">
+                <div className="w-full">
                   <TodoComposer
                     title={newTodoTitle}
                     isCreatingTodo={isCreatingTodo}
                     onTitleChange={setNewTodoTitle}
                     onCreateTodo={handleCreateTodo}
                   />
+                </div>
 
-                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <h2 className="text-sm font-semibold text-foreground">
-                      Tasks
-                    </h2>
-                    <TodoFilterTabs
-                      list={activeList}
-                      activeFilter={activeFilter}
-                      onFilterChange={setActiveFilter}
-                    />
-                  </div>
+                <TodoFilterTabs
+                  list={activeList}
+                  activeFilter={activeFilter}
+                  onFilterChange={setActiveFilter}
+                />
+              </div>
 
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="flex flex-col gap-4 p-4 md:p-6">
                   {activeTodoResult === undefined ? (
                     <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
                       Loading todos

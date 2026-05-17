@@ -1,12 +1,4 @@
-import {
-  Check,
-  CheckCircle2,
-  Circle,
-  Pencil,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+import { CheckCircle2, Circle, Save, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
@@ -88,12 +80,19 @@ export function TodoTaskItem({
           </div>
         </form>
       ) : (
-        <div className="flex items-start gap-3">
+        <div
+          className="flex items-center gap-3"
+          onClick={() => {
+            setDraftTitle(todo.title);
+            setIsEditing(true);
+          }}
+        >
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               onToggleTodo(todo._id);
             }}
             className="mt-0.5 text-muted-foreground hover:text-primary"
@@ -120,29 +119,6 @@ export function TodoTaskItem({
           </div>
 
           <div className="flex shrink-0 gap-1">
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={() => {
-                setDraftTitle(todo.title);
-                setIsEditing(true);
-              }}
-              aria-label="Edit todo"
-            >
-              <Pencil />
-            </Button>
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={() => {
-                onToggleTodo(todo._id);
-              }}
-              aria-label={todo.isCompleted ? "Mark todo open" : "Complete todo"}
-            >
-              <Check />
-            </Button>
             <Button
               type="button"
               size="icon-sm"
