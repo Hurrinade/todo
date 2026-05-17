@@ -1,6 +1,9 @@
-import { ListChecks, Plus, Search, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { DragDropProvider } from "@dnd-kit/react";
+import { isSortable } from "@dnd-kit/react/sortable";
+import { ListChecks, Plus, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
+import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -11,7 +14,6 @@ import {
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
-  SidebarMenuItem,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
 import type { TodoListWithStats } from "@/types";
@@ -24,6 +26,7 @@ type TodoListSidebarProps = {
   onNewListTitleChange: (title: string) => void;
   onCreateList: (event: React.SubmitEvent) => void;
   onDeleteList: (list: TodoListWithStats) => void;
+  onReorderLists: (listIds: TodoListWithStats["_id"][]) => Promise<void>;
   onSelectList: (listId: TodoListWithStats["_id"]) => void;
 };
 
@@ -35,9 +38,12 @@ export function TodoListSidebar({
   onNewListTitleChange,
   onCreateList,
   onDeleteList,
+  onReorderLists,
   onSelectList,
 }: TodoListSidebarProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [orderedLists, setOrderedLists] = useState(lists);
+  const isDraggingRef = useRef(false);
   const visibleLists = useMemo(() => {
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -49,6 +55,13 @@ export function TodoListSidebar({
       list.title.toLowerCase().includes(normalizedSearchQuery),
     );
   }, [lists, searchQuery]);
+  const isReorderEnabled = searchQuery.trim().length === 0;
+
+  useEffect(() => {
+    if (!isDraggingRef.current) {
+      setOrderedLists(visibleLists);
+    }
+  }, [visibleLists]);
 
   return (
     <Sidebar className="border-sidebar-border">
@@ -121,41 +134,64 @@ export function TodoListSidebar({
             </div>
           ) : (
             <ScrollArea className="min-h-0 flex-1">
-              <SidebarMenu className="gap-2 pr-2">
-                {visibleLists.map((list) => {
-                  const isActive = list._id === activeListId;
+              <DragDropProvider
+                onDragStart={() => {
+                  isDraggingRef.current = true;
+                }}
+                onDragEnd={(event) => {
+                  isDraggingRef.current = false;
 
-                  return (
-                    <SidebarMenuItem
-                      key={list._id}
-                      onClick={() => {
-                        onSelectList(list._id);
-                      }}
-                      className={
-                        "h-auto flex items-center justify-between gap-2 rounded-lg border py-1 pr-2 pl-3 cursor-pointer " +
-                        (isActive
-                          ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
-                          : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60")
-                      }
-                    >
-                      <span className="block truncate text-sm font-semibold">
-                        {list.title}
-                      </span>
-                      <Button
-                        variant="ghost"
-                        aria-label={`Delete ${list.title}`}
-                        className="cursor-pointer"
-                        onClick={(event) => {
-                          event.stopPropagation();
-                          onDeleteList(list);
-                        }}
-                      >
-                        <Trash2 />
-                      </Button>
-                    </SidebarMenuItem>
+                  if (event.canceled) {
+                    setOrderedLists(visibleLists);
+                    return;
+                  }
+
+                  const { source } = event.operation;
+
+                  if (!isReorderEnabled || !isSortable(source)) {
+                    setOrderedLists(visibleLists);
+                    return;
+                  }
+
+                  const { initialIndex, index } = source;
+
+                  if (initialIndex === index) {
+                    setOrderedLists(visibleLists);
+                    return;
+                  }
+
+                  const nextLists = [...orderedLists];
+                  const [movedList] = nextLists.splice(initialIndex, 1);
+
+                  if (!movedList) {
+                    setOrderedLists(visibleLists);
+                    return;
+                  }
+
+                  nextLists.splice(index, 0, movedList);
+                  setOrderedLists(nextLists);
+
+                  void onReorderLists(nextLists.map((list) => list._id)).catch(
+                    () => {
+                      setOrderedLists(visibleLists);
+                    },
                   );
-                })}
-              </SidebarMenu>
+                }}
+              >
+                <SidebarMenu className="gap-2 pr-2">
+                  {orderedLists.map((list, index) => (
+                    <SortableTodoListSidebarItem
+                      key={list._id}
+                      index={index}
+                      isActive={list._id === activeListId}
+                      isReorderEnabled={isReorderEnabled}
+                      list={list}
+                      onDeleteList={onDeleteList}
+                      onSelectList={onSelectList}
+                    />
+                  ))}
+                </SidebarMenu>
+              </DragDropProvider>
             </ScrollArea>
           )}
         </SidebarGroup>

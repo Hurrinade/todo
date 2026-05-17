@@ -8,6 +8,7 @@ export type TodoListWithStats = {
   title: string;
   userId: string;
   createdAt: number;
+  order?: number;
   updatedAt: number;
   openTodoCount: number;
   completedTodoCount: number;

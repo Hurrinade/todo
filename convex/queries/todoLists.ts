@@ -20,15 +20,25 @@ export const list = query({
 
     const todoCounts = await Promise.all(
       filteredTodoLists.map(async (todoList) => {
-        const todos = await ctx.db
-          .query("todos")
-          .withIndex("by_list_id", (q) => q.eq("listId", todoList._id))
-          .collect();
+        const [openTodos, completedTodos] = await Promise.all([
+          ctx.db
+            .query("todos")
+            .withIndex("by_list_id_and_completed", (q) =>
+              q.eq("listId", todoList._id).eq("isCompleted", false),
+            )
+            .collect(),
+          ctx.db
+            .query("todos")
+            .withIndex("by_list_id_and_completed", (q) =>
+              q.eq("listId", todoList._id).eq("isCompleted", true),
+            )
+            .collect(),
+        ]);
 
         return {
           listId: todoList._id,
-          openTodoCount: todos.filter((todo) => !todo.isCompleted).length,
-          completedTodoCount: todos.filter((todo) => todo.isCompleted).length,
+          openTodoCount: openTodos.length,
+          completedTodoCount: completedTodos.length,
         };
       }),
     );
@@ -45,8 +55,37 @@ export const list = query({
           completedTodoCount: counts?.completedTodoCount ?? 0,
         };
       })
-      .sort(
-        (firstList, secondList) => secondList.updatedAt - firstList.updatedAt,
-      );
+      .sort(compareTodoLists);
   },
 });
+
+function compareTodoLists(
+  firstList: {
+    _creationTime: number;
+    order?: number;
+    updatedAt: number;
+  },
+  secondList: {
+    _creationTime: number;
+    order?: number;
+    updatedAt: number;
+  },
+) {
+  if (firstList.order !== undefined && secondList.order !== undefined) {
+    return firstList.order - secondList.order;
+  }
+
+  if (firstList.order !== undefined) {
+    return -1;
+  }
+
+  if (secondList.order !== undefined) {
+    return 1;
+  }
+
+  if (firstList.updatedAt !== secondList.updatedAt) {
+    return secondList.updatedAt - firstList.updatedAt;
+  }
+
+  return secondList._creationTime - firstList._creationTime;
+}

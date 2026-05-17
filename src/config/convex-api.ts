@@ -37,6 +37,12 @@ type TodoApi = {
         { listId: Id<"todoLists">; title: string },
         null
       >;
+      reorder: FunctionReference<
+        "mutation",
+        "public",
+        { listIds: Id<"todoLists">[] },
+        null
+      >;
       remove: FunctionReference<
         "mutation",
         "public",
@@ -67,6 +73,18 @@ type TodoApi = {
         "mutation",
         "public",
         { todoId: Id<"todos"> },
+        null
+      >;
+      clearCompleted: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists"> },
+        null
+      >;
+      uncheckCompleted: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists"> },
         null
       >;
       reorder: FunctionReference<

@@ -13,6 +13,7 @@ export default defineSchema({
   todoLists: defineTable({
     title: v.string(),
     userId: v.string(),
+    order: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
   todoListUsers: defineTable({

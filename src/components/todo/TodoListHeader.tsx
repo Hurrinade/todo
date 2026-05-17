@@ -1,19 +1,24 @@
-import { Pencil, Save } from "lucide-react";
+import { Pencil, RotateCcw, Save, Trash2 } from "lucide-react";
 
+import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { TodoFilter, TodoListWithStats } from "@/types/todo/todo.types";
-import { TodoFilterTabs } from "./TodoFilterTabs";
+import type { TodoFilter, TodoListWithStats } from "@/types";
 
 type TodoListHeaderProps = {
   titleDraft: string;
   canSave: boolean;
   isRenaming: boolean;
+  completedTodoCount: number;
   list: TodoListWithStats;
   activeFilter: TodoFilter;
+  isClearingCompleted?: boolean;
+  isUncheckingCompleted?: boolean;
+  onClearCompleted: () => void;
   onFilterChange: (filter: TodoFilter) => void;
   onTitleDraftChange: (title: string) => void;
   onRenameList: (event: React.SubmitEvent) => void;
+  onUncheckCompleted: () => void;
 };
 
 export function TodoListHeader({
@@ -21,13 +26,20 @@ export function TodoListHeader({
   list,
   canSave,
   isRenaming,
+  completedTodoCount,
+  isClearingCompleted = false,
+  isUncheckingCompleted = false,
+  onClearCompleted,
   onTitleDraftChange,
   onRenameList,
   activeFilter,
   onFilterChange,
+  onUncheckCompleted,
 }: TodoListHeaderProps) {
+  const shouldShowBulkActions = activeFilter !== "open";
+
   return (
-    <header className="flex w-full justify-between items-center gap-4 border-b border-border bg-card/55 px-4 py-2 flex-wrap">
+    <header className="flex w-full items-center justify-between gap-4 border-b border-border bg-card/55 px-4 py-2 flex-wrap">
       <div className="min-w-0 space-y-3 w-full md:w-fit">
         <form
           className="flex max-w-3xl flex-col gap-2 sm:flex-row"
@@ -58,11 +70,45 @@ export function TodoListHeader({
           ) : null}
         </form>
       </div>
-      <TodoFilterTabs
-        list={list}
-        activeFilter={activeFilter}
-        onFilterChange={onFilterChange}
-      />
+      <div className="flex w-full flex-col items-stretch gap-3 md:w-auto md:items-end">
+        {shouldShowBulkActions ? (
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                completedTodoCount === 0 ||
+                isClearingCompleted ||
+                isUncheckingCompleted
+              }
+              onClick={onUncheckCompleted}
+              className="w-full sm:w-auto"
+            >
+              <RotateCcw data-icon="inline-start" />
+              {isUncheckingCompleted ? "Unchecking..." : "Uncheck completed"}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={
+                completedTodoCount === 0 ||
+                isClearingCompleted ||
+                isUncheckingCompleted
+              }
+              onClick={onClearCompleted}
+              className="w-full text-destructive hover:text-destructive sm:w-auto"
+            >
+              <Trash2 data-icon="inline-start" />
+              {isClearingCompleted ? "Clearing..." : "Clear completed"}
+            </Button>
+          </div>
+        ) : null}
+        <TodoFilterTabs
+          list={list}
+          activeFilter={activeFilter}
+          onFilterChange={onFilterChange}
+        />
+      </div>
     </header>
   );
 }

@@ -19,12 +19,19 @@ export function TodoWorkspace() {
   const listsResult = useQuery(todoApi.queries.todoLists.list);
   const createList = useMutation(todoApi.mutations.todoLists.create);
   const renameList = useMutation(todoApi.mutations.todoLists.rename);
+  const reorderLists = useMutation(todoApi.mutations.todoLists.reorder);
   const deleteList = useMutation(todoApi.mutations.todoLists.remove);
   const createTodo = useMutation(todoApi.mutations.todos.create);
+  const clearCompletedTodos = useMutation(
+    todoApi.mutations.todos.clearCompleted,
+  );
   const toggleTodo = useMutation(todoApi.mutations.todos.toggle);
   const renameTodo = useMutation(todoApi.mutations.todos.rename);
   const deleteTodo = useMutation(todoApi.mutations.todos.remove);
   const reorderTodos = useMutation(todoApi.mutations.todos.reorder);
+  const uncheckCompletedTodos = useMutation(
+    todoApi.mutations.todos.uncheckCompleted,
+  );
 
   const [activeListId, setActiveListId] = useState<
     TodoListWithStats["_id"] | null
@@ -37,6 +44,8 @@ export function TodoWorkspace() {
   const [isCreatingList, setIsCreatingList] = useState(false);
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
   const [isRenamingList, setIsRenamingList] = useState(false);
+  const [isClearingCompleted, setIsClearingCompleted] = useState(false);
+  const [isUncheckingCompleted, setIsUncheckingCompleted] = useState(false);
 
   const lists = useMemo(() => listsResult ?? [], [listsResult]);
   const activeList = getActiveList(lists, activeListId);
@@ -129,6 +138,17 @@ export function TodoWorkspace() {
     });
   };
 
+  const handleReorderLists = async (listIds: TodoListWithStats["_id"][]) => {
+    setErrorMessage(null);
+
+    try {
+      await reorderLists({ listIds });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
   const handleCreateTodo = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
@@ -180,6 +200,53 @@ export function TodoWorkspace() {
     }
   };
 
+  const handleClearCompleted = () => {
+    if (!activeList || activeList.completedTodoCount === 0) {
+      return;
+    }
+
+    const completedLabel =
+      activeList.completedTodoCount === 1 ? "todo" : "todos";
+
+    openModal("confirm", {
+      title: "Clear completed todos",
+      message: `Delete ${activeList.completedTodoCount} completed ${completedLabel} from "${activeList.title}"?`,
+      confirmText: "Delete completed",
+      cancelText: "Keep todos",
+      variant: "danger",
+      onConfirm: async () => {
+        setIsClearingCompleted(true);
+        setErrorMessage(null);
+
+        try {
+          await clearCompletedTodos({ listId: activeList._id });
+        } catch (error) {
+          setErrorMessage(getErrorMessage(error));
+          throw error;
+        } finally {
+          setIsClearingCompleted(false);
+        }
+      },
+    });
+  };
+
+  const handleUncheckCompleted = async () => {
+    if (!activeList || activeList.completedTodoCount === 0) {
+      return;
+    }
+
+    setIsUncheckingCompleted(true);
+    setErrorMessage(null);
+
+    try {
+      await uncheckCompletedTodos({ listId: activeList._id });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    } finally {
+      setIsUncheckingCompleted(false);
+    }
+  };
+
   const handleReorderTodos = async (todoIds: TodoItem["_id"][]) => {
     if (!activeList || !isReorderEnabled) {
       return;
@@ -217,6 +284,7 @@ export function TodoWorkspace() {
           onNewListTitleChange={setNewListTitle}
           onCreateList={handleCreateList}
           onDeleteList={handleDeleteList}
+          onReorderLists={handleReorderLists}
           onSelectList={handleSelectList}
         />
 
@@ -235,9 +303,16 @@ export function TodoWorkspace() {
                 <TodoListHeader
                   titleDraft={visibleListTitle}
                   canSave={canSaveListTitleChange}
+                  completedTodoCount={activeList.completedTodoCount}
                   isRenaming={isRenamingList}
+                  isClearingCompleted={isClearingCompleted}
+                  isUncheckingCompleted={isUncheckingCompleted}
+                  onClearCompleted={handleClearCompleted}
                   onTitleDraftChange={setListTitleDraft}
                   onRenameList={handleRenameList}
+                  onUncheckCompleted={() => {
+                    void handleUncheckCompleted();
+                  }}
                   list={activeList}
                   activeFilter={activeFilter}
                   onFilterChange={setActiveFilter}

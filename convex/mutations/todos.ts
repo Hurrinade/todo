@@ -77,10 +77,17 @@ export const toggle = mutation({
 
     const now = Date.now();
     const nextIsCompleted = !todo.isCompleted;
+    const nextOrder = await getNextOrderForTodoState(
+      ctx,
+      todo.listId,
+      nextIsCompleted,
+      todo._id,
+    );
 
     await ctx.db.patch(args.todoId, {
       isCompleted: nextIsCompleted,
       completedAt: nextIsCompleted ? now : undefined,
+      order: nextOrder,
       updatedAt: now,
     });
     await ctx.db.patch(todo.listId, {
@@ -178,3 +185,134 @@ export const reorder = mutation({
     });
   },
 });
+
+export const clearCompleted = mutation({
+  args: {
+    listId: v.id("todoLists"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    await requireOwnedList(ctx, args.listId, userId);
+
+    const completedTodos = await ctx.db
+      .query("todos")
+      .withIndex("by_list_id_and_completed", (q) =>
+        q.eq("listId", args.listId).eq("isCompleted", true),
+      )
+      .collect();
+
+    if (completedTodos.length === 0) {
+      return;
+    }
+
+    await Promise.all(completedTodos.map((todo) => ctx.db.delete(todo._id)));
+    await ctx.db.patch(args.listId, {
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const uncheckCompleted = mutation({
+  args: {
+    listId: v.id("todoLists"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    await requireOwnedList(ctx, args.listId, userId);
+
+    const [openTodos, completedTodos] = await Promise.all([
+      ctx.db
+        .query("todos")
+        .withIndex("by_list_id_and_completed", (q) =>
+          q.eq("listId", args.listId).eq("isCompleted", false),
+        )
+        .collect(),
+      ctx.db
+        .query("todos")
+        .withIndex("by_list_id_and_completed", (q) =>
+          q.eq("listId", args.listId).eq("isCompleted", true),
+        )
+        .collect(),
+    ]);
+
+    if (completedTodos.length === 0) {
+      return;
+    }
+
+    const nextOpenOrderStart = getMaxTodoOrder(openTodos) + 1;
+    const sortedCompletedTodos = [...completedTodos].sort(compareTodosByOrder);
+    const now = Date.now();
+
+    await Promise.all(
+      sortedCompletedTodos.map((todo, index) =>
+        ctx.db.patch(todo._id, {
+          isCompleted: false,
+          completedAt: undefined,
+          order: nextOpenOrderStart + index,
+          updatedAt: now,
+        }),
+      ),
+    );
+    await ctx.db.patch(args.listId, {
+      updatedAt: now,
+    });
+  },
+});
+
+async function getNextOrderForTodoState(
+  ctx: MutationCtx,
+  listId: Id<"todoLists">,
+  isCompleted: boolean,
+  excludedTodoId: Id<"todos">,
+) {
+  const todos = await ctx.db
+    .query("todos")
+    .withIndex("by_list_id_and_completed", (q) =>
+      q.eq("listId", listId).eq("isCompleted", isCompleted),
+    )
+    .collect();
+  const siblingTodos = todos.filter((todo) => todo._id !== excludedTodoId);
+
+  return getMaxTodoOrder(siblingTodos) + 1;
+}
+
+function getMaxTodoOrder(
+  todos: Array<{
+    _creationTime: number;
+    order?: number;
+  }>,
+) {
+  if (todos.length === 0) {
+    return -1;
+  }
+
+  const sortedTodos = [...todos].sort(compareTodosByOrder);
+  return sortedTodos.reduce((maxOrder, todo, index) => {
+    return Math.max(maxOrder, todo.order ?? index);
+  }, -1);
+}
+
+function compareTodosByOrder(
+  firstTodo: {
+    _creationTime: number;
+    order?: number;
+  },
+  secondTodo: {
+    _creationTime: number;
+    order?: number;
+  },
+) {
+  if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
+    return firstTodo.order - secondTodo.order;
+  }
+
+  if (firstTodo.order !== undefined) {
+    return -1;
+  }
+
+  if (secondTodo.order !== undefined) {
+    return 1;
+  }
+
+  return secondTodo._creationTime - firstTodo._creationTime;
+}

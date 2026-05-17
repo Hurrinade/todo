@@ -36,6 +36,10 @@ function compareTodos(
     order?: number;
   },
 ) {
+  if (firstTodo.isCompleted !== secondTodo.isCompleted) {
+    return Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted);
+  }
+
   if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
     return firstTodo.order - secondTodo.order;
   }
@@ -46,10 +50,6 @@ function compareTodos(
 
   if (secondTodo.order !== undefined) {
     return 1;
-  }
-
-  if (firstTodo.isCompleted !== secondTodo.isCompleted) {
-    return Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted);
   }
 
   return secondTodo._creationTime - firstTodo._creationTime;
