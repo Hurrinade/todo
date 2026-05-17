@@ -76,9 +76,6 @@ export function TodoListSidebar({
             </h2>
           </div>
           <div className="flex items-center gap-2">
-            <div className="rounded-lg border border-sidebar-border bg-background px-2 py-1 text-xs text-muted-foreground">
-              {lists.length}
-            </div>
             <TodoSidebarToggle placement="sidebar" />
           </div>
         </div>

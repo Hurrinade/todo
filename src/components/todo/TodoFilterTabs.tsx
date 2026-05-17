@@ -21,7 +21,7 @@ export function TodoFilterTabs({
   const totalTodoCount = list.openTodoCount + list.completedTodoCount;
 
   return (
-    <div className="flex w-full flex-wrap gap-2 p-2 md:w-fit md:flex-nowrap">
+    <div className="flex w-full flex-wrap justify-end gap-2 lg:w-auto">
       {FILTERS.map((filter) => (
         <Button
           key={filter.key}
@@ -32,7 +32,7 @@ export function TodoFilterTabs({
             onFilterChange(filter.key);
           }}
           className={
-            "h-8 flex-1 rounded-md px-3 text-sm font-medium sm:flex-none " +
+            "h-9 min-w-fit flex-1 rounded-md px-3 text-sm font-medium sm:flex-none " +
             (activeFilter === filter.key
               ? "bg-primary text-primary-foreground"
               : "text-muted-foreground hover:bg-muted hover:text-foreground")

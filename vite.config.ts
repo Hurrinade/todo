@@ -18,10 +18,10 @@ export default defineConfig({
         "apple-touch-icon.png",
       ],
       manifest: {
-        name: "React Template",
-        short_name: "Template",
+        name: "RiTodo",
+        short_name: "RiTodo",
         description:
-          "Reusable React, Vite, Clerk, Convex, and shadcn template for future company projects.",
+          "A simple, fast, and intuitive to-do list app built with React, Vite, and Convex.",
         theme_color: "#f6f1e8",
         background_color: "#f6f1e8",
         display: "standalone",
