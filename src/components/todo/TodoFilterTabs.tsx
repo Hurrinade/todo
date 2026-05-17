@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import type { TodoFilter } from "@/types";
 
 const FILTERS: { key: TodoFilter; label: string }[] = [
@@ -18,9 +19,11 @@ export function TodoFilterTabs({
   return (
     <div className="flex w-full gap-1 rounded-lg border border-border bg-background/55 p-1 sm:w-fit">
       {FILTERS.map((filter) => (
-        <button
+        <Button
           key={filter.key}
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={() => {
             onFilterChange(filter.key);
           }}
@@ -32,7 +35,7 @@ export function TodoFilterTabs({
           }
         >
           {filter.label}
-        </button>
+        </Button>
       ))}
     </div>
   );

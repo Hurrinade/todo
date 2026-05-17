@@ -8,4 +8,9 @@ export { TodoWorkspace } from "@/components/todo/TodoWorkspace";
 // Shadcn components
 export * from "@/components/ui/button.tsx";
 export * from "@/components/ui/dialog.tsx";
+export * from "@/components/ui/input.tsx";
+export * from "@/components/ui/separator.tsx";
+export * from "@/components/ui/sheet.tsx";
+export * from "@/components/ui/skeleton.tsx";
 export * from "@/components/ui/spinner.tsx";
+export * from "@/components/ui/tooltip.tsx";

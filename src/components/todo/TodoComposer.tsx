@@ -2,6 +2,7 @@ import { Plus } from "lucide-react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type TodoComposerProps = {
   title: string;
@@ -21,14 +22,14 @@ export function TodoComposer({
       className="flex flex-col gap-2 rounded-lg border border-border bg-card/55 p-3 sm:flex-row"
       onSubmit={onCreateTodo}
     >
-      <input
+      <Input
         aria-label="New todo title"
         value={title}
         onChange={(event) => {
           onTitleChange(event.target.value);
         }}
         placeholder="Add the next thing"
-        className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none placeholder:text-muted-foreground focus:border-ring focus:ring-3 focus:ring-ring/30"
+        className="min-w-0 flex-1 px-3 py-2"
       />
       <Button
         type="submit"

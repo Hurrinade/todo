@@ -49,43 +49,43 @@
 
 .dark {
   color-scheme: dark;
-  --background: #171311;
-  --foreground: #f3eadf;
-  --card: #221c18;
-  --card-foreground: #f5ecdf;
-  --popover: #241d19;
-  --popover-foreground: #f5ecdf;
-  --primary: #5fa8a6;
-  --primary-foreground: #0f1918;
-  --secondary: #3c322b;
-  --secondary-foreground: #f0e4d3;
-  --muted: #2d2622;
-  --muted-foreground: #b8ab9b;
-  --accent: #4a3621;
-  --accent-foreground: #f2e1c7;
-  --border: #3a312b;
-  --input: #342b25;
-  --ring: #74b9b2;
-  --destructive: #e07a6a;
-  --warning: #d6a24c;
-  --warning-foreground: #1f1609;
-  --warning-soft: #4a3820;
-  --success: #6ea07c;
-  --success-foreground: #0f1712;
-  --success-soft: #203327;
-  --sidebar: #1d1714;
-  --sidebar-foreground: #f0e4d3;
-  --sidebar-primary: #5fa8a6;
-  --sidebar-primary-foreground: #0f1918;
-  --sidebar-accent: #2e2621;
-  --sidebar-accent-foreground: #f0e4d3;
-  --sidebar-border: #342b25;
-  --sidebar-ring: #74b9b2;
-  --chart-1: #5fa8a6;
-  --chart-2: #d6a24c;
-  --chart-3: #e07a6a;
-  --chart-4: #9f865b;
-  --chart-5: #6ea07c;
+  --background: #040609;
+  --foreground: #f8f8fa;
+  --card: #0e1218;
+  --card-foreground: #f8f8fa;
+  --popover: #0e1218;
+  --popover-foreground: #f8f8fa;
+  --primary: #2ca2ff;
+  --primary-foreground: #040609;
+  --secondary: #171b22;
+  --secondary-foreground: #f3f3f5;
+  --muted: #171b22;
+  --muted-foreground: #8c8f95;
+  --accent: #202a35;
+  --accent-foreground: #f3f3f5;
+  --border: #ffffff1f;
+  --input: #ffffff26;
+  --ring: #2ca2ff;
+  --destructive: #f04c5a;
+  --warning: #f45000;
+  --warning-foreground: #040609;
+  --warning-soft: #2b1b0d;
+  --success: #009200;
+  --success-foreground: #f8f8fa;
+  --success-soft: #0b2413;
+  --sidebar: #0e1218;
+  --sidebar-foreground: #f8f8fa;
+  --sidebar-primary: #2ca2ff;
+  --sidebar-primary-foreground: #040609;
+  --sidebar-accent: #202a35;
+  --sidebar-accent-foreground: #f3f3f5;
+  --sidebar-border: #ffffff1f;
+  --sidebar-ring: #2ca2ff;
+  --chart-1: #009200;
+  --chart-2: #0080ce;
+  --chart-3: #f45000;
+  --chart-4: #f0004d;
+  --chart-5: #983ace;
 }
 
 @theme inline {
@@ -158,11 +158,7 @@
 
   .dark body {
     background-image:
-      radial-gradient(circle at top, rgb(95 168 166 / 0.16), transparent 32%),
-      radial-gradient(
-        circle at bottom,
-        rgb(224 122 106 / 0.12),
-        transparent 42%
-      );
+      radial-gradient(circle at top, #2ca2ff24, transparent 32%),
+      radial-gradient(circle at bottom, #f04c5a14, transparent 42%);
   }
 }

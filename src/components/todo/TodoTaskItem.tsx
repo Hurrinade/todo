@@ -11,6 +11,7 @@ import { useState } from "react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { TodoItem } from "@/types";
 
 type TodoTaskItemProps = {
@@ -59,13 +60,13 @@ export function TodoTaskItem({
           className="flex flex-col gap-2 sm:flex-row"
           onSubmit={handleSubmit}
         >
-          <input
+          <Input
             aria-label="Todo title"
             value={draftTitle}
             onChange={(event) => {
               setDraftTitle(event.target.value);
             }}
-            className="min-w-0 flex-1 rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-ring focus:ring-3 focus:ring-ring/30"
+            className="min-w-0 flex-1 px-3 py-2"
           />
           <div className="flex gap-2">
             <Button
@@ -89,12 +90,14 @@ export function TodoTaskItem({
         </form>
       ) : (
         <div className="flex items-start gap-3">
-          <button
+          <Button
             type="button"
+            variant="ghost"
+            size="icon-sm"
             onClick={() => {
               onToggleTodo(todo._id);
             }}
-            className="mt-0.5 rounded-md text-muted-foreground hover:text-primary focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none"
+            className="mt-0.5 text-muted-foreground hover:text-primary"
             aria-label={todo.isCompleted ? "Mark todo open" : "Complete todo"}
           >
             {todo.isCompleted ? (
@@ -102,7 +105,7 @@ export function TodoTaskItem({
             ) : (
               <Circle className="size-5" />
             )}
-          </button>
+          </Button>
 
           <div className="min-w-0 flex-1">
             <p

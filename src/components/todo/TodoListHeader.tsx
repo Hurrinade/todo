@@ -3,6 +3,7 @@ import { Pencil, Save, Trash2 } from "lucide-react";
 import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import type { TodoListWithStats } from "@/types";
 
 type TodoListHeaderProps = {
@@ -35,13 +36,13 @@ export function TodoListHeader({
             className="flex max-w-3xl flex-col gap-2 sm:flex-row"
             onSubmit={onRenameList}
           >
-            <input
+            <Input
               aria-label="Todo list title"
               value={titleDraft}
               onChange={(event) => {
                 onTitleDraftChange(event.target.value);
               }}
-              className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-0 py-1 text-3xl leading-tight font-semibold text-foreground outline-none focus:border-ring focus:bg-background focus:px-3 focus:ring-3 focus:ring-ring/30"
+              className="h-auto min-w-0 flex-1 border-transparent bg-transparent px-0 py-1 text-3xl leading-tight font-semibold focus-visible:bg-background focus-visible:px-3"
             />
             <Button
               type="submit"
