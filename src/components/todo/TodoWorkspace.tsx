@@ -162,18 +162,14 @@ export function TodoWorkspace() {
     }
   };
 
-  const handleDeleteTodo = (todoId: TodoItem["_id"], title: string) => {
-    openModal("confirm", {
-      title: "Delete todo",
-      message: `Delete "${title}"?`,
-      confirmText: "Delete todo",
-      cancelText: "Keep todo",
-      variant: "danger",
-      onConfirm: async () => {
-        setErrorMessage(null);
-        await deleteTodo({ todoId });
-      },
-    });
+  const handleDeleteTodo = async (todoId: TodoItem["_id"]) => {
+    setErrorMessage(null);
+
+    try {
+      await deleteTodo({ todoId });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+    }
   };
 
   if (listsResult === undefined) {
@@ -219,8 +215,8 @@ export function TodoWorkspace() {
                 onDeleteList={handleDeleteList}
               />
 
-              <div className="flex justify-between items-center mt-2">
-                <div className="w-full">
+              <div className="flex justify-between items-center mt-2 flex-wrap px-4">
+                <div className="flex-1 min-w-60">
                   <TodoComposer
                     title={newTodoTitle}
                     isCreatingTodo={isCreatingTodo}
@@ -237,7 +233,7 @@ export function TodoWorkspace() {
               </div>
 
               <ScrollArea className="min-h-0 flex-1">
-                <div className="flex flex-col gap-4 p-4 md:p-6">
+                <div className="flex flex-col gap-4 p-4 md:px-6">
                   {activeTodoResult === undefined ? (
                     <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
                       Loading todos

@@ -9,7 +9,7 @@ type TodoTaskListProps = {
   activeFilter: TodoFilter;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
-  onDeleteTodo: (todoId: TodoItem["_id"], title: string) => void;
+  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
 };
 
 export function TodoTaskList({

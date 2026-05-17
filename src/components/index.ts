@@ -1,4 +1,5 @@
 // Shared common components
+export { SwipeAction } from "@/components/common/SwipeAction";
 export { default as ThemeToggle } from "@/components/common/ThemeToggle";
 
 // Shared modal components

@@ -1,6 +1,7 @@
-import { CheckCircle2, Circle, Save, Trash2, X } from "lucide-react";
+import { CheckCircle2, Circle, Pencil, Save, Trash2, X } from "lucide-react";
 import { useState } from "react";
 
+import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TodoItem } from "@/types";
@@ -9,7 +10,7 @@ type TodoTaskItemProps = {
   todo: TodoItem;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
-  onDeleteTodo: (todoId: TodoItem["_id"], title: string) => void;
+  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
 };
 
 export function TodoTaskItem({
@@ -44,9 +45,14 @@ export function TodoTaskItem({
     setIsEditing(false);
   };
 
-  return (
-    <li className="rounded-lg border border-border bg-card/70 p-3">
-      {isEditing ? (
+  const handleEdit = () => {
+    setDraftTitle(todo.title);
+    setIsEditing(true);
+  };
+
+  if (isEditing) {
+    return (
+      <li className="rounded-lg border border-border bg-card/70 p-3">
         <form
           className="flex flex-col gap-2 sm:flex-row"
           onSubmit={handleSubmit}
@@ -79,14 +85,44 @@ export function TodoTaskItem({
             </Button>
           </div>
         </form>
-      ) : (
-        <div
-          className="flex items-center gap-3"
-          onClick={() => {
-            setDraftTitle(todo.title);
-            setIsEditing(true);
-          }}
-        >
+      </li>
+    );
+  }
+
+  return (
+    <li>
+      <SwipeAction
+        actions={
+          <>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={handleEdit}
+              aria-label="Edit todo"
+              className="h-full flex-1 rounded-none text-muted-foreground hover:bg-muted hover:text-foreground"
+            >
+              <Pencil />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="ghost"
+              onClick={() => {
+                onDeleteTodo(todo._id);
+              }}
+              aria-label="Delete todo"
+              className="h-full flex-1 rounded-none bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:!bg-destructive/25 dark:hover:!text-destructive/80"
+            >
+              <Trash2 />
+            </Button>
+          </>
+        }
+        actionWidth={112}
+        contentClassName="p-3"
+        ariaLabel="Todo actions"
+      >
+        <div className="flex items-center gap-3">
           <Button
             type="button"
             variant="ghost"
@@ -117,23 +153,8 @@ export function TodoTaskItem({
               {todo.title}
             </p>
           </div>
-
-          <div className="flex shrink-0 gap-1">
-            <Button
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              onClick={() => {
-                onDeleteTodo(todo._id, todo.title);
-              }}
-              aria-label="Delete todo"
-              className="text-destructive hover:bg-destructive/10 hover:text-destructive"
-            >
-              <Trash2 />
-            </Button>
-          </div>
         </div>
-      )}
+      </SwipeAction>
     </li>
   );
 }
