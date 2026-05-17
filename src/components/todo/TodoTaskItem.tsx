@@ -8,7 +8,6 @@ import {
   X,
 } from "lucide-react";
 import { useState } from "react";
-import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -31,7 +30,7 @@ export function TodoTaskItem({
   const [draftTitle, setDraftTitle] = useState(todo.title);
   const [isSaving, setIsSaving] = useState(false);
 
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
     if (!draftTitle.trim()) {

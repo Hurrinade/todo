@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import type { TodoFilter } from "@/types";
+import type { TodoFilter, TodoListWithStats } from "@/types";
 
 const FILTERS: { key: TodoFilter; label: string }[] = [
   { key: "all", label: "All" },
@@ -8,14 +8,18 @@ const FILTERS: { key: TodoFilter; label: string }[] = [
 ];
 
 type TodoFilterTabsProps = {
+  list: TodoListWithStats;
   activeFilter: TodoFilter;
   onFilterChange: (filter: TodoFilter) => void;
 };
 
 export function TodoFilterTabs({
+  list,
   activeFilter,
   onFilterChange,
 }: TodoFilterTabsProps) {
+  const totalTodoCount = list.openTodoCount + list.completedTodoCount;
+
   return (
     <div className="flex w-full gap-1 rounded-lg border border-border bg-background/55 p-1 sm:w-fit">
       {FILTERS.map((filter) => (
@@ -34,7 +38,13 @@ export function TodoFilterTabs({
               : "text-muted-foreground hover:bg-muted hover:text-foreground")
           }
         >
-          {filter.label}
+          {filter.label} (
+          {filter.key === "all"
+            ? totalTodoCount
+            : filter.key === "open"
+              ? list.openTodoCount
+              : list.completedTodoCount}
+          )
         </Button>
       ))}
     </div>

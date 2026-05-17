@@ -1,5 +1,4 @@
 import { Plus } from "lucide-react";
-import type { FormEvent } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,7 @@ type TodoComposerProps = {
   title: string;
   isCreatingTodo: boolean;
   onTitleChange: (title: string) => void;
-  onCreateTodo: (event: FormEvent<HTMLFormElement>) => void;
+  onCreateTodo: (event: React.SubmitEvent) => void;
 };
 
 export function TodoComposer({

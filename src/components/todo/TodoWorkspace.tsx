@@ -1,8 +1,6 @@
-import { SignOutButton } from "@clerk/react";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash, Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
-import type { FormEvent } from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -10,7 +8,9 @@ import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
 import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
-import { Button } from "@/components/ui/button";
+import { TodoWorkspaceHeader } from "@/components/todo/TodoWorkspaceHeader";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import type { TodoFilter, TodoItem, TodoListWithStats } from "@/types";
@@ -52,7 +52,7 @@ export function TodoWorkspace() {
   const visibleListTitle =
     listTitleDraft ?? activeList?.title ?? "Untitled list";
 
-  const handleCreateList = async (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateList = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
     if (!newListTitle.trim()) {
@@ -81,7 +81,7 @@ export function TodoWorkspace() {
     setErrorMessage(null);
   };
 
-  const handleRenameList = async (event: FormEvent<HTMLFormElement>) => {
+  const handleRenameList = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
     if (!activeList || !visibleListTitle.trim()) {
@@ -121,7 +121,7 @@ export function TodoWorkspace() {
     });
   };
 
-  const handleCreateTodo = async (event: FormEvent<HTMLFormElement>) => {
+  const handleCreateTodo = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
     if (!activeList || !newTodoTitle.trim()) {
@@ -189,7 +189,7 @@ export function TodoWorkspace() {
 
   return (
     <main className="h-full w-full overflow-hidden bg-background text-foreground">
-      <div className="flex h-full flex-col overflow-hidden border-border bg-background lg:flex-row">
+      <SidebarProvider className="h-full min-h-0 bg-background">
         <TodoListSidebar
           lists={lists}
           activeListId={activeList?._id ?? null}
@@ -200,20 +200,8 @@ export function TodoWorkspace() {
           onSelectList={handleSelectList}
         />
 
-        <section className="flex min-h-0 flex-1 flex-col">
-          <div className="flex items-center justify-between gap-3 border-b border-border bg-card/80 p-4">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold tracking-[0.28em] text-primary uppercase">
-                Todo command
-              </p>
-              <h1 className="truncate text-xl font-semibold text-foreground">
-                {activeList ? activeList.title : "Personal lists"}
-              </h1>
-            </div>
-            <SignOutButton>
-              <Button variant="outline">Log out</Button>
-            </SignOutButton>
-          </div>
+        <SidebarInset className="min-h-0 overflow-hidden">
+          <TodoWorkspaceHeader />
 
           {errorMessage && (
             <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
@@ -224,7 +212,6 @@ export function TodoWorkspace() {
           {activeList ? (
             <>
               <TodoListHeader
-                list={activeList}
                 titleDraft={visibleListTitle}
                 isRenaming={isRenamingList}
                 onTitleDraftChange={setListTitleDraft}
@@ -232,38 +219,41 @@ export function TodoWorkspace() {
                 onDeleteList={handleDeleteList}
               />
 
-              <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:p-6">
-                <TodoComposer
-                  title={newTodoTitle}
-                  isCreatingTodo={isCreatingTodo}
-                  onTitleChange={setNewTodoTitle}
-                  onCreateTodo={handleCreateTodo}
-                />
-
-                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                  <h2 className="text-sm font-semibold text-foreground">
-                    Tasks
-                  </h2>
-                  <TodoFilterTabs
-                    activeFilter={activeFilter}
-                    onFilterChange={setActiveFilter}
+              <ScrollArea className="min-h-0 flex-1">
+                <div className="flex flex-col gap-4 p-4 md:p-6">
+                  <TodoComposer
+                    title={newTodoTitle}
+                    isCreatingTodo={isCreatingTodo}
+                    onTitleChange={setNewTodoTitle}
+                    onCreateTodo={handleCreateTodo}
                   />
-                </div>
 
-                {activeTodoResult === undefined ? (
-                  <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                    Loading todos
+                  <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <h2 className="text-sm font-semibold text-foreground">
+                      Tasks
+                    </h2>
+                    <TodoFilterTabs
+                      list={activeList}
+                      activeFilter={activeFilter}
+                      onFilterChange={setActiveFilter}
+                    />
                   </div>
-                ) : (
-                  <TodoTaskList
-                    todos={visibleTodos}
-                    activeFilter={activeFilter}
-                    onToggleTodo={handleToggleTodo}
-                    onRenameTodo={handleRenameTodo}
-                    onDeleteTodo={handleDeleteTodo}
-                  />
-                )}
-              </div>
+
+                  {activeTodoResult === undefined ? (
+                    <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
+                      Loading todos
+                    </div>
+                  ) : (
+                    <TodoTaskList
+                      todos={visibleTodos}
+                      activeFilter={activeFilter}
+                      onToggleTodo={handleToggleTodo}
+                      onRenameTodo={handleRenameTodo}
+                      onDeleteTodo={handleDeleteTodo}
+                    />
+                  )}
+                </div>
+              </ScrollArea>
             </>
           ) : (
             <div className="flex min-h-0 flex-1 items-center justify-center p-4">
@@ -274,8 +264,8 @@ export function TodoWorkspace() {
               />
             </div>
           )}
-        </section>
-      </div>
+        </SidebarInset>
+      </SidebarProvider>
     </main>
   );
 }

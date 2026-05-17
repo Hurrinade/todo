@@ -1,8 +1,20 @@
-import { ListChecks, Plus } from "lucide-react";
-import type { FormEvent } from "react";
+import { ListChecks, Plus, Search } from "lucide-react";
+import { useMemo, useState } from "react";
 
+import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarHeader,
+  SidebarInput,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarSeparator,
+} from "@/components/ui/sidebar";
 import type { TodoListWithStats } from "@/types";
 
 type TodoListSidebarProps = {
@@ -11,7 +23,7 @@ type TodoListSidebarProps = {
   newListTitle: string;
   isCreatingList: boolean;
   onNewListTitleChange: (title: string) => void;
-  onCreateList: (event: FormEvent<HTMLFormElement>) => void;
+  onCreateList: (event: React.SubmitEvent) => void;
   onSelectList: (listId: TodoListWithStats["_id"]) => void;
 };
 
@@ -24,79 +36,125 @@ export function TodoListSidebar({
   onCreateList,
   onSelectList,
 }: TodoListSidebarProps) {
+  const [searchQuery, setSearchQuery] = useState("");
+  const visibleLists = useMemo(() => {
+    const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+    if (!normalizedSearchQuery) {
+      return lists;
+    }
+
+    return lists.filter((list) =>
+      list.title.toLowerCase().includes(normalizedSearchQuery),
+    );
+  }, [lists, searchQuery]);
+
   return (
-    <aside className="flex min-h-0 flex-col gap-4 border-b border-border bg-card/80 p-4 lg:w-80 lg:border-r lg:border-b-0">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="text-xs font-semibold tracking-[0.22em] text-primary uppercase">
-            Lists
-          </p>
-          <h2 className="mt-1 text-lg font-semibold text-card-foreground">
-            Your boards
-          </h2>
-        </div>
-        <div className="rounded-lg border border-border bg-background px-2 py-1 text-xs text-muted-foreground">
-          {lists.length}
-        </div>
-      </div>
-
-      <form className="flex gap-2" onSubmit={onCreateList}>
-        <Input
-          aria-label="New list title"
-          value={newListTitle}
-          onChange={(event) => {
-            onNewListTitleChange(event.target.value);
-          }}
-          placeholder="New list"
-          className="min-w-0 flex-1 px-3 py-2"
-        />
-        <Button
-          type="submit"
-          size="icon"
-          disabled={isCreatingList || !newListTitle.trim()}
-          aria-label="Create list"
-        >
-          <Plus />
-        </Button>
-      </form>
-
-      <div className="flex min-h-0 gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-y-auto lg:pr-1">
-        {lists.length === 0 ? (
-          <div className="flex min-w-60 items-center gap-3 rounded-lg border border-dashed border-border bg-background/35 p-3 text-sm text-muted-foreground lg:min-w-0">
-            <ListChecks className="size-4 text-primary" />
-            Create your first list.
+    <Sidebar className="border-sidebar-border">
+      <SidebarHeader className="gap-4 border-b border-sidebar-border p-4">
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold tracking-[0.22em] text-sidebar-primary uppercase">
+              Lists
+            </p>
+            <h2 className="mt-1 truncate text-lg font-semibold text-sidebar-foreground">
+              Your boards
+            </h2>
           </div>
-        ) : (
-          lists.map((list) => {
-            const isActive = list._id === activeListId;
+          <div className="flex items-center gap-2">
+            <div className="rounded-lg border border-sidebar-border bg-background px-2 py-1 text-xs text-muted-foreground">
+              {lists.length}
+            </div>
+            <TodoSidebarToggle placement="sidebar" />
+          </div>
+        </div>
 
-            return (
-              <Button
-                key={list._id}
-                type="button"
-                variant="ghost"
-                onClick={() => {
-                  onSelectList(list._id);
-                }}
-                className={
-                  "flex h-auto min-w-64 flex-col items-stretch justify-start rounded-lg border p-3 text-left lg:min-w-0 " +
-                  (isActive
-                    ? "border-primary bg-primary/15 text-foreground"
-                    : "border-border bg-background/45 text-muted-foreground hover:border-primary/60 hover:text-foreground")
-                }
-              >
-                <span className="block truncate text-sm font-semibold">
-                  {list.title}
-                </span>
-                <span className="mt-2 flex items-center justify-between gap-3 text-xs">
-                  <span>{list.openTodoCount} open</span>
-                  <span>{list.completedTodoCount} done</span>
-                </span>
-              </Button>
-            );
-          })
+        <form className="flex gap-2" onSubmit={onCreateList}>
+          <SidebarInput
+            aria-label="New list title"
+            value={newListTitle}
+            onChange={(event) => {
+              onNewListTitleChange(event.target.value);
+            }}
+            placeholder="New list"
+            className="min-w-0 flex-1"
+          />
+          <Button
+            type="submit"
+            size="icon"
+            disabled={isCreatingList || !newListTitle.trim()}
+            aria-label="Create list"
+          >
+            <Plus />
+          </Button>
+        </form>
+
+        {lists.length > 0 && (
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
+            <SidebarInput
+              aria-label="Search lists by title"
+              value={searchQuery}
+              onChange={(event) => {
+                setSearchQuery(event.target.value);
+              }}
+              placeholder="Search lists"
+              className="pl-8"
+            />
+          </div>
         )}
-      </div>
-    </aside>
+      </SidebarHeader>
+
+      <SidebarSeparator />
+
+      <SidebarContent className="overflow-hidden p-2">
+        <SidebarGroup className="min-h-0 flex-1 p-0">
+          {lists.length === 0 ? (
+            <div className="flex items-center gap-3 rounded-lg border border-dashed border-sidebar-border bg-background/35 p-3 text-sm text-muted-foreground">
+              <ListChecks className="size-4 text-sidebar-primary" />
+              Create your first list.
+            </div>
+          ) : visibleLists.length === 0 ? (
+            <div className="rounded-lg border border-dashed border-sidebar-border bg-background/35 p-3 text-sm text-muted-foreground">
+              No lists match this search.
+            </div>
+          ) : (
+            <ScrollArea className="min-h-0 flex-1">
+              <SidebarMenu className="gap-2 pr-2">
+                {visibleLists.map((list) => {
+                  const isActive = list._id === activeListId;
+
+                  return (
+                    <SidebarMenuItem key={list._id}>
+                      <SidebarMenuButton
+                        type="button"
+                        isActive={isActive}
+                        onClick={() => {
+                          onSelectList(list._id);
+                        }}
+                        className={
+                          "h-auto flex-col items-stretch gap-2 rounded-lg border p-3 " +
+                          (isActive
+                            ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
+                            : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60")
+                        }
+                      >
+                        <span className="block truncate text-sm font-semibold">
+                          {list.title}
+                        </span>
+                        <span className="flex items-center justify-between gap-3 text-xs">
+                          <span>{list.openTodoCount} open</span>
+                          <span>{list.completedTodoCount} done</span>
+                        </span>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </ScrollArea>
+          )}
+        </SidebarGroup>
+      </SidebarContent>
+    </Sidebar>
   );
 }
