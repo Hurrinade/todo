@@ -1,18 +1,18 @@
-# React Vite Template
+# Todo Workspace
 
-This template is the starting point for future company projects built with
-React, Vite, Clerk, Convex, TanStack Query, Tailwind CSS 4, and shadcn UI.
+This project is an authenticated todo list workspace built with React, Vite,
+Clerk, Convex, TanStack Query, Tailwind CSS 4, and shadcn UI.
 
 ## What is included
 
 - React 19 + Vite 8 + TypeScript 6
 - Clerk authentication
-- Convex client wiring
+- Convex client wiring and todo schema/functions
 - TanStack Query provider setup
 - Vite-native PWA baseline via `vite-plugin-pwa`
 - Global modal host with a confirmation modal example
 - Warm light and dark semantic theme tokens in `src/index.css`
-- Route, hook, type, and component structure examples for future projects
+- Route, hook, type, and component structure for the todo workspace
 
 ## Setup
 
@@ -74,7 +74,7 @@ check mode.
 ## Current Routes
 
 - `/`: shared root page example in `src/pages/Root.tsx`
-- `/home`: authenticated example page in `src/pages/authenticated/home/Home.tsx`
+- `/home`: authenticated todo workspace in `src/pages/authenticated/home/Home.tsx`
 - `/public`: unauthenticated example page in `src/pages/unauthenticated/public/Public.tsx`
 
 ## Adding New Pages
@@ -94,16 +94,16 @@ Examples:
 ## Hooks, Types, and Modals
 
 - Route-scoped hooks should live in matching folders like
-  `src/hooks/home/use-home.ts`.
+  `src/hooks/todo/use-todo.ts` when a hook is needed.
 - Route-scoped types should live in matching folders like
-  `src/types/home/home.types.ts`.
+  `src/types/todo/todo.types.ts`.
 - Shared modal components should live under `src/components/modals/...`.
-- Register global modal entries in `src/context/ModalProvider.tsx`.
+- Register global modal entries in `src/context/modal/ModalProvider.tsx`.
 
 ## Import Policy
 
 - Prefer direct imports from the concrete module path, for example
-  `@/hooks/home/use-home` or `@/components/ui/button`.
+  `@/components/todo/TodoWorkspace` or `@/components/ui/button`.
 - Keep root barrel files only for intentionally shared public entry points.
 - When adding new files, update a root barrel only if that module is meant to be
   a shared template-level export.

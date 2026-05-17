@@ -22,6 +22,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.37.0",
+    "convex-helpers": "^0.1.118",
     "dayjs": "^1.11.20",
     "lucide-react": "^1.14.0",
     "radix-ui": "^1.4.3",

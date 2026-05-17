@@ -4,7 +4,9 @@ alwaysApply: true
 
 ## Project overview
 
-This is react template for all future projects in this company
+This is an authenticated todo list app built from the company React template.
+The first product surface is a personal todo workspace with Convex storage and
+Clerk authentication.
 
 ## Commands
 
@@ -23,7 +25,7 @@ bun run check        # Lint, typecheck and prettier check without mutating files
 ## Current Routes
 
 - `/` — Root route
-- `/home` — Authenticated example route
+- `/home` — Authenticated todo workspace
 - `/public` — Unauthenticated example route
 
 ## Tech Stack (current versions)
@@ -143,7 +145,7 @@ Examples
 - for any new component you are adding from shadcn please do the official command to add component from shadcn instead of just making it by yourself
 - `src/context/ConvexClerkProvider.tsx` is the canonical Convex + Clerk provider wrapper and should be reused from `src/main.tsx`
 - Pages should remain focused on layout, structure, and page-specific concerns. Avoid placing general component logic in pages—if a component can encapsulate its own behavior, that logic should live within the component. Treat pages primarily as composition layers that assemble and organize components.
-
-### This template project specific note
-
-- if a template placeholder file is kept on purpose, leave a useful example or a clear comment so future agents understand how to extend it
+- don't use Date.now() in:
+  - react hooks, instead use dayjs().valueOf()
+  - convex queries, instead check https://docs.convex.dev/understanding/best-practices/#date-in-queries for official recommended way to handle those
+- don't use filtering, use indexes for convex queries
