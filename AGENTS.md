@@ -4,7 +4,7 @@
 
 This is an authenticated todo list app built from the company React template.
 The first product surface is a personal todo workspace with Convex storage and
-Clerk authentication.
+Clerk authentication, shared list memberships, and expiring invite links.
 
 ## Commands
 
@@ -24,7 +24,7 @@ bun run check        # Lint, typecheck and prettier check without mutating files
 
 - `/` — Root route
 - `/home` — Authenticated todo workspace
-- `/public` — Unauthenticated example route
+- `/invite/:token` — Public invite acceptance route
 
 ## Tech Stack (current versions)
 

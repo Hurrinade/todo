@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { requireClerkUserId } from "../shared/auth";
+import { requireClerkUserId, requireListAccess } from "../shared/auth";
 
 export const list = query({
   args: {
@@ -9,11 +9,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    const todoList = await ctx.db.get(args.listId);
-
-    if (!todoList || todoList.userId !== userId) {
-      throw new Error("Todo list was not found.");
-    }
+    await requireListAccess(ctx, args.listId, userId);
 
     const todos = await ctx.db
       .query("todos")

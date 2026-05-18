@@ -1,6 +1,10 @@
 import { v } from "convex/values";
 
-import { requireClerkUserId } from "../shared/auth";
+import {
+  requireClerkUserId,
+  requireListAccess,
+  requireOwnerListAccess,
+} from "../shared/auth";
 import { normalizeTodoTitle } from "../shared/todo";
 import { mutation } from "../triggers/todolistFunctions";
 
@@ -34,11 +38,7 @@ export const remove = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    const todoList = await ctx.db.get(args.listId);
-
-    if (!todoList || todoList.userId !== userId) {
-      throw new Error("Todo list was not found.");
-    }
+    await requireOwnerListAccess(ctx, args.listId, userId);
 
     await ctx.db.delete(args.listId);
   },
@@ -51,11 +51,7 @@ export const rename = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    const todoList = await ctx.db.get(args.listId);
-
-    if (!todoList || todoList.userId !== userId) {
-      throw new Error("Todo list was not found.");
-    }
+    await requireListAccess(ctx, args.listId, userId);
 
     await ctx.db.patch(args.listId, {
       title: normalizeTodoTitle(args.title),
@@ -70,16 +66,18 @@ export const reorder = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    const todoLists = await ctx.db
-      .query("todoLists")
+    const todoListUsers = await ctx.db
+      .query("todoListUsers")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
       .collect();
 
-    if (todoLists.length !== args.listIds.length) {
+    if (todoListUsers.length !== args.listIds.length) {
       throw new Error("Todo list order is out of date.");
     }
 
-    const todoListIds = new Set(todoLists.map((todoList) => todoList._id));
+    const todoListIds = new Set(
+      todoListUsers.map((todoListUser) => todoListUser.listId),
+    );
 
     for (const listId of args.listIds) {
       if (!todoListIds.has(listId)) {

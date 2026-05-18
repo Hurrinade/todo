@@ -3,28 +3,8 @@ import { v } from "convex/values";
 import { mutation } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { requireClerkUserId } from "../shared/auth";
+import { requireClerkUserId, requireListAccess } from "../shared/auth";
 import { normalizeTodoTitle } from "../shared/todo";
-
-// Check if user has access to the list
-async function requireOwnedList(
-  ctx: MutationCtx,
-  listId: Id<"todoLists">,
-  userId: string,
-) {
-  const todoList = await ctx.db
-    .query("todoListUsers")
-    .withIndex("by_list_id_and_user_id", (q) =>
-      q.eq("listId", listId).eq("userId", userId),
-    )
-    .first();
-
-  if (!todoList) {
-    throw new Error("Todo list was not found.");
-  }
-
-  return todoList;
-}
 
 export const create = mutation({
   args: {
@@ -33,7 +13,7 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireOwnedList(ctx, args.listId, userId);
+    await requireListAccess(ctx, args.listId, userId);
 
     const now = Date.now();
     const todos = await ctx.db
@@ -73,7 +53,7 @@ export const toggle = mutation({
       throw new Error("Todo was not found.");
     }
 
-    await requireOwnedList(ctx, todo.listId, userId);
+    await requireListAccess(ctx, todo.listId, userId);
 
     const now = Date.now();
     const nextIsCompleted = !todo.isCompleted;
@@ -109,7 +89,7 @@ export const rename = mutation({
       throw new Error("Todo was not found.");
     }
 
-    await requireOwnedList(ctx, todo.listId, userId);
+    await requireListAccess(ctx, todo.listId, userId);
 
     const now = Date.now();
 
@@ -135,7 +115,7 @@ export const remove = mutation({
       throw new Error("Todo was not found.");
     }
 
-    await requireOwnedList(ctx, todo.listId, userId);
+    await requireListAccess(ctx, todo.listId, userId);
 
     await ctx.db.delete(args.todoId);
     await ctx.db.patch(todo.listId, {
@@ -151,7 +131,7 @@ export const reorder = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireOwnedList(ctx, args.listId, userId);
+    await requireListAccess(ctx, args.listId, userId);
 
     const todos = await ctx.db
       .query("todos")
@@ -192,7 +172,7 @@ export const clearCompleted = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireOwnedList(ctx, args.listId, userId);
+    await requireListAccess(ctx, args.listId, userId);
 
     const completedTodos = await ctx.db
       .query("todos")
@@ -218,7 +198,7 @@ export const uncheckCompleted = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireOwnedList(ctx, args.listId, userId);
+    await requireListAccess(ctx, args.listId, userId);
 
     const [openTodos, completedTodos] = await Promise.all([
       ctx.db

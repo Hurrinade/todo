@@ -25,7 +25,7 @@ triggers.register("todoLists", async (ctx, change) => {
   if (change.operation === "delete") {
     const oldList = change.oldDoc;
 
-    // Const delete all related todos
+    // Delete all related todos.
     const todos = await ctx.db
       .query("todos")
       .withIndex("by_list_id", (q) => q.eq("listId", oldList._id))
@@ -43,6 +43,15 @@ triggers.register("todoLists", async (ctx, change) => {
 
     for (const todoListUser of todoListUsers) {
       await ctx.db.delete(todoListUser._id);
+    }
+
+    const todoListInvites = await ctx.db
+      .query("todoListInvites")
+      .withIndex("by_list_id", (q) => q.eq("listId", oldList._id))
+      .collect();
+
+    for (const todoListInvite of todoListInvites) {
+      await ctx.db.delete(todoListInvite._id);
     }
   }
 });

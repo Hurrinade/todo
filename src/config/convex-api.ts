@@ -2,7 +2,13 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import type { FunctionReference } from "convex/server";
 
-import type { TodoItem, TodoListWithStats } from "@/types";
+import type {
+  TodoInviteAcceptResult,
+  TodoInviteCreateResult,
+  TodoInvitePreview,
+  TodoItem,
+  TodoListWithStats,
+} from "@/types";
 
 type TodoApi = {
   queries: {
@@ -12,6 +18,14 @@ type TodoApi = {
         "public",
         Record<string, never>,
         TodoListWithStats[]
+      >;
+    };
+    todoInvites: {
+      getByToken: FunctionReference<
+        "query",
+        "public",
+        { token: string },
+        TodoInvitePreview | null
       >;
     };
     todos: {
@@ -48,6 +62,20 @@ type TodoApi = {
         "public",
         { listId: Id<"todoLists"> },
         null
+      >;
+    };
+    todoInvites: {
+      create: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists"> },
+        TodoInviteCreateResult
+      >;
+      accept: FunctionReference<
+        "mutation",
+        "public",
+        { token: string },
+        TodoInviteAcceptResult
       >;
     };
     todos: {

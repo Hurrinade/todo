@@ -1,6 +1,9 @@
 import type { Id } from "@convex/_generated/dataModel";
 
 export type TodoFilter = "all" | "open" | "completed";
+export type TodoWorkspaceLocationState = {
+  selectedListId?: Id<"todoLists">;
+};
 
 export type TodoListWithStats = {
   _id: Id<"todoLists">;
@@ -24,4 +27,24 @@ export type TodoItem = {
   order?: number;
   createdAt: number;
   updatedAt: number;
+};
+
+export type TodoInvitePreview = {
+  listId: Id<"todoLists">;
+  listTitle: string;
+  token: string;
+  expiresAt: number;
+  createdByUserId: string;
+  isCurrentUserMember: boolean;
+};
+
+export type TodoInviteCreateResult = {
+  inviteId: Id<"todoListInvites">;
+  token: string;
+  expiresAt: number;
+  listId: Id<"todoLists">;
+};
+
+export type TodoInviteAcceptResult = {
+  listId: Id<"todoLists">;
 };

@@ -23,6 +23,14 @@ export default defineSchema({
     .index("by_user_id", ["userId"])
     .index("by_list_id", ["listId"])
     .index("by_list_id_and_user_id", ["listId", "userId"]),
+  todoListInvites: defineTable({
+    listId: v.id("todoLists"),
+    token: v.string(),
+    createdByUserId: v.string(),
+    expiresAt: v.number(),
+  })
+    .index("by_token", ["token"])
+    .index("by_list_id", ["listId"]),
   todos: defineTable({
     listId: v.id("todoLists"),
     title: v.string(),

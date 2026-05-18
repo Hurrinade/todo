@@ -14,7 +14,13 @@ import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import type { TodoFilter, TodoItem, TodoListWithStats } from "@/types";
 
-export function TodoWorkspace() {
+type TodoWorkspaceProps = {
+  initialActiveListId?: TodoListWithStats["_id"] | null;
+};
+
+export function TodoWorkspace({
+  initialActiveListId = null,
+}: TodoWorkspaceProps) {
   const { openModal } = useModal();
   const listsResult = useQuery(todoApi.queries.todoLists.list);
   const createList = useMutation(todoApi.mutations.todoLists.create);
@@ -35,7 +41,7 @@ export function TodoWorkspace() {
 
   const [activeListId, setActiveListId] = useState<
     TodoListWithStats["_id"] | null
-  >(null);
+  >(initialActiveListId);
   const [newListTitle, setNewListTitle] = useState("");
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [listTitleDraft, setListTitleDraft] = useState<string | null>(null);
