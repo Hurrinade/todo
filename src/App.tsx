@@ -3,9 +3,14 @@ import Home from "@/pages/authenticated/home/Home";
 import Invite from "@/pages/unauthenticated/invite/Invite";
 import Root from "@/pages/Root";
 import { AuthLoading, useConvexAuth } from "convex/react";
+import { Spinner } from "./components";
 
 function ProtectedRoutes() {
-  const { isAuthenticated } = useConvexAuth();
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  if (isLoading) {
+    return null;
+  }
 
   if (!isAuthenticated) {
     return <Navigate to="/" replace />;
@@ -28,7 +33,9 @@ function App() {
         </Routes>
       </main>
       <AuthLoading>
-        <p>Still loading</p>
+        <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-sm">
+          <Spinner />
+        </div>
       </AuthLoading>
     </div>
   );
