@@ -99,10 +99,10 @@ export default function ConfirmationModal({
                 <TriangleAlert className="size-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="break-words pr-8">
+                <DialogTitle className="wrap-break-word pr-8">
                   {payload.title}
                 </DialogTitle>
-                <DialogDescription className="mt-2 break-words">
+                <DialogDescription className="mt-2 wrap-break-word">
                   {payload.message}
                 </DialogDescription>
               </div>
