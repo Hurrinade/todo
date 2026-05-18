@@ -5,6 +5,12 @@ export type TodoWorkspaceLocationState = {
   selectedListId?: Id<"todoLists">;
 };
 
+export type TodoListMember = {
+  userId: string;
+  firstName?: string;
+  lastName?: string;
+};
+
 export type TodoListWithStats = {
   _id: Id<"todoLists">;
   _creationTime: number;
@@ -15,6 +21,7 @@ export type TodoListWithStats = {
   updatedAt: number;
   openTodoCount: number;
   completedTodoCount: number;
+  members: TodoListMember[];
 };
 
 export type TodoItem = {

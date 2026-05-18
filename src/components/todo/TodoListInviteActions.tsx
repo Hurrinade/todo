@@ -40,13 +40,13 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
   };
 
   return (
-    <section className="rounded-2xl bg-card/80 p-3 flex flex-wrap md:flex-nowrap">
+    <section className="flex flex-wrap md:flex-nowrap items-center">
       <Button
         type="button"
         variant="ghost"
         disabled={isGeneratingInvite}
         onClick={handleGenerateInvite}
-        className="h-11 md:min-w-44"
+        className="h-9 md:min-w-44"
       >
         <Link2 data-icon="inline-start" />
         {isGeneratingInvite ? "Generating..." : "Copy invite link"}
@@ -55,7 +55,7 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
       <Input
         readOnly
         value={inviteLink ?? ""}
-        className="h-11 bg-background/75 border-none focus:outline-none focus-visible:ring-0 cursor-default text-sm md:mt-0 md:ml-4 flex-1 truncate"
+        className="h-9 border-none focus:outline-none focus-visible:ring-0 cursor-default text-sm md:mt-0 md:ml-4 flex-1 truncate bg-transparent!"
       />
       {errorMessage && (
         <div className="mt-2 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">

@@ -2,6 +2,7 @@ import { Pencil, RotateCcw, Save, Trash2 } from "lucide-react";
 
 import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
+import { TodoListMembersHoverCard } from "@/components/todo/TodoListMembersHoverCard";
 import {
   Accordion,
   AccordionContent,
@@ -140,8 +141,9 @@ export function TodoListHeader({
           </AccordionItem>
         </Accordion>
       </div>
-      <div className="flex w-full justify-end md:w-auto md:max-w-[22rem]">
-        <div className="w-full md:w-auto">
+      <div className="flex w-full justify-end md:w-auto md:max-w-88">
+        <div className="flex w-full items-start justify-end gap-2 md:w-auto">
+          <TodoListMembersHoverCard members={list.members} />
           <TodoFilterTabs
             list={list}
             activeFilter={activeFilter}
