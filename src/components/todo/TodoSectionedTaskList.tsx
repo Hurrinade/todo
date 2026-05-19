@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { SortableTodoSection } from "@/components/todo/SortableTodoSection";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
+import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { TodoFilter, TodoItem, TodoSection } from "@/types";
@@ -69,6 +70,7 @@ export function TodoSectionedTaskList({
   const [sectionTodoMap, setSectionTodoMap] = useState(() =>
     buildSectionTodoMap(sections, todos),
   );
+  const [closedSectionIds, setClosedSectionIds] = useState<string[]>([]);
   const isDraggingRef = useRef(false);
   const todoDragRef = useRef<{
     todoId: TodoItem["_id"];
@@ -82,6 +84,9 @@ export function TodoSectionedTaskList({
       setSectionTodoMap(buildSectionTodoMap(sections, todos));
     }
   }, [sections, todos]);
+  const openSectionIds = sections
+    .map((section) => section._id)
+    .filter((sectionId) => !closedSectionIds.includes(sectionId));
 
   const handleCreateSection = async (
     event: React.FormEvent<HTMLFormElement>,
@@ -281,23 +286,38 @@ export function TodoSectionedTaskList({
           );
         }}
       >
-        <ul className="flex flex-col gap-4">
-          {orderedSections.map((section, index) => (
-            <SortableTodoSection
-              key={section._id}
-              section={section}
-              index={index}
-              todos={sectionTodoMap[section._id] ?? []}
-              activeFilter={activeFilter}
-              sections={orderedSections}
-              onToggleTodo={onToggleTodo}
-              onRenameTodo={onRenameTodo}
-              onMoveTodoToSection={onMoveTodoToSection}
-              onDeleteTodo={onDeleteTodo}
-              onRenameSection={onRenameSection}
-            />
-          ))}
-        </ul>
+        <Accordion
+          type="multiple"
+          value={openSectionIds}
+          onValueChange={(nextOpenSectionIds) => {
+            const nextOpenSectionIdSet = new Set(nextOpenSectionIds);
+
+            setClosedSectionIds(
+              sections
+                .map((section) => section._id)
+                .filter((sectionId) => !nextOpenSectionIdSet.has(sectionId)),
+            );
+          }}
+          className="gap-4"
+        >
+          <ul className="flex flex-col gap-4">
+            {orderedSections.map((section, index) => (
+              <SortableTodoSection
+                key={section._id}
+                section={section}
+                index={index}
+                todos={sectionTodoMap[section._id] ?? []}
+                activeFilter={activeFilter}
+                sections={orderedSections}
+                onToggleTodo={onToggleTodo}
+                onRenameTodo={onRenameTodo}
+                onMoveTodoToSection={onMoveTodoToSection}
+                onDeleteTodo={onDeleteTodo}
+                onRenameSection={onRenameSection}
+              />
+            ))}
+          </ul>
+        </Accordion>
       </DragDropProvider>
     </div>
   );

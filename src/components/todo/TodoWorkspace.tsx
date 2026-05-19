@@ -444,6 +444,7 @@ export function TodoWorkspace({
                     </div>
                   ) : activeList.kind === "sectioned" ? (
                     <TodoSectionedTaskList
+                      key={activeList._id}
                       sections={sections}
                       todos={visibleTodos}
                       activeFilter={activeFilter}

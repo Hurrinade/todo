@@ -1,9 +1,14 @@
 import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
-import { GripVertical, Pencil, Save, X } from "lucide-react";
+import { GripVertical } from "lucide-react";
 import { useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
+import {
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
@@ -40,9 +45,7 @@ export function SortableTodoSection({
   onDeleteTodo,
   onRenameSection,
 }: SortableTodoSectionProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [draftTitle, setDraftTitle] = useState(section.title);
-  const [isSaving, setIsSaving] = useState(false);
   const {
     ref: sectionRef,
     handleRef: sectionHandleRef,
@@ -67,21 +70,17 @@ export function SortableTodoSection({
     },
   });
 
-  const handleSubmit = async (event: React.SubmitEvent) => {
+  const handleSubmit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
 
     if (!draftTitle.trim() || draftTitle.trim() === section.title) {
-      setIsEditing(false);
       return;
     }
 
-    setIsSaving(true);
-
     try {
       await onRenameSection(section._id, draftTitle);
-      setIsEditing(false);
-    } finally {
-      setIsSaving(false);
+    } catch {
+      // Do nothing
     }
   };
 
@@ -101,8 +100,8 @@ export function SortableTodoSection({
         isDragging && "relative z-20 shadow-lg shadow-background/25",
       )}
     >
-      <div className="my-3 flex items-start justify-between gap-3">
-        <div className="flex min-w-0 flex-1 items-center gap-2">
+      <AccordionItem value={section._id} className="border-none">
+        <div className="my-2 flex items-center gap-2">
           <Button
             type="button"
             variant="ghost"
@@ -117,93 +116,51 @@ export function SortableTodoSection({
           </Button>
 
           <div className="min-w-0 flex-1">
-            {isEditing ? (
-              <form
-                className="flex flex-col gap-2 sm:flex-row sm:items-center"
-                onSubmit={handleSubmit}
-              >
-                <Input
-                  aria-label="Section title"
-                  value={draftTitle}
-                  onChange={(event) => {
-                    setDraftTitle(event.target.value);
-                  }}
-                  className="h-10 min-w-0 flex-1"
-                />
-                <div className="flex gap-2">
-                  <Button
-                    type="submit"
-                    size="icon"
-                    disabled={isSaving || !draftTitle.trim()}
-                    aria-label="Save section"
-                  >
-                    <Save />
-                  </Button>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="outline"
-                    aria-label="Cancel section edit"
-                    onClick={() => {
-                      setDraftTitle(section.title);
-                      setIsEditing(false);
-                    }}
-                  >
-                    <X />
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <div className="flex flex-wrap items-center gap-2">
-                <h3 className="wrap-break-word text-base font-semibold text-foreground">
-                  {section.title}
-                </h3>
-              </div>
-            )}
+            <AccordionTrigger className="flex items-center min-w-0 gap-3 px-0 py-1 hover:no-underline focus-visible:border-transparent focus-visible:ring-0">
+              <Input
+                aria-label="Section title"
+                value={draftTitle}
+                onChange={(event) => {
+                  setDraftTitle(event.target.value);
+                }}
+                onBlur={handleSubmit}
+                onClick={(e) => {
+                  e.stopPropagation();
+                }}
+                autoFocus
+                className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[16px]! p-0!"
+              />
+            </AccordionTrigger>
           </div>
         </div>
 
-        {!isEditing && !section.isDefault ? (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon-sm"
-            onClick={() => {
-              setDraftTitle(section.title);
-              setIsEditing(true);
-            }}
-            aria-label="Rename section"
-            className="shrink-0 text-muted-foreground hover:text-foreground"
-          >
-            <Pencil className="size-4" />
-          </Button>
-        ) : null}
-      </div>
-
-      <div ref={dropRef} className={cn("rounded-xl bg-background/35")}>
-        {todos.length === 0 ? (
-          <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-            {emptyMessage}
+        <AccordionContent className="pb-0">
+          <div ref={dropRef} className={cn("rounded-xl bg-background/35")}>
+            {todos.length === 0 ? (
+              <div className="px-2 py-6 text-center text-sm text-muted-foreground">
+                {emptyMessage}
+              </div>
+            ) : (
+              <ul className="flex flex-col gap-2">
+                {todos.map((todo, todoIndex) => (
+                  <SortableTodoTaskItem
+                    key={todo._id}
+                    index={todoIndex}
+                    group={section._id}
+                    isReorderEnabled
+                    todo={todo}
+                    onToggleTodo={onToggleTodo}
+                    onRenameTodo={onRenameTodo}
+                    onMoveTodoToSection={onMoveTodoToSection}
+                    onDeleteTodo={onDeleteTodo}
+                    sections={sections}
+                  />
+                ))}
+              </ul>
+            )}
           </div>
-        ) : (
-          <ul className="flex flex-col gap-2">
-            {todos.map((todo, todoIndex) => (
-              <SortableTodoTaskItem
-                key={todo._id}
-                index={todoIndex}
-                group={section._id}
-                isReorderEnabled
-                todo={todo}
-                onToggleTodo={onToggleTodo}
-                onRenameTodo={onRenameTodo}
-                onMoveTodoToSection={onMoveTodoToSection}
-                onDeleteTodo={onDeleteTodo}
-                sections={sections}
-              />
-            ))}
-          </ul>
-        )}
-      </div>
+        </AccordionContent>
+      </AccordionItem>
     </li>
   );
 }
