@@ -86,11 +86,6 @@ export function TodoWorkspace({
     listTitleDraft ?? activeList?.title ?? "Untitled list";
   const normalizedDraftTitle = visibleListTitle.trim();
   const normalizedActiveListTitle = activeList?.title.trim() ?? "";
-  const canSaveListTitleChange = Boolean(
-    activeList &&
-    normalizedDraftTitle &&
-    normalizedDraftTitle !== normalizedActiveListTitle,
-  );
 
   const handleCreateList = async (event: React.SubmitEvent) => {
     event.preventDefault();
@@ -125,10 +120,18 @@ export function TodoWorkspace({
     setErrorMessage(null);
   };
 
-  const handleRenameList = async (event: React.SubmitEvent) => {
-    event.preventDefault();
+  const handleRenameList = async () => {
+    if (!activeList || isRenamingList) {
+      return;
+    }
 
-    if (!activeList || !canSaveListTitleChange) {
+    if (!normalizedDraftTitle) {
+      setListTitleDraft(null);
+      return;
+    }
+
+    if (normalizedDraftTitle === normalizedActiveListTitle) {
+      setListTitleDraft(null);
       return;
     }
 
@@ -414,7 +417,6 @@ export function TodoWorkspace({
               <div className="flex justify-between">
                 <TodoListHeader
                   titleDraft={visibleListTitle}
-                  canSave={canSaveListTitleChange}
                   completedTodoCount={activeList.completedTodoCount}
                   isRenaming={isRenamingList}
                   isClearingCompleted={isClearingCompleted}

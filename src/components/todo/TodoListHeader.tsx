@@ -1,21 +1,19 @@
-import { Pencil, RotateCcw, Save, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 
 import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
 import { TodoListMembersHoverCard } from "@/components/todo/TodoListMembersHoverCard";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import type { TodoFilter, TodoListWithStats } from "@/types";
 
 type TodoListHeaderProps = {
   titleDraft: string;
-  canSave: boolean;
   isRenaming: boolean;
   completedTodoCount: number;
   list: TodoListWithStats;
@@ -25,14 +23,13 @@ type TodoListHeaderProps = {
   onClearCompleted: () => void;
   onFilterChange: (filter: TodoFilter) => void;
   onTitleDraftChange: (title: string) => void;
-  onRenameList: (event: React.SubmitEvent) => void;
+  onRenameList: () => void;
   onUncheckCompleted: () => void;
 };
 
 export function TodoListHeader({
   titleDraft,
   list,
-  canSave,
   isRenaming,
   completedTodoCount,
   isClearingCompleted = false,
@@ -47,108 +44,103 @@ export function TodoListHeader({
   const shouldShowBulkActions = activeFilter !== "open";
 
   return (
-    <header className="flex w-full flex-wrap items-start justify-between gap-4 border-b border-border bg-card/55 px-4 py-3">
-      <div className="min-w-0 flex-1 basis-full md:basis-[min(42rem,58%)]">
-        <Accordion
-          type="single"
-          collapsible
-          defaultValue="list-controls"
-          className="w-full"
-        >
-          <AccordionItem
-            value="list-controls"
-            className="overflow-hidden rounded-2xl border border-border/80 bg-card/85 shadow-sm"
-          >
-            <AccordionTrigger className="items-center gap-4 px-4 py-3 hover:no-underline data-[state=open]:rounded-b-none">
-              <div className="min-w-0">
-                <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-                  Controls
-                </p>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="border-t border-border/70 bg-background/55 px-4 pt-3 pb-4">
-              <div className="flex flex-col gap-3">
-                <div className="flex flex-col gap-2 md:flex-row md:items-center">
-                  <form
-                    className="flex min-w-0 flex-1 items-center gap-2"
-                    onSubmit={onRenameList}
-                  >
-                    <Input
-                      aria-label="Todo list title"
-                      value={titleDraft}
-                      onChange={(event) => {
-                        onTitleDraftChange(event.target.value);
-                      }}
-                      className="h-11 min-w-0 flex-1 border-input bg-card px-4 text-base font-semibold text-foreground shadow-none"
-                    />
-                    {canSave ? (
-                      <Button
-                        type="submit"
-                        variant="outline"
-                        disabled={isRenaming || !titleDraft.trim()}
-                        className="h-11 shrink-0 px-4"
-                      >
-                        {isRenaming ? (
-                          <Pencil data-icon="inline-start" />
-                        ) : (
-                          <Save data-icon="inline-start" />
-                        )}
-                        Save
-                      </Button>
-                    ) : null}
-                  </form>
-                  {shouldShowBulkActions ? (
-                    <div className="grid grid-cols-2 gap-2 md:flex md:shrink-0">
+    <header className="w-full border-b border-border bg-card/55 px-4 py-3">
+      <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex min-w-0 flex-col gap-2 lg:flex-1 lg:flex-row lg:items-center">
+          <div className="flex min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap">
+            <form
+              className="min-w-0 flex-1"
+              onSubmit={(event) => {
+                event.preventDefault();
+                onRenameList();
+              }}
+            >
+              <Input
+                aria-label="Todo list title"
+                value={titleDraft}
+                disabled={isRenaming}
+                onBlur={onRenameList}
+                onChange={(event) => {
+                  onTitleDraftChange(event.target.value);
+                }}
+                className="h-8 min-w-0 border-border/70 bg-background/75 px-3 text-sm font-semibold text-foreground shadow-none"
+              />
+            </form>
+
+            <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
+              <TodoListInviteActions list={list} />
+
+              {shouldShowBulkActions ? (
+                <div className="flex shrink-0 items-center gap-2">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
+                        size="icon-sm"
                         disabled={
                           completedTodoCount === 0 ||
                           isClearingCompleted ||
                           isUncheckingCompleted
                         }
                         onClick={onUncheckCompleted}
-                        className="h-11"
+                        aria-label={
+                          isUncheckingCompleted
+                            ? "Unchecking completed todos"
+                            : "Uncheck completed todos"
+                        }
                       >
-                        <RotateCcw data-icon="inline-start" />
-                        {isUncheckingCompleted
-                          ? "Unchecking..."
-                          : "Uncheck completed"}
+                        <RotateCcw className="size-4" />
                       </Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isUncheckingCompleted
+                        ? "Unchecking completed todos"
+                        : "Uncheck completed todos"}
+                    </TooltipContent>
+                  </Tooltip>
+
+                  <Tooltip>
+                    <TooltipTrigger asChild>
                       <Button
                         type="button"
                         variant="outline"
+                        size="icon-sm"
                         disabled={
                           completedTodoCount === 0 ||
                           isClearingCompleted ||
                           isUncheckingCompleted
                         }
                         onClick={onClearCompleted}
-                        className="h-11 text-destructive hover:text-destructive"
+                        aria-label={
+                          isClearingCompleted
+                            ? "Clearing completed todos"
+                            : "Clear completed todos"
+                        }
+                        className="text-destructive hover:text-destructive"
                       >
-                        <Trash2 data-icon="inline-start" />
-                        {isClearingCompleted
-                          ? "Clearing..."
-                          : "Clear completed"}
+                        <Trash2 className="size-4" />
                       </Button>
-                    </div>
-                  ) : null}
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isClearingCompleted
+                        ? "Clearing completed todos"
+                        : "Clear completed todos"}
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
 
-                <TodoListInviteActions list={list} />
-              </div>
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </div>
-      <div className="flex w-full justify-end md:w-auto md:max-w-88">
-        <div className="flex w-full items-start justify-end gap-2 md:w-auto">
-          <TodoListMembersHoverCard members={list.members} />
+        <div className="flex items-center gap-2 lg:shrink-0">
           <TodoFilterTabs
             list={list}
             activeFilter={activeFilter}
             onFilterChange={onFilterChange}
           />
+          <TodoListMembersHoverCard members={list.members} />
         </div>
       </div>
     </header>

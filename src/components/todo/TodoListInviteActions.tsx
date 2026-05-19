@@ -1,23 +1,23 @@
 import { Link2 } from "lucide-react";
 import type { TodoListWithStats } from "@/types";
 import { useMutation } from "convex/react";
-
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useState } from "react";
+
 import { todoApi } from "@/config/convex-api";
+import { Button } from "@/components/ui/button";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
-  const [inviteLink, setInviteLink] = useState<string | null>(null);
-
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
   const createInvite = useMutation(todoApi.mutations.todoInvites.create);
 
   const handleGenerateInvite = async () => {
     setIsGeneratingInvite(true);
-    setErrorMessage(null);
 
     try {
       const invite = await createInvite({ listId: list._id });
@@ -26,50 +26,42 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
         window.location.origin,
       ).toString();
 
-      setInviteLink(nextInviteLink);
       try {
         await navigator.clipboard.writeText(nextInviteLink);
       } catch {
-        setErrorMessage("Invite created. Copy the link from the field.");
+        // Do nothing
       }
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+    } catch {
+      // Do nothing
     } finally {
       setIsGeneratingInvite(false);
     }
   };
 
   return (
-    <section className="flex flex-wrap md:flex-nowrap items-center">
-      <Button
-        type="button"
-        variant="ghost"
-        disabled={isGeneratingInvite}
-        onClick={handleGenerateInvite}
-        className="h-9 md:min-w-44"
-      >
-        <Link2 data-icon="inline-start" />
-        {isGeneratingInvite ? "Generating..." : "Copy invite link"}
-      </Button>
-
-      <Input
-        readOnly
-        value={inviteLink ?? ""}
-        className="h-9 border-none focus:outline-none focus-visible:ring-0 cursor-default text-sm md:mt-0 md:ml-4 flex-1 truncate bg-transparent!"
-      />
-      {errorMessage && (
-        <div className="mt-2 rounded-lg bg-destructive/10 px-4 py-3 text-sm text-destructive">
-          {errorMessage}
-        </div>
-      )}
+    <section className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            disabled={isGeneratingInvite}
+            onClick={() => {
+              void handleGenerateInvite();
+            }}
+            aria-label={
+              isGeneratingInvite ? "Generating invite link" : "Copy invite link"
+            }
+            className="shrink-0"
+          >
+            <Link2 className="size-4" />
+          </Button>
+        </TooltipTrigger>
+        <TooltipContent sideOffset={8}>
+          {isGeneratingInvite ? "Generating invite link" : "Copy invite link"}
+        </TooltipContent>
+      </Tooltip>
     </section>
   );
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Something went wrong.";
 }
