@@ -9,21 +9,33 @@ import { cn } from "@/lib/utils";
 
 type SortableTodoTaskItemProps = TodoTaskItemProps & {
   index: number;
+  group?: string;
   isReorderEnabled: boolean;
 };
 
 export function SortableTodoTaskItem({
   index,
+  group,
   isReorderEnabled,
   todo,
   onToggleTodo,
   onRenameTodo,
+  onMoveTodoToSection,
   onDeleteTodo,
+  sections,
 }: SortableTodoTaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const { ref, isDragging } = useSortable({
+  const { ref, handleRef, isDragging } = useSortable({
     id: todo._id,
     index,
+    group,
+    type: "todo",
+    data: {
+      type: "todo",
+      todoId: todo._id,
+      sectionId: todo.sectionId,
+      isCompleted: todo.isCompleted,
+    },
     disabled: !isReorderEnabled || isEditing,
   });
 
@@ -40,8 +52,12 @@ export function SortableTodoTaskItem({
         todo={todo}
         onToggleTodo={onToggleTodo}
         onRenameTodo={onRenameTodo}
+        onMoveTodoToSection={onMoveTodoToSection}
         onDeleteTodo={onDeleteTodo}
         onEditingChange={setIsEditing}
+        dragHandleRef={handleRef}
+        isReorderEnabled={isReorderEnabled}
+        sections={sections}
       />
     </li>
   );

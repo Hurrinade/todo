@@ -7,7 +7,9 @@ import type {
   TodoInviteCreateResult,
   TodoInvitePreview,
   TodoItem,
+  TodoListKind,
   TodoListWithStats,
+  TodoSection,
 } from "@/types";
 
 type TodoApi = {
@@ -28,6 +30,14 @@ type TodoApi = {
         TodoInvitePreview | null
       >;
     };
+    todoSections: {
+      list: FunctionReference<
+        "query",
+        "public",
+        { listId: Id<"todoLists"> },
+        TodoSection[]
+      >;
+    };
     todos: {
       list: FunctionReference<
         "query",
@@ -42,7 +52,7 @@ type TodoApi = {
       create: FunctionReference<
         "mutation",
         "public",
-        { title: string },
+        { title: string; kind: TodoListKind },
         Id<"todoLists">
       >;
       rename: FunctionReference<
@@ -61,6 +71,26 @@ type TodoApi = {
         "mutation",
         "public",
         { listId: Id<"todoLists"> },
+        null
+      >;
+    };
+    todoSections: {
+      create: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists">; title: string },
+        Id<"todoSections">
+      >;
+      rename: FunctionReference<
+        "mutation",
+        "public",
+        { sectionId: Id<"todoSections">; title: string },
+        null
+      >;
+      reorder: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists">; sectionIds: Id<"todoSections">[] },
         null
       >;
     };
@@ -119,6 +149,16 @@ type TodoApi = {
         "mutation",
         "public",
         { listId: Id<"todoLists">; todoIds: Id<"todos">[] },
+        null
+      >;
+      move: FunctionReference<
+        "mutation",
+        "public",
+        {
+          todoId: Id<"todos">;
+          targetSectionId: Id<"todoSections">;
+          targetIndex: number;
+        },
         null
       >;
     };

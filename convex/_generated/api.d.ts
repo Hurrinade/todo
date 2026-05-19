@@ -11,9 +11,11 @@
 import type * as http from "../http.js";
 import type * as mutations_todoInvites from "../mutations/todoInvites.js";
 import type * as mutations_todoLists from "../mutations/todoLists.js";
+import type * as mutations_todoSections from "../mutations/todoSections.js";
 import type * as mutations_todos from "../mutations/todos.js";
 import type * as queries_todoInvites from "../queries/todoInvites.js";
 import type * as queries_todoLists from "../queries/todoLists.js";
+import type * as queries_todoSections from "../queries/todoSections.js";
 import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_todo from "../shared/todo.js";
@@ -30,9 +32,11 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   "mutations/todoInvites": typeof mutations_todoInvites;
   "mutations/todoLists": typeof mutations_todoLists;
+  "mutations/todoSections": typeof mutations_todoSections;
   "mutations/todos": typeof mutations_todos;
   "queries/todoInvites": typeof queries_todoInvites;
   "queries/todoLists": typeof queries_todoLists;
+  "queries/todoSections": typeof queries_todoSections;
   "queries/todos": typeof queries_todos;
   "shared/auth": typeof shared_auth;
   "shared/todo": typeof shared_todo;

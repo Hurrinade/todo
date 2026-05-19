@@ -8,6 +8,13 @@ import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Sidebar,
   SidebarContent,
   SidebarGroup,
@@ -16,13 +23,15 @@ import {
   SidebarMenu,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import type { TodoListWithStats } from "@/types";
+import type { TodoListKind, TodoListWithStats } from "@/types";
 
 type TodoListSidebarProps = {
   lists: TodoListWithStats[];
   activeListId: TodoListWithStats["_id"] | null;
   newListTitle: string;
+  newListKind: TodoListKind;
   isCreatingList: boolean;
+  onNewListKindChange: (kind: TodoListKind) => void;
   onNewListTitleChange: (title: string) => void;
   onCreateList: (event: React.SubmitEvent) => void;
   onDeleteList: (list: TodoListWithStats) => void;
@@ -34,7 +43,9 @@ export function TodoListSidebar({
   lists,
   activeListId,
   newListTitle,
+  newListKind,
   isCreatingList,
+  onNewListKindChange,
   onNewListTitleChange,
   onCreateList,
   onDeleteList,
@@ -80,24 +91,46 @@ export function TodoListSidebar({
           </div>
         </div>
 
-        <form className="flex gap-2" onSubmit={onCreateList}>
-          <SidebarInput
-            aria-label="New list title"
-            value={newListTitle}
-            onChange={(event) => {
-              onNewListTitleChange(event.target.value);
+        <form className="flex flex-col gap-2" onSubmit={onCreateList}>
+          <Select
+            value={newListKind}
+            onValueChange={(value) => {
+              onNewListKindChange(value as TodoListKind);
             }}
-            placeholder="New list"
-            className="min-w-0 flex-1"
-          />
-          <Button
-            type="submit"
-            size="icon"
-            disabled={isCreatingList || !newListTitle.trim()}
-            aria-label="Create list"
           >
-            <Plus />
-          </Button>
+            <SelectTrigger
+              aria-label="List type"
+              className="h-10 w-full bg-sidebar-accent/35"
+            >
+              <SelectValue placeholder="List type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="regular">Regular list</SelectItem>
+              <SelectItem value="sectioned">Sectioned list</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <div className="flex gap-2">
+            <SidebarInput
+              aria-label="New list title"
+              value={newListTitle}
+              onChange={(event) => {
+                onNewListTitleChange(event.target.value);
+              }}
+              placeholder={
+                newListKind === "sectioned" ? "New sectioned list" : "New list"
+              }
+              className="min-w-0 flex-1"
+            />
+            <Button
+              type="submit"
+              size="icon"
+              disabled={isCreatingList || !newListTitle.trim()}
+              aria-label="Create list"
+            >
+              <Plus />
+            </Button>
+          </div>
         </form>
 
         {lists.length > 0 && (

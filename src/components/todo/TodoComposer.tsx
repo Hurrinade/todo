@@ -1,4 +1,5 @@
 import { Plus } from "lucide-react";
+import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +8,7 @@ type TodoComposerProps = {
   title: string;
   isCreatingTodo: boolean;
   onTitleChange: (title: string) => void;
-  onCreateTodo: (event: React.SubmitEvent) => void;
+  onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
 };
 
 export function TodoComposer({
@@ -16,9 +17,23 @@ export function TodoComposer({
   onTitleChange,
   onCreateTodo,
 }: TodoComposerProps) {
+  const inputRef = useRef<HTMLInputElement>(null);
+
   return (
-    <form className="flex gap-2 p-2 items-center" onSubmit={onCreateTodo}>
+    <form
+      className="flex items-center gap-2 p-2"
+      onSubmit={async (event) => {
+        const wasCreated = await onCreateTodo(event);
+
+        if (wasCreated) {
+          requestAnimationFrame(() => {
+            inputRef.current?.focus();
+          });
+        }
+      }}
+    >
       <Input
+        ref={inputRef}
         aria-label="New todo title"
         value={title}
         onChange={(event) => {

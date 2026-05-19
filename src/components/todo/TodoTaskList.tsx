@@ -1,5 +1,4 @@
-import { PointerActivationConstraints } from "@dnd-kit/dom";
-import { DragDropProvider, PointerSensor } from "@dnd-kit/react";
+import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { ClipboardList } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
@@ -48,19 +47,6 @@ export function TodoTaskList({
 
   return (
     <DragDropProvider
-      sensors={(defaults) => [
-        ...defaults.filter((sensor) => sensor !== PointerSensor),
-        PointerSensor.configure({
-          activationConstraints() {
-            return [
-              new PointerActivationConstraints.Delay({
-                value: 300,
-                tolerance: 8,
-              }),
-            ];
-          },
-        }),
-      ]}
       onDragStart={() => {
         isDraggingRef.current = true;
       }}
@@ -107,6 +93,7 @@ export function TodoTaskList({
           <SortableTodoTaskItem
             key={todo._id}
             index={index}
+            group="regular-list"
             isReorderEnabled={isReorderEnabled}
             todo={todo}
             onToggleTodo={onToggleTodo}

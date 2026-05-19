@@ -5,12 +5,17 @@ import {
   requireListAccess,
   requireOwnerListAccess,
 } from "../shared/auth";
-import { normalizeTodoTitle } from "../shared/todo";
+import {
+  DEFAULT_TODO_SECTION_TITLE,
+  normalizeSectionTitle,
+  normalizeTodoTitle,
+} from "../shared/todo";
 import { mutation } from "../triggers/todolistFunctions";
 
 export const create = mutation({
   args: {
     title: v.string(),
+    kind: v.union(v.literal("regular"), v.literal("sectioned")),
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
@@ -23,10 +28,21 @@ export const create = mutation({
 
     const listId = await ctx.db.insert("todoLists", {
       title: normalizeTodoTitle(args.title),
+      kind: args.kind,
       userId,
       order: nextOrder,
       updatedAt: now,
     });
+
+    if (args.kind === "sectioned") {
+      await ctx.db.insert("todoSections", {
+        listId,
+        title: normalizeSectionTitle(DEFAULT_TODO_SECTION_TITLE),
+        order: 0,
+        isDefault: true,
+        updatedAt: now,
+      });
+    }
 
     return listId;
   },

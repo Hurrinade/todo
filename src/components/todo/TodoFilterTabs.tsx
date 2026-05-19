@@ -4,7 +4,7 @@ import type { TodoFilter, TodoListWithStats } from "@/types";
 const FILTERS: { key: TodoFilter; label: string }[] = [
   { key: "all", label: "All" },
   { key: "open", label: "Open" },
-  { key: "completed", label: "Completed" },
+  { key: "completed", label: "Done" },
 ];
 
 type TodoFilterTabsProps = {

@@ -12,10 +12,20 @@ export default defineSchema({
   }).index("by_clerk_id", ["clerkId"]),
   todoLists: defineTable({
     title: v.string(),
+    kind: v.union(v.literal("regular"), v.literal("sectioned")),
     userId: v.string(),
     order: v.optional(v.number()),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
+  todoSections: defineTable({
+    listId: v.id("todoLists"),
+    title: v.string(),
+    order: v.optional(v.number()),
+    isDefault: v.boolean(),
+    updatedAt: v.number(),
+  })
+    .index("by_list_id", ["listId"])
+    .index("by_list_id_and_default", ["listId", "isDefault"]),
   todoListUsers: defineTable({
     listId: v.id("todoLists"),
     userId: v.string(),
@@ -33,6 +43,7 @@ export default defineSchema({
     .index("by_list_id", ["listId"]),
   todos: defineTable({
     listId: v.id("todoLists"),
+    sectionId: v.optional(v.id("todoSections")),
     title: v.string(),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
@@ -40,5 +51,7 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_list_id", ["listId"])
-    .index("by_list_id_and_completed", ["listId", "isCompleted"]),
+    .index("by_list_id_and_completed", ["listId", "isCompleted"])
+    .index("by_section_id", ["sectionId"])
+    .index("by_section_id_and_completed", ["sectionId", "isCompleted"]),
 });

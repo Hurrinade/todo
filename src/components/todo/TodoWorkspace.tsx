@@ -6,13 +6,20 @@ import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
 import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
+import { TodoSectionedTaskList } from "@/components/todo/TodoSectionedTaskList";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
 import { TodoWorkspaceHeader } from "@/components/todo/TodoWorkspaceHeader";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
-import type { TodoFilter, TodoItem, TodoListWithStats } from "@/types";
+import type {
+  TodoFilter,
+  TodoItem,
+  TodoListKind,
+  TodoListWithStats,
+  TodoSection,
+} from "@/types";
 
 type TodoWorkspaceProps = {
   initialActiveListId?: TodoListWithStats["_id"] | null;
@@ -27,6 +34,9 @@ export function TodoWorkspace({
   const renameList = useMutation(todoApi.mutations.todoLists.rename);
   const reorderLists = useMutation(todoApi.mutations.todoLists.reorder);
   const deleteList = useMutation(todoApi.mutations.todoLists.remove);
+  const createSection = useMutation(todoApi.mutations.todoSections.create);
+  const renameSection = useMutation(todoApi.mutations.todoSections.rename);
+  const reorderSections = useMutation(todoApi.mutations.todoSections.reorder);
   const createTodo = useMutation(todoApi.mutations.todos.create);
   const clearCompletedTodos = useMutation(
     todoApi.mutations.todos.clearCompleted,
@@ -35,6 +45,7 @@ export function TodoWorkspace({
   const renameTodo = useMutation(todoApi.mutations.todos.rename);
   const deleteTodo = useMutation(todoApi.mutations.todos.remove);
   const reorderTodos = useMutation(todoApi.mutations.todos.reorder);
+  const moveTodo = useMutation(todoApi.mutations.todos.move);
   const uncheckCompletedTodos = useMutation(
     todoApi.mutations.todos.uncheckCompleted,
   );
@@ -43,6 +54,7 @@ export function TodoWorkspace({
     TodoListWithStats["_id"] | null
   >(initialActiveListId);
   const [newListTitle, setNewListTitle] = useState("");
+  const [newListKind, setNewListKind] = useState<TodoListKind>("regular");
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [listTitleDraft, setListTitleDraft] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<TodoFilter>("all");
@@ -59,7 +71,12 @@ export function TodoWorkspace({
     todoApi.queries.todos.list,
     activeList ? { listId: activeList._id } : "skip",
   );
+  const sectionResult = useQuery(
+    todoApi.queries.todoSections.list,
+    activeList?.kind === "sectioned" ? { listId: activeList._id } : "skip",
+  );
   const todos = useMemo(() => activeTodoResult ?? [], [activeTodoResult]);
+  const sections = useMemo(() => sectionResult ?? [], [sectionResult]);
   const visibleTodos = useMemo(
     () => filterTodos(todos, activeFilter),
     [todos, activeFilter],
@@ -86,8 +103,12 @@ export function TodoWorkspace({
     setErrorMessage(null);
 
     try {
-      const listId = await createList({ title: newListTitle });
+      const listId = await createList({
+        title: newListTitle,
+        kind: newListKind,
+      });
       setNewListTitle("");
+      setNewListKind("regular");
       setActiveListId(listId);
       setListTitleDraft(null);
     } catch (error) {
@@ -159,7 +180,7 @@ export function TodoWorkspace({
     event.preventDefault();
 
     if (!activeList || !newTodoTitle.trim()) {
-      return;
+      return false;
     }
 
     setIsCreatingTodo(true);
@@ -168,8 +189,10 @@ export function TodoWorkspace({
     try {
       await createTodo({ listId: activeList._id, title: newTodoTitle });
       setNewTodoTitle("");
+      return true;
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
+      return false;
     } finally {
       setIsCreatingTodo(false);
     }
@@ -204,6 +227,87 @@ export function TodoWorkspace({
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
     }
+  };
+
+  const handleCreateSection = async (title: string) => {
+    if (!activeList || activeList.kind !== "sectioned") {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await createSection({ listId: activeList._id, title });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
+  const handleRenameSection = async (
+    sectionId: TodoSection["_id"],
+    title: string,
+  ) => {
+    setErrorMessage(null);
+
+    try {
+      await renameSection({ sectionId, title });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
+  const handleReorderSections = async (sectionIds: TodoSection["_id"][]) => {
+    if (!activeList || activeList.kind !== "sectioned") {
+      return;
+    }
+
+    setErrorMessage(null);
+
+    try {
+      await reorderSections({ listId: activeList._id, sectionIds });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
+  const handleMoveTodo = async (
+    todoId: TodoItem["_id"],
+    targetSectionId: TodoSection["_id"],
+    targetIndex: number,
+  ) => {
+    setErrorMessage(null);
+
+    try {
+      await moveTodo({ todoId, targetSectionId, targetIndex });
+    } catch (error) {
+      setErrorMessage(getErrorMessage(error));
+      throw error;
+    }
+  };
+
+  const handleMoveTodoToSection = async (
+    todoId: TodoItem["_id"],
+    targetSectionId: TodoSection["_id"],
+  ) => {
+    const todo = todos.find((item) => item._id === todoId);
+
+    if (!todo) {
+      return;
+    }
+
+    const targetTodos = todos
+      .filter(
+        (item) =>
+          item.sectionId === targetSectionId &&
+          item.isCompleted === todo.isCompleted &&
+          item._id !== todoId,
+      )
+      .sort(compareTodosByOrder);
+
+    await handleMoveTodo(todoId, targetSectionId, targetTodos.length);
   };
 
   const handleClearCompleted = () => {
@@ -286,7 +390,9 @@ export function TodoWorkspace({
           lists={lists}
           activeListId={activeList?._id ?? null}
           newListTitle={newListTitle}
+          newListKind={newListKind}
           isCreatingList={isCreatingList}
+          onNewListKindChange={setNewListKind}
           onNewListTitleChange={setNewListTitle}
           onCreateList={handleCreateList}
           onDeleteList={handleDeleteList}
@@ -331,6 +437,25 @@ export function TodoWorkspace({
                     <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
                       Loading todos
                     </div>
+                  ) : activeList.kind === "sectioned" &&
+                    sectionResult === undefined ? (
+                    <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
+                      Loading sections
+                    </div>
+                  ) : activeList.kind === "sectioned" ? (
+                    <TodoSectionedTaskList
+                      sections={sections}
+                      todos={visibleTodos}
+                      activeFilter={activeFilter}
+                      onCreateSection={handleCreateSection}
+                      onRenameSection={handleRenameSection}
+                      onReorderSections={handleReorderSections}
+                      onToggleTodo={handleToggleTodo}
+                      onRenameTodo={handleRenameTodo}
+                      onMoveTodo={handleMoveTodo}
+                      onMoveTodoToSection={handleMoveTodoToSection}
+                      onDeleteTodo={handleDeleteTodo}
+                    />
                   ) : (
                     <TodoTaskList
                       todos={visibleTodos}
@@ -397,4 +522,23 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong.";
+}
+
+function compareTodosByOrder(
+  firstTodo: Pick<TodoItem, "_creationTime" | "order">,
+  secondTodo: Pick<TodoItem, "_creationTime" | "order">,
+) {
+  if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
+    return firstTodo.order - secondTodo.order;
+  }
+
+  if (firstTodo.order !== undefined) {
+    return -1;
+  }
+
+  if (secondTodo.order !== undefined) {
+    return 1;
+  }
+
+  return secondTodo._creationTime - firstTodo._creationTime;
 }

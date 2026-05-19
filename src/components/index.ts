@@ -10,6 +10,7 @@ export { TodoWorkspace } from "@/components/todo/TodoWorkspace";
 export * from "@/components/ui/button.tsx";
 export * from "@/components/ui/dialog.tsx";
 export * from "@/components/ui/input.tsx";
+export * from "@/components/ui/select.tsx";
 export * from "@/components/ui/scroll-area.tsx";
 export * from "@/components/ui/separator.tsx";
 export * from "@/components/ui/sheet.tsx";
