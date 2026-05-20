@@ -15,11 +15,11 @@ export function TodoListMembersHoverCard({
   members,
 }: TodoListMembersHoverCardProps) {
   return (
-    <HoverCard openDelay={120} closeDelay={80}>
+    <HoverCard openDelay={500} closeDelay={80}>
       <HoverCardTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60"
+          className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60"
           aria-label={`Show ${members.length} list members`}
         >
           <Users className="size-4 text-primary" />

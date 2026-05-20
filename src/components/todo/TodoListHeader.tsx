@@ -1,8 +1,6 @@
-import { RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2, Eye, EyeClosed } from "lucide-react";
 
-import { TodoFilterTabs } from "@/components/todo/TodoFilterTabs";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
-import { TodoListMembersHoverCard } from "@/components/todo/TodoListMembersHoverCard";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -47,9 +45,8 @@ export function TodoListHeader({
     <header className="w-full border-b border-border bg-card/55 px-4 py-3">
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2 lg:flex-1 lg:flex-row lg:items-center">
-          <div className="flex min-w-0 flex-wrap items-center gap-2 lg:flex-nowrap">
+          <div className="flex min-w-0 items-center gap-2 justify-between flex-1">
             <form
-              className="min-w-0 flex-1"
               onSubmit={(event) => {
                 event.preventDefault();
                 onRenameList();
@@ -63,15 +60,14 @@ export function TodoListHeader({
                 onChange={(event) => {
                   onTitleDraftChange(event.target.value);
                 }}
-                className="h-8 min-w-0 border-border/70 bg-background/75 px-3 text-sm font-semibold text-foreground shadow-none"
+                className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[18px]! p-0!"
               />
             </form>
 
-            <div className="flex min-w-0 flex-1 items-center gap-2 lg:flex-none">
+            <div className="flex shrink-0 items-center gap-2">
               <TodoListInviteActions list={list} />
-
-              {shouldShowBulkActions ? (
-                <div className="flex shrink-0 items-center gap-2">
+              {shouldShowBulkActions && (
+                <>
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Button
@@ -128,19 +124,43 @@ export function TodoListHeader({
                         : "Clear completed todos"}
                     </TooltipContent>
                   </Tooltip>
-                </div>
-              ) : null}
+                </>
+              )}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-sm"
+                    disabled={
+                      completedTodoCount === 0 ||
+                      isClearingCompleted ||
+                      isUncheckingCompleted
+                    }
+                    onClick={() => {
+                      onFilterChange(shouldShowBulkActions ? "open" : "all");
+                    }}
+                    aria-label={
+                      shouldShowBulkActions
+                        ? "Hide completed todos"
+                        : "Show completed todos"
+                    }
+                  >
+                    {shouldShowBulkActions ? (
+                      <Eye className="size-4" />
+                    ) : (
+                      <EyeClosed className="size-4" />
+                    )}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>
+                  {shouldShowBulkActions
+                    ? "Hide completed todos"
+                    : "Show completed todos"}
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
-        </div>
-
-        <div className="flex items-center gap-2 lg:shrink-0">
-          <TodoFilterTabs
-            list={list}
-            activeFilter={activeFilter}
-            onFilterChange={onFilterChange}
-          />
-          <TodoListMembersHoverCard members={list.members} />
         </div>
       </div>
     </header>

@@ -4,6 +4,7 @@ import { Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { TodoListWithStats } from "@/types";
+import { TodoListMembersHoverCard } from "./TodoListMembersHoverCard";
 
 type SortableTodoListSidebarItemProps = {
   index: number;
@@ -51,16 +52,20 @@ export function SortableTodoListSidebarItem({
       <span className="block min-w-0 flex-1 truncate text-sm font-semibold">
         {list.title}
       </span>
+      {list.members.length > 0 && (
+        <TodoListMembersHoverCard members={list.members} />
+      )}
       <Button
         variant="ghost"
         aria-label={`Delete ${list.title}`}
         className="cursor-pointer"
+        size="icon-sm"
         onClick={(event) => {
           event.stopPropagation();
           onDeleteList(list);
         }}
       >
-        <Trash2 />
+        <Trash2 className="size-4" />
       </Button>
     </li>
   );

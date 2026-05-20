@@ -39,29 +39,27 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
   };
 
   return (
-    <section className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon-sm"
-            disabled={isGeneratingInvite}
-            onClick={() => {
-              void handleGenerateInvite();
-            }}
-            aria-label={
-              isGeneratingInvite ? "Generating invite link" : "Copy invite link"
-            }
-            className="shrink-0"
-          >
-            <Link2 className="size-4" />
-          </Button>
-        </TooltipTrigger>
-        <TooltipContent sideOffset={8}>
-          {isGeneratingInvite ? "Generating invite link" : "Copy invite link"}
-        </TooltipContent>
-      </Tooltip>
-    </section>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon-sm"
+          disabled={isGeneratingInvite}
+          onClick={() => {
+            void handleGenerateInvite();
+          }}
+          aria-label={
+            isGeneratingInvite ? "Generating invite link" : "Copy invite link"
+          }
+          className="shrink-0"
+        >
+          <Link2 className="size-4" />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent sideOffset={8}>
+        {isGeneratingInvite ? "Generating invite link" : "Copy invite link"}
+      </TooltipContent>
+    </Tooltip>
   );
 }

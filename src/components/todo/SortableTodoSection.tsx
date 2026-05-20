@@ -127,7 +127,6 @@ export function SortableTodoSection({
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
-                autoFocus
                 className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[16px]! p-0!"
               />
             </AccordionTrigger>
