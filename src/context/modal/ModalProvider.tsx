@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
 import ConfirmationModal from "@/components/modals/shared-modals/ConfirmationModal";
+import CreateTodoListModal from "@/components/modals/shared-modals/CreateTodoListModal";
 import { useModal } from "@/hooks/modals/use-modal";
 import { ModalContext } from "@/context/modal/modal-context";
 import type { ActiveModal, ModalKey, ModalPayloadMap } from "@/types";
@@ -28,6 +29,16 @@ const modalRegistry: ModalRegistry = {
       />
     ),
   },
+  createTodoList: {
+    getInstanceKey: () => "create-todo-list",
+    render: ({ open, onOpenChange, payload }) => (
+      <CreateTodoListModal
+        open={open}
+        onOpenChange={onOpenChange}
+        payload={payload}
+      />
+    ),
+  },
 };
 
 export function ModalProvider({ children }: { children: React.ReactNode }) {
@@ -35,7 +46,7 @@ export function ModalProvider({ children }: { children: React.ReactNode }) {
 
   const openModal = useCallback(
     <K extends ModalKey>(key: K, payload: ModalPayloadMap[K]) => {
-      setActiveModal({ key, payload });
+      setActiveModal({ key, payload } as ActiveModal);
     },
     [],
   );

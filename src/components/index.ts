@@ -4,6 +4,7 @@ export { default as ThemeToggle } from "@/components/common/ThemeToggle";
 
 // Shared modal components
 export { default as ConfirmationModal } from "@/components/modals/shared-modals/ConfirmationModal";
+export { default as CreateTodoListModal } from "@/components/modals/shared-modals/CreateTodoListModal";
 export { TodoWorkspace } from "@/components/todo/TodoWorkspace";
 
 // Shadcn components

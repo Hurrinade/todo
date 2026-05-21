@@ -8,14 +8,8 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
+import { useModal } from "@/hooks/modals/use-modal";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Sidebar,
   SidebarContent,
@@ -25,17 +19,13 @@ import {
   SidebarInput,
   SidebarMenu,
 } from "@/components/ui/sidebar";
-import type { TodoListKind, TodoListWithStats } from "@/types";
+import type { CreateTodoListModalValues, TodoListWithStats } from "@/types";
 
 type TodoListSidebarProps = {
   lists: TodoListWithStats[];
   activeListId: TodoListWithStats["_id"] | null;
-  newListTitle: string;
-  newListKind: TodoListKind;
   isCreatingList: boolean;
-  onNewListKindChange: (kind: TodoListKind) => void;
-  onNewListTitleChange: (title: string) => void;
-  onCreateList: (event: React.SubmitEvent) => void;
+  onCreateList: (values: CreateTodoListModalValues) => Promise<boolean>;
   onDeleteList: (list: TodoListWithStats) => void;
   onReorderLists: (listIds: TodoListWithStats["_id"][]) => Promise<void>;
   onSelectList: (listId: TodoListWithStats["_id"]) => void;
@@ -44,16 +34,13 @@ type TodoListSidebarProps = {
 export function TodoListSidebar({
   lists,
   activeListId,
-  newListTitle,
-  newListKind,
   isCreatingList,
-  onNewListKindChange,
-  onNewListTitleChange,
   onCreateList,
   onDeleteList,
   onReorderLists,
   onSelectList,
 }: TodoListSidebarProps) {
+  const { openModal } = useModal();
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedLists, setOrderedLists] = useState(lists);
   const isDraggingRef = useRef(false);
@@ -89,51 +76,23 @@ export function TodoListSidebar({
             </h2>
           </div>
           <div className="flex items-center gap-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="icon-sm"
+              aria-label="Create a new list"
+              disabled={isCreatingList}
+              onClick={() => {
+                openModal("createTodoList", {
+                  onSubmit: onCreateList,
+                });
+              }}
+            >
+              <Plus className="size-4" />
+            </Button>
             <TodoSidebarToggle placement="sidebar" />
           </div>
         </div>
-
-        <form className="flex flex-col gap-2" onSubmit={onCreateList}>
-          <Select
-            value={newListKind}
-            onValueChange={(value) => {
-              onNewListKindChange(value as TodoListKind);
-            }}
-          >
-            <SelectTrigger
-              aria-label="List type"
-              className="h-10 w-full bg-sidebar-accent/35"
-            >
-              <SelectValue placeholder="List type" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="regular">Regular list</SelectItem>
-              <SelectItem value="sectioned">Sectioned list</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex gap-2">
-            <SidebarInput
-              aria-label="New list title"
-              value={newListTitle}
-              onChange={(event) => {
-                onNewListTitleChange(event.target.value);
-              }}
-              placeholder={
-                newListKind === "sectioned" ? "New sectioned list" : "New list"
-              }
-              className="min-w-0 flex-1"
-            />
-            <Button
-              type="submit"
-              size="icon"
-              disabled={isCreatingList || !newListTitle.trim()}
-              aria-label="Create list"
-            >
-              <Plus />
-            </Button>
-          </div>
-        </form>
 
         {lists.length > 0 && (
           <div className="relative">

@@ -1,3 +1,5 @@
+import type { TodoListKind } from "@/types/todo/todo.types";
+
 export type ConfirmVariant = "danger" | "primary" | "secondary";
 
 export type ConfirmModalPayload = {
@@ -10,8 +12,18 @@ export type ConfirmModalPayload = {
   onCancel?: () => void | Promise<void>;
 };
 
+export type CreateTodoListModalValues = {
+  title: string;
+  kind: TodoListKind;
+};
+
+export type CreateTodoListModalPayload = {
+  onSubmit: (values: CreateTodoListModalValues) => Promise<boolean>;
+};
+
 export type ModalPayloadMap = {
   confirm: ConfirmModalPayload;
+  createTodoList: CreateTodoListModalPayload;
 };
 
 export type ModalKey = keyof ModalPayloadMap;

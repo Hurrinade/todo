@@ -1,6 +1,7 @@
-import { RotateCcw, Trash2, Eye, EyeClosed } from "lucide-react";
+import { CheckCheck, Eye, EyeClosed, RotateCcw, Trash2 } from "lucide-react";
 
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
+import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -9,7 +10,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { TodoFilter, TodoListWithStats } from "@/types";
-import { TodoSidebarToggle } from "./TodoSidebarToggle";
 
 type TodoListHeaderProps = {
   titleDraft: string;
@@ -41,6 +41,8 @@ export function TodoListHeader({
   onUncheckCompleted,
 }: TodoListHeaderProps) {
   const shouldShowBulkActions = activeFilter !== "open";
+  const nextFilter = getNextFilter(activeFilter);
+  const filterActionLabel = getFilterActionLabel(nextFilter);
 
   return (
     <header className="w-full border-b border-border bg-card/55 px-4 py-3">
@@ -136,31 +138,22 @@ export function TodoListHeader({
                     type="button"
                     variant="outline"
                     size="icon-lg"
-                    disabled={
-                      completedTodoCount === 0 ||
-                      isClearingCompleted ||
-                      isUncheckingCompleted
-                    }
                     onClick={() => {
-                      onFilterChange(shouldShowBulkActions ? "open" : "all");
+                      onFilterChange(nextFilter);
                     }}
-                    aria-label={
-                      shouldShowBulkActions
-                        ? "Hide completed todos"
-                        : "Show completed todos"
-                    }
+                    aria-label={filterActionLabel}
                   >
-                    {shouldShowBulkActions ? (
+                    {activeFilter === "all" ? (
                       <Eye className="size-4" />
-                    ) : (
+                    ) : activeFilter === "open" ? (
                       <EyeClosed className="size-4" />
+                    ) : (
+                      <CheckCheck className="size-4" />
                     )}
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
-                  {shouldShowBulkActions
-                    ? "Hide completed todos"
-                    : "Show completed todos"}
+                  {filterActionLabel}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -169,4 +162,28 @@ export function TodoListHeader({
       </div>
     </header>
   );
+}
+
+function getNextFilter(activeFilter: TodoFilter): TodoFilter {
+  if (activeFilter === "all") {
+    return "open";
+  }
+
+  if (activeFilter === "open") {
+    return "completed";
+  }
+
+  return "all";
+}
+
+function getFilterActionLabel(filter: TodoFilter) {
+  if (filter === "open") {
+    return "Show open items";
+  }
+
+  if (filter === "completed") {
+    return "Show completed items";
+  }
+
+  return "Show all items";
 }

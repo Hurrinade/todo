@@ -18,13 +18,13 @@ import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
 import type {
+  CreateTodoListModalValues,
   TodoFilter,
   TodoItem,
-  TodoListKind,
   TodoListWithStats,
   TodoSection,
 } from "@/types";
-import { TodoSidebarToggle } from "./TodoSidebarToggle";
+import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 
 type TodoWorkspaceProps = {
   initialActiveListId?: TodoListWithStats["_id"] | null;
@@ -58,8 +58,6 @@ export function TodoWorkspace({
   const [activeListId, setActiveListId] = useState<
     TodoListWithStats["_id"] | null
   >(initialActiveListId);
-  const [newListTitle, setNewListTitle] = useState("");
-  const [newListKind, setNewListKind] = useState<TodoListKind>("regular");
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [listTitleDraft, setListTitleDraft] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<TodoFilter>("all");
@@ -92,11 +90,14 @@ export function TodoWorkspace({
   const normalizedDraftTitle = visibleListTitle.trim();
   const normalizedActiveListTitle = activeList?.title.trim() ?? "";
 
-  const handleCreateList = async (event: React.SubmitEvent) => {
-    event.preventDefault();
+  const handleCreateList = async ({
+    title,
+    kind,
+  }: CreateTodoListModalValues) => {
+    const normalizedTitle = title.trim();
 
-    if (!newListTitle.trim()) {
-      return;
+    if (!normalizedTitle || isCreatingList) {
+      return false;
     }
 
     setIsCreatingList(true);
@@ -104,15 +105,16 @@ export function TodoWorkspace({
 
     try {
       const listId = await createList({
-        title: newListTitle,
-        kind: newListKind,
+        title: normalizedTitle,
+        kind,
       });
-      setNewListTitle("");
-      setNewListKind("regular");
       setActiveListId(listId);
       setListTitleDraft(null);
+      setActiveFilter("all");
+      return true;
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
+      return false;
     } finally {
       setIsCreatingList(false);
     }
@@ -397,11 +399,7 @@ export function TodoWorkspace({
         <TodoListSidebar
           lists={lists}
           activeListId={activeList?._id ?? null}
-          newListTitle={newListTitle}
-          newListKind={newListKind}
           isCreatingList={isCreatingList}
-          onNewListKindChange={setNewListKind}
-          onNewListTitleChange={setNewListTitle}
           onCreateList={handleCreateList}
           onDeleteList={handleDeleteList}
           onReorderLists={handleReorderLists}
