@@ -186,14 +186,14 @@ export function TodoTaskItem({
               onDeleteTodo(todo._id);
             }}
             aria-label="Delete todo"
-            className="h-full flex-1 rounded-none bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:!bg-destructive/25 dark:hover:!text-destructive/80"
+            className="h-full flex-1 rounded-none bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/25! dark:hover:text-destructive/80!"
           >
             <Trash2 />
           </Button>
         </>
       }
       actionWidth={112}
-      contentClassName="p-3"
+      contentClassName="p-1"
       ariaLabel="Todo actions"
     >
       <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export function TodoTaskItem({
         <div className="min-w-0 flex-1">
           <p
             className={
-              "break-words text-sm font-medium " +
+              "wrap-break-word text-sm font-medium " +
               (todo.isCompleted
                 ? "text-muted-foreground line-through"
                 : "text-foreground")
