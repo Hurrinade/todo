@@ -9,6 +9,7 @@ type TodoComposerProps = {
   isCreatingTodo: boolean;
   onTitleChange: (title: string) => void;
   onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
+  onCreateSuccess?: () => void;
 };
 
 export function TodoComposer({
@@ -16,6 +17,7 @@ export function TodoComposer({
   isCreatingTodo,
   onTitleChange,
   onCreateTodo,
+  onCreateSuccess,
 }: TodoComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -27,6 +29,7 @@ export function TodoComposer({
 
         if (wasCreated) {
           requestAnimationFrame(() => {
+            onCreateSuccess?.();
             inputRef.current?.focus();
           });
         }

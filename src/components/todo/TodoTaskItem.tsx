@@ -104,10 +104,7 @@ export function TodoTaskItem({
   if (isEditing) {
     return (
       <div className="rounded-lg border border-border bg-card/70 p-3">
-        <form
-          className="flex flex-col gap-2 sm:flex-row"
-          onSubmit={handleSubmit}
-        >
+        <form className="flex gap-2 sm:flex-row" onSubmit={handleSubmit}>
           <div className="flex min-w-0 flex-1 flex-col gap-2 sm:flex-row">
             <Input
               aria-label="Todo title"
