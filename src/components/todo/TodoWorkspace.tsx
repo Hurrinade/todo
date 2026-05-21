@@ -24,6 +24,7 @@ import type {
   TodoListWithStats,
   TodoSection,
 } from "@/types";
+import { TodoSidebarToggle } from "./TodoSidebarToggle";
 
 type TodoWorkspaceProps = {
   initialActiveListId?: TodoListWithStats["_id"] | null;
@@ -604,17 +605,20 @@ function TodoWorkspaceContent({
             </div>
           </div>
         ) : (
-          <div
-            className={cn(
-              "flex h-full min-h-0 items-center justify-center p-4",
-              !isSidebarOpen && "pt-16",
-            )}
-          >
-            <TodoEmptyState
-              icon={CircleSlash}
-              title="No list selected"
-              description="Create a list in the left rail to start collecting todos."
-            />
+          <div className="p-10 items-start justify-center flex flex-col w-full h-full">
+            <TodoSidebarToggle placement="floating" />
+            <div
+              className={cn(
+                "flex h-full w-full min-h-0 items-center justify-center p-4",
+                !isSidebarOpen && "pt-16",
+              )}
+            >
+              <TodoEmptyState
+                icon={CircleSlash}
+                title="No list selected"
+                description="Create a list in the left rail to start collecting todos."
+              />
+            </div>
           </div>
         )}
       </div>
