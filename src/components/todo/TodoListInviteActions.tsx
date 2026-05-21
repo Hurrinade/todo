@@ -44,7 +44,7 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
         <Button
           type="button"
           variant="outline"
-          size="icon-sm"
+          size="icon-lg"
           disabled={isGeneratingInvite}
           onClick={() => {
             void handleGenerateInvite();

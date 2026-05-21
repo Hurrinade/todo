@@ -88,7 +88,7 @@ export function TodoTaskList({
         });
       }}
     >
-      <ul className="flex flex-col gap-2">
+      <ul className="flex flex-col gap-1">
         {orderedTodos.map((todo, index) => (
           <SortableTodoTaskItem
             key={todo._id}

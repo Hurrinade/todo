@@ -77,7 +77,7 @@ export function TodoListHeader({
                       <Button
                         type="button"
                         variant="outline"
-                        size="icon-sm"
+                        size="icon-lg"
                         disabled={
                           completedTodoCount === 0 ||
                           isClearingCompleted ||
@@ -105,7 +105,7 @@ export function TodoListHeader({
                       <Button
                         type="button"
                         variant="outline"
-                        size="icon-sm"
+                        size="icon-lg"
                         disabled={
                           completedTodoCount === 0 ||
                           isClearingCompleted ||
@@ -135,7 +135,7 @@ export function TodoListHeader({
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon-sm"
+                    size="icon-lg"
                     disabled={
                       completedTodoCount === 0 ||
                       isClearingCompleted ||

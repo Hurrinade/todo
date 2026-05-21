@@ -193,7 +193,7 @@ export function TodoTaskItem({
         </>
       }
       actionWidth={112}
-      contentClassName="p-1"
+      contentClassName="p-2"
       ariaLabel="Todo actions"
     >
       <div className="flex items-center gap-3">
@@ -231,7 +231,7 @@ export function TodoTaskItem({
         <div className="min-w-0 flex-1">
           <p
             className={
-              "wrap-break-word text-sm font-medium " +
+              "wrap-break-word text-md font-medium " +
               (todo.isCompleted
                 ? "text-muted-foreground line-through"
                 : "text-foreground")
