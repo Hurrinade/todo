@@ -1,4 +1,4 @@
-import { motion, type PanInfo } from "motion/react";
+import { animate, motion, useMotionValue, type PanInfo } from "motion/react";
 import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ export function SwipeAction({
   const shouldSuppressClickRef = useRef(false);
   const direction = actionSide === "right" ? -1 : 1;
   const openX = actionWidth * direction;
+  const x = useMotionValue(0);
   const dragConstraints =
     actionSide === "right"
       ? { left: -actionWidth, right: 0 }
@@ -36,6 +37,17 @@ export function SwipeAction({
   const actionWidthClass =
     actionWidthClassNames[actionWidth] ??
     actionWidthClassNames[DEFAULT_ACTION_WIDTH];
+  const transition = {
+    type: "spring" as const,
+    stiffness: 520,
+    damping: 40,
+    mass: 0.8,
+  };
+
+  const animateTo = (nextX: number, nextIsOpen: boolean) => {
+    setIsOpen(nextIsOpen);
+    void animate(x, nextX, transition);
+  };
 
   const handleDragEnd = (
     _event: MouseEvent | TouchEvent | PointerEvent,
@@ -47,12 +59,9 @@ export function SwipeAction({
 
     if (Math.abs(info.offset.x) > CLICK_SUPPRESSION_DISTANCE) {
       shouldSuppressClickRef.current = true;
-      window.setTimeout(() => {
-        shouldSuppressClickRef.current = false;
-      }, 0);
     }
 
-    setIsOpen(shouldOpen);
+    animateTo(shouldOpen ? openX : 0, shouldOpen);
   };
 
   const handleClickCapture = (event: ReactMouseEvent<HTMLDivElement>) => {
@@ -63,6 +72,10 @@ export function SwipeAction({
     shouldSuppressClickRef.current = false;
     event.preventDefault();
     event.stopPropagation();
+  };
+
+  const handlePointerDownCapture = () => {
+    shouldSuppressClickRef.current = false;
   };
 
   return (
@@ -81,15 +94,14 @@ export function SwipeAction({
         )}
         data-state={isOpen ? "open" : "closed"}
         inert={isOpen ? undefined : true}
-        onClickCapture={() => {
-          setIsOpen(false);
+        onClick={() => {
+          animateTo(0, false);
         }}
       >
         {actions}
       </div>
 
       <motion.div
-        animate={{ x: isOpen ? openX : 0 }}
         className={cn(
           "relative z-10 touch-pan-y rounded-l-lg bg-card",
           contentClassName,
@@ -98,9 +110,10 @@ export function SwipeAction({
         dragConstraints={dragConstraints}
         dragElastic={0.08}
         dragMomentum={false}
+        onPointerDownCapture={handlePointerDownCapture}
         onClickCapture={handleClickCapture}
         onDragEnd={handleDragEnd}
-        transition={{ type: "spring", stiffness: 520, damping: 40, mass: 0.8 }}
+        style={{ x }}
         whileDrag={{ scale: 0.995 }}
       >
         {children}
