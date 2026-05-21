@@ -9,6 +9,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { TodoFilter, TodoListWithStats } from "@/types";
+import { TodoSidebarToggle } from "./TodoSidebarToggle";
 
 type TodoListHeaderProps = {
   titleDraft: string;
@@ -46,23 +47,26 @@ export function TodoListHeader({
       <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
         <div className="flex min-w-0 flex-col gap-2 lg:flex-1 lg:flex-row lg:items-center">
           <div className="flex min-w-0 items-center gap-2 justify-between flex-1">
-            <form
-              onSubmit={(event) => {
-                event.preventDefault();
-                onRenameList();
-              }}
-            >
-              <Input
-                aria-label="Todo list title"
-                value={titleDraft}
-                disabled={isRenaming}
-                onBlur={onRenameList}
-                onChange={(event) => {
-                  onTitleDraftChange(event.target.value);
+            <div className="flex items-center gap-2 min-w-0">
+              <TodoSidebarToggle placement="floating" />
+              <form
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  onRenameList();
                 }}
-                className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[18px]! p-0!"
-              />
-            </form>
+              >
+                <Input
+                  aria-label="Todo list title"
+                  value={titleDraft}
+                  disabled={isRenaming}
+                  onBlur={onRenameList}
+                  onChange={(event) => {
+                    onTitleDraftChange(event.target.value);
+                  }}
+                  className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[18px]! p-0!"
+                />
+              </form>
+            </div>
 
             <div className="flex shrink-0 items-center gap-2">
               <TodoListInviteActions list={list} />

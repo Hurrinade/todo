@@ -40,15 +40,14 @@ export function TodoComposer({
           onTitleChange(event.target.value);
         }}
         placeholder="Add the next thing"
-        className="min-w-0 flex-1 bg-background/80 h-10 py-2"
+        className="min-w-0 flex-1 bg-background/80 h-8 py-2 "
       />
       <Button
         type="submit"
         disabled={isCreatingTodo || !title.trim()}
-        className="h-10"
+        className="h-8 w-8 rounded-full"
       >
-        <Plus data-icon="inline-start" />
-        Add todo
+        <Plus />
       </Button>
     </form>
   );

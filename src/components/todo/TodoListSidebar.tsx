@@ -1,8 +1,10 @@
+import { SignOutButton } from "@clerk/react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { ListChecks, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import ThemeToggle from "@/components/common/ThemeToggle";
 import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
@@ -17,11 +19,11 @@ import {
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarGroup,
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
-  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import type { TodoListKind, TodoListWithStats } from "@/types";
 
@@ -149,8 +151,6 @@ export function TodoListSidebar({
         )}
       </SidebarHeader>
 
-      <SidebarSeparator />
-
       <SidebarContent className="overflow-hidden p-2">
         <SidebarGroup className="min-h-0 flex-1 p-0">
           {lists.length === 0 ? (
@@ -226,6 +226,16 @@ export function TodoListSidebar({
           )}
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4 flex items-center">
+        <ThemeToggle />
+
+        <SignOutButton>
+          <Button type="button" variant="outline" className="h-9 w-full">
+            Log out
+          </Button>
+        </SignOutButton>
+      </SidebarFooter>
     </Sidebar>
   );
 }

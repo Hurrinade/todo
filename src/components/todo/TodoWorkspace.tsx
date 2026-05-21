@@ -8,11 +8,15 @@ import { TodoListHeader } from "@/components/todo/TodoListHeader";
 import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
 import { TodoSectionedTaskList } from "@/components/todo/TodoSectionedTaskList";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
-import { TodoWorkspaceHeader } from "@/components/todo/TodoWorkspaceHeader";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
+import {
+  SidebarInset,
+  SidebarProvider,
+  useSidebar,
+} from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
+import { cn } from "@/lib/utils";
 import type {
   TodoFilter,
   TodoItem,
@@ -404,95 +408,217 @@ export function TodoWorkspace({
         />
 
         <SidebarInset className="min-h-0 overflow-hidden">
-          <TodoWorkspaceHeader />
-
-          {errorMessage && (
-            <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-              {errorMessage}
-            </div>
-          )}
-
-          {activeList ? (
-            <div className="relative flex flex-col justify-between min-h-0">
-              <div className="flex justify-between">
-                <TodoListHeader
-                  titleDraft={visibleListTitle}
-                  completedTodoCount={activeList.completedTodoCount}
-                  isRenaming={isRenamingList}
-                  isClearingCompleted={isClearingCompleted}
-                  isUncheckingCompleted={isUncheckingCompleted}
-                  onClearCompleted={handleClearCompleted}
-                  onTitleDraftChange={setListTitleDraft}
-                  onRenameList={handleRenameList}
-                  onUncheckCompleted={() => {
-                    void handleUncheckCompleted();
-                  }}
-                  list={activeList}
-                  activeFilter={activeFilter}
-                  onFilterChange={setActiveFilter}
-                />
-              </div>
-
-              <ScrollArea className="min-h-0 flex-1">
-                <div className="flex flex-col gap-4 px-2 py-3">
-                  {activeTodoResult === undefined ? (
-                    <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                      Loading todos
-                    </div>
-                  ) : activeList.kind === "sectioned" &&
-                    sectionResult === undefined ? (
-                    <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                      Loading sections
-                    </div>
-                  ) : activeList.kind === "sectioned" ? (
-                    <TodoSectionedTaskList
-                      key={activeList._id}
-                      sections={sections}
-                      todos={visibleTodos}
-                      activeFilter={activeFilter}
-                      onCreateSection={handleCreateSection}
-                      onRenameSection={handleRenameSection}
-                      onReorderSections={handleReorderSections}
-                      onToggleTodo={handleToggleTodo}
-                      onRenameTodo={handleRenameTodo}
-                      onMoveTodo={handleMoveTodo}
-                      onMoveTodoToSection={handleMoveTodoToSection}
-                      onDeleteTodo={handleDeleteTodo}
-                    />
-                  ) : (
-                    <TodoTaskList
-                      todos={visibleTodos}
-                      activeFilter={activeFilter}
-                      isReorderEnabled={isReorderEnabled}
-                      onToggleTodo={handleToggleTodo}
-                      onRenameTodo={handleRenameTodo}
-                      onDeleteTodo={handleDeleteTodo}
-                      onReorderTodos={handleReorderTodos}
-                    />
-                  )}
-                </div>
-              </ScrollArea>
-              <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 p-2">
-                <TodoComposer
-                  title={newTodoTitle}
-                  isCreatingTodo={isCreatingTodo}
-                  onTitleChange={setNewTodoTitle}
-                  onCreateTodo={handleCreateTodo}
-                />
-              </div>
-            </div>
-          ) : (
-            <div className="flex min-h-0 flex-1 items-center justify-center p-4">
-              <TodoEmptyState
-                icon={CircleSlash}
-                title="No list selected"
-                description="Create a list in the left rail to start collecting todos."
-              />
-            </div>
-          )}
+          <TodoWorkspaceContent
+            activeFilter={activeFilter}
+            activeList={activeList}
+            activeTodoResult={activeTodoResult}
+            errorMessage={errorMessage}
+            isClearingCompleted={isClearingCompleted}
+            isCreatingTodo={isCreatingTodo}
+            isRenamingList={isRenamingList}
+            isReorderEnabled={isReorderEnabled}
+            isUncheckingCompleted={isUncheckingCompleted}
+            listTitleDraft={visibleListTitle}
+            newTodoTitle={newTodoTitle}
+            onClearCompleted={handleClearCompleted}
+            onCreateSection={handleCreateSection}
+            onCreateTodo={handleCreateTodo}
+            onDeleteTodo={handleDeleteTodo}
+            onFilterChange={setActiveFilter}
+            onMoveTodo={handleMoveTodo}
+            onMoveTodoToSection={handleMoveTodoToSection}
+            onRenameList={handleRenameList}
+            onRenameSection={handleRenameSection}
+            onRenameTodo={handleRenameTodo}
+            onReorderSections={handleReorderSections}
+            onReorderTodos={handleReorderTodos}
+            onTitleDraftChange={(title) => {
+              setListTitleDraft(title);
+            }}
+            onTodoTitleChange={setNewTodoTitle}
+            onToggleTodo={handleToggleTodo}
+            onUncheckCompleted={handleUncheckCompleted}
+            sectionResult={sectionResult}
+            sections={sections}
+            visibleTodos={visibleTodos}
+          />
         </SidebarInset>
       </SidebarProvider>
     </main>
+  );
+}
+
+type TodoWorkspaceContentProps = {
+  activeFilter: TodoFilter;
+  activeList: TodoListWithStats | null;
+  activeTodoResult: TodoItem[] | undefined;
+  errorMessage: string | null;
+  isClearingCompleted: boolean;
+  isCreatingTodo: boolean;
+  isRenamingList: boolean;
+  isReorderEnabled: boolean;
+  isUncheckingCompleted: boolean;
+  listTitleDraft: string;
+  newTodoTitle: string;
+  onClearCompleted: () => void;
+  onCreateSection: (title: string) => Promise<void>;
+  onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
+  onDeleteTodo: (todoId: TodoItem["_id"]) => Promise<void>;
+  onFilterChange: (filter: TodoFilter) => void;
+  onMoveTodo: (
+    todoId: TodoItem["_id"],
+    targetSectionId: TodoSection["_id"],
+    targetIndex: number,
+  ) => Promise<void>;
+  onMoveTodoToSection: (
+    todoId: TodoItem["_id"],
+    targetSectionId: TodoSection["_id"],
+  ) => Promise<void>;
+  onRenameList: () => Promise<void>;
+  onRenameSection: (
+    sectionId: TodoSection["_id"],
+    title: string,
+  ) => Promise<void>;
+  onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
+  onReorderSections: (sectionIds: TodoSection["_id"][]) => Promise<void>;
+  onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
+  onTitleDraftChange: (title: string) => void;
+  onTodoTitleChange: (title: string) => void;
+  onToggleTodo: (todoId: TodoItem["_id"]) => Promise<void>;
+  onUncheckCompleted: () => Promise<void>;
+  sectionResult: TodoSection[] | undefined;
+  sections: TodoSection[];
+  visibleTodos: TodoItem[];
+};
+
+function TodoWorkspaceContent({
+  activeFilter,
+  activeList,
+  activeTodoResult,
+  errorMessage,
+  isClearingCompleted,
+  isCreatingTodo,
+  isRenamingList,
+  isReorderEnabled,
+  isUncheckingCompleted,
+  listTitleDraft,
+  newTodoTitle,
+  onClearCompleted,
+  onCreateSection,
+  onCreateTodo,
+  onDeleteTodo,
+  onFilterChange,
+  onMoveTodo,
+  onMoveTodoToSection,
+  onRenameList,
+  onRenameSection,
+  onRenameTodo,
+  onReorderSections,
+  onReorderTodos,
+  onTitleDraftChange,
+  onTodoTitleChange,
+  onToggleTodo,
+  onUncheckCompleted,
+  sectionResult,
+  sections,
+  visibleTodos,
+}: TodoWorkspaceContentProps) {
+  const { isMobile, open, openMobile } = useSidebar();
+  const isSidebarOpen = isMobile ? openMobile : open;
+
+  return (
+    <>
+      {errorMessage && (
+        <div className="border-b border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+          {errorMessage}
+        </div>
+      )}
+
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        {activeList ? (
+          <div className={cn("flex h-full min-h-0 flex-col")}>
+            <TodoListHeader
+              titleDraft={listTitleDraft}
+              completedTodoCount={activeList.completedTodoCount}
+              isRenaming={isRenamingList}
+              isClearingCompleted={isClearingCompleted}
+              isUncheckingCompleted={isUncheckingCompleted}
+              onClearCompleted={onClearCompleted}
+              onTitleDraftChange={onTitleDraftChange}
+              onRenameList={onRenameList}
+              onUncheckCompleted={() => {
+                void onUncheckCompleted();
+              }}
+              list={activeList}
+              activeFilter={activeFilter}
+              onFilterChange={onFilterChange}
+            />
+
+            <ScrollArea className="min-h-0 flex-1">
+              <div className="flex flex-col gap-4 px-2 py-3">
+                {activeTodoResult === undefined ? (
+                  <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
+                    Loading todos
+                  </div>
+                ) : activeList.kind === "sectioned" &&
+                  sectionResult === undefined ? (
+                  <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
+                    Loading sections
+                  </div>
+                ) : activeList.kind === "sectioned" ? (
+                  <TodoSectionedTaskList
+                    key={activeList._id}
+                    sections={sections}
+                    todos={visibleTodos}
+                    activeFilter={activeFilter}
+                    onCreateSection={onCreateSection}
+                    onRenameSection={onRenameSection}
+                    onReorderSections={onReorderSections}
+                    onToggleTodo={onToggleTodo}
+                    onRenameTodo={onRenameTodo}
+                    onMoveTodo={onMoveTodo}
+                    onMoveTodoToSection={onMoveTodoToSection}
+                    onDeleteTodo={onDeleteTodo}
+                  />
+                ) : (
+                  <TodoTaskList
+                    todos={visibleTodos}
+                    activeFilter={activeFilter}
+                    isReorderEnabled={isReorderEnabled}
+                    onToggleTodo={onToggleTodo}
+                    onRenameTodo={onRenameTodo}
+                    onDeleteTodo={onDeleteTodo}
+                    onReorderTodos={onReorderTodos}
+                  />
+                )}
+              </div>
+            </ScrollArea>
+
+            <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 p-2">
+              <TodoComposer
+                title={newTodoTitle}
+                isCreatingTodo={isCreatingTodo}
+                onTitleChange={onTodoTitleChange}
+                onCreateTodo={onCreateTodo}
+              />
+            </div>
+          </div>
+        ) : (
+          <div
+            className={cn(
+              "flex h-full min-h-0 items-center justify-center p-4",
+              !isSidebarOpen && "pt-16",
+            )}
+          >
+            <TodoEmptyState
+              icon={CircleSlash}
+              title="No list selected"
+              description="Create a list in the left rail to start collecting todos."
+            />
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 
