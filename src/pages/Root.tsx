@@ -1,9 +1,19 @@
-import { Authenticated, Unauthenticated } from "convex/react";
+import { Unauthenticated, useConvexAuth } from "convex/react";
 import { SignInButton, SignUpButton } from "@clerk/react";
-import { Link } from "react-router";
+import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
 
 export default function Root() {
+  const { isAuthenticated, isLoading } = useConvexAuth();
+
+  if (isLoading) {
+    return null;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/home" replace />;
+  }
+
   return (
     <main className="flex h-full w-full items-center justify-center overflow-y-auto p-6">
       <div className="flex max-w-2xl flex-col gap-6 rounded-3xl border border-border bg-card p-8 text-card-foreground shadow-sm">
@@ -29,12 +39,6 @@ export default function Root() {
         </div>
 
         <div className="flex flex-col gap-3 sm:flex-row">
-          <Authenticated>
-            <Button asChild>
-              <Link to="/home">Open authenticated home</Link>
-            </Button>
-          </Authenticated>
-
           <Unauthenticated>
             <>
               <SignInButton mode="modal">
