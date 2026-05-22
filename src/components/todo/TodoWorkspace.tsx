@@ -301,28 +301,6 @@ export function TodoWorkspace({
     }
   };
 
-  const handleMoveTodoToSection = async (
-    todoId: TodoItem["_id"],
-    targetSectionId: TodoSection["_id"],
-  ) => {
-    const todo = todos.find((item) => item._id === todoId);
-
-    if (!todo) {
-      return;
-    }
-
-    const targetTodos = todos
-      .filter(
-        (item) =>
-          item.sectionId === targetSectionId &&
-          item.isCompleted === todo.isCompleted &&
-          item._id !== todoId,
-      )
-      .sort(compareTodosByOrder);
-
-    await handleMoveTodo(todoId, targetSectionId, targetTodos.length);
-  };
-
   const handleClearCompleted = () => {
     if (!activeList || activeList.completedTodoCount === 0) {
       return;
@@ -428,7 +406,6 @@ export function TodoWorkspace({
             onDeleteTodo={handleDeleteTodo}
             onFilterChange={setActiveFilter}
             onMoveTodo={handleMoveTodo}
-            onMoveTodoToSection={handleMoveTodoToSection}
             onRenameList={handleRenameList}
             onRenameSection={handleRenameSection}
             onRenameTodo={handleRenameTodo}
@@ -472,10 +449,6 @@ type TodoWorkspaceContentProps = {
     targetSectionId: TodoSection["_id"],
     targetIndex: number,
   ) => Promise<void>;
-  onMoveTodoToSection: (
-    todoId: TodoItem["_id"],
-    targetSectionId: TodoSection["_id"],
-  ) => Promise<void>;
   onRenameList: () => Promise<void>;
   onRenameSection: (
     sectionId: TodoSection["_id"],
@@ -511,7 +484,6 @@ function TodoWorkspaceContent({
   onDeleteTodo,
   onFilterChange,
   onMoveTodo,
-  onMoveTodoToSection,
   onRenameList,
   onRenameSection,
   onRenameTodo,
@@ -583,7 +555,6 @@ function TodoWorkspaceContent({
                     onToggleTodo={onToggleTodo}
                     onRenameTodo={onRenameTodo}
                     onMoveTodo={onMoveTodo}
-                    onMoveTodoToSection={onMoveTodoToSection}
                     onDeleteTodo={onDeleteTodo}
                   />
                 ) : (
@@ -663,23 +634,4 @@ function getErrorMessage(error: unknown) {
   }
 
   return "Something went wrong.";
-}
-
-function compareTodosByOrder(
-  firstTodo: Pick<TodoItem, "_creationTime" | "order">,
-  secondTodo: Pick<TodoItem, "_creationTime" | "order">,
-) {
-  if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
-    return firstTodo.order - secondTodo.order;
-  }
-
-  if (firstTodo.order !== undefined) {
-    return -1;
-  }
-
-  if (secondTodo.order !== undefined) {
-    return 1;
-  }
-
-  return secondTodo._creationTime - firstTodo._creationTime;
 }

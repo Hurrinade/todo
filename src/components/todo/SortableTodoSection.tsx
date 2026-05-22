@@ -19,13 +19,8 @@ type SortableTodoSectionProps = {
   index: number;
   todos: TodoItem[];
   activeFilter: TodoFilter;
-  sections: TodoSection[];
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
-  onMoveTodoToSection: (
-    todoId: TodoItem["_id"],
-    targetSectionId: TodoSection["_id"],
-  ) => Promise<void>;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
   onRenameSection: (
     sectionId: TodoSection["_id"],
@@ -38,10 +33,8 @@ export function SortableTodoSection({
   index,
   todos,
   activeFilter,
-  sections,
   onToggleTodo,
   onRenameTodo,
-  onMoveTodoToSection,
   onDeleteTodo,
   onRenameSection,
 }: SortableTodoSectionProps) {
@@ -150,9 +143,7 @@ export function SortableTodoSection({
                     todo={todo}
                     onToggleTodo={onToggleTodo}
                     onRenameTodo={onRenameTodo}
-                    onMoveTodoToSection={onMoveTodoToSection}
                     onDeleteTodo={onDeleteTodo}
-                    sections={sections}
                   />
                 ))}
               </ul>

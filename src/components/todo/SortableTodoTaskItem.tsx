@@ -20,9 +20,7 @@ export function SortableTodoTaskItem({
   todo,
   onToggleTodo,
   onRenameTodo,
-  onMoveTodoToSection,
   onDeleteTodo,
-  sections,
 }: SortableTodoTaskItemProps) {
   const [isEditing, setIsEditing] = useState(false);
   const { ref, handleRef, isDragging } = useSortable({
@@ -52,12 +50,10 @@ export function SortableTodoTaskItem({
         todo={todo}
         onToggleTodo={onToggleTodo}
         onRenameTodo={onRenameTodo}
-        onMoveTodoToSection={onMoveTodoToSection}
         onDeleteTodo={onDeleteTodo}
         onEditingChange={setIsEditing}
         dragHandleRef={handleRef}
         isReorderEnabled={isReorderEnabled}
-        sections={sections}
       />
     </li>
   );
