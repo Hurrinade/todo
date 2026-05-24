@@ -150,3 +150,4 @@ Examples
 - don't use filtering, use indexes for convex queries
 - for any new component you want to add like sidebar, button or some generic components always first check if it exists in shadcn https://ui.shadcn.com/docs/components
 - reduce usage of borders
+- Use Zustand for shared or cross-component state instead of centralizing application logic in a large parent component. Prefer small, focused, connected components that consume state directly from the store. Keep state colocated when possible, and promote it to the store only when it must be shared across routes, features, or distant components.

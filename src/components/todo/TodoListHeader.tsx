@@ -1,5 +1,6 @@
 import { CheckCheck, Eye, EyeClosed, RotateCcw, Trash2 } from "lucide-react";
 
+import { useMutation } from "convex/react";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
@@ -10,39 +11,130 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import type { TodoFilter, TodoListWithStats } from "@/types";
+import { useState } from "react";
+import { todoApi } from "@/config/convex-api";
+import { useTodoErrorStore } from "@/stores/todo/todo-error-store";
+import { useModal } from "@/hooks/modals/use-modal";
 
 type TodoListHeaderProps = {
-  titleDraft: string;
-  isRenaming: boolean;
-  completedTodoCount: number;
   list: TodoListWithStats;
   activeFilter: TodoFilter;
-  isClearingCompleted?: boolean;
-  isUncheckingCompleted?: boolean;
-  onClearCompleted: () => void;
   onFilterChange: (filter: TodoFilter) => void;
-  onTitleDraftChange: (title: string) => void;
-  onRenameList: () => void;
-  onUncheckCompleted: () => void;
 };
 
 export function TodoListHeader({
-  titleDraft,
   list,
-  isRenaming,
-  completedTodoCount,
-  isClearingCompleted = false,
-  isUncheckingCompleted = false,
-  onClearCompleted,
-  onTitleDraftChange,
-  onRenameList,
   activeFilter,
   onFilterChange,
-  onUncheckCompleted,
 }: TodoListHeaderProps) {
+  const { openModal } = useModal();
+
+  const renameList = useMutation(todoApi.mutations.todoLists.rename);
+  const uncheckCompletedTodos = useMutation(
+    todoApi.mutations.todos.uncheckCompleted,
+  );
+  const clearCompletedTodos = useMutation(
+    todoApi.mutations.todos.clearCompleted,
+  );
+
   const shouldShowBulkActions = activeFilter !== "open";
   const nextFilter = getNextFilter(activeFilter);
   const filterActionLabel = getFilterActionLabel(nextFilter);
+  const [isLoading, setIsLoading] = useState(false);
+  const clearErrorMessage = useTodoErrorStore(
+    (state) => state.clearErrorMessage,
+  );
+  const setUnknownErrorMessage = useTodoErrorStore(
+    (state) => state.setUnknownErrorMessage,
+  );
+  const [listTitleDraft, setListTitleDraft] = useState<{
+    listId: TodoListWithStats["_id"];
+    title: string;
+  } | null>(null);
+
+  let visibleListTitle = "Untitled list";
+  if (listTitleDraft && list && listTitleDraft.listId === list._id) {
+    visibleListTitle = listTitleDraft.title;
+  } else if (list) {
+    visibleListTitle = list.title;
+  }
+
+  const normalizedDraftTitle = visibleListTitle.trim();
+  const normalizedActiveListTitle = list?.title.trim() ?? "";
+
+  const handleRenameList = async () => {
+    if (!list || isLoading) {
+      return;
+    }
+
+    if (!normalizedDraftTitle) {
+      setListTitleDraft(null);
+      return;
+    }
+
+    if (normalizedDraftTitle === normalizedActiveListTitle) {
+      setListTitleDraft(null);
+      return;
+    }
+
+    setIsLoading(true);
+    clearErrorMessage();
+
+    try {
+      await renameList({ listId: list._id, title: normalizedDraftTitle });
+      setListTitleDraft(null);
+    } catch (error) {
+      setUnknownErrorMessage(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleClearCompleted = () => {
+    if (!list || list.completedTodoCount === 0) {
+      return;
+    }
+
+    const completedLabel = list.completedTodoCount === 1 ? "todo" : "todos";
+
+    openModal("confirm", {
+      title: "Clear completed todos",
+      message: `Delete ${list.completedTodoCount} completed ${completedLabel} from "${list.title}"?`,
+      confirmText: "Delete completed",
+      cancelText: "Keep todos",
+      variant: "danger",
+      onConfirm: async () => {
+        setIsLoading(true);
+        clearErrorMessage();
+
+        try {
+          await clearCompletedTodos({ listId: list._id });
+        } catch (error) {
+          setUnknownErrorMessage(error);
+          throw error;
+        } finally {
+          setIsLoading(false);
+        }
+      },
+    });
+  };
+
+  const handleUncheckCompleted = async () => {
+    if (list.completedTodoCount === 0) {
+      return;
+    }
+
+    setIsLoading(true);
+    clearErrorMessage();
+
+    try {
+      await uncheckCompletedTodos({ listId: list._id });
+    } catch (error) {
+      setUnknownErrorMessage(error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   return (
     <header className="w-full border-b border-border bg-card/55 px-4 py-3">
@@ -54,16 +146,17 @@ export function TodoListHeader({
               <form
                 onSubmit={(event) => {
                   event.preventDefault();
-                  onRenameList();
+                  handleRenameList();
                 }}
               >
                 <Input
                   aria-label="Todo list title"
-                  value={titleDraft}
-                  disabled={isRenaming}
-                  onBlur={onRenameList}
+                  value={visibleListTitle}
+                  disabled={isLoading}
+                  onBlur={handleRenameList}
                   onChange={(event) => {
-                    onTitleDraftChange(event.target.value);
+                    const title = event.target.value;
+                    setListTitleDraft({ listId: list._id, title });
                   }}
                   className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[18px]! p-0!"
                 />
@@ -80,14 +173,10 @@ export function TodoListHeader({
                         type="button"
                         variant="outline"
                         size="icon-lg"
-                        disabled={
-                          completedTodoCount === 0 ||
-                          isClearingCompleted ||
-                          isUncheckingCompleted
-                        }
-                        onClick={onUncheckCompleted}
+                        disabled={list.completedTodoCount === 0 || isLoading}
+                        onClick={handleUncheckCompleted}
                         aria-label={
-                          isUncheckingCompleted
+                          isLoading
                             ? "Unchecking completed todos"
                             : "Uncheck completed todos"
                         }
@@ -96,7 +185,7 @@ export function TodoListHeader({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent sideOffset={8}>
-                      {isUncheckingCompleted
+                      {isLoading
                         ? "Unchecking completed todos"
                         : "Uncheck completed todos"}
                     </TooltipContent>
@@ -108,14 +197,10 @@ export function TodoListHeader({
                         type="button"
                         variant="outline"
                         size="icon-lg"
-                        disabled={
-                          completedTodoCount === 0 ||
-                          isClearingCompleted ||
-                          isUncheckingCompleted
-                        }
-                        onClick={onClearCompleted}
+                        disabled={list.completedTodoCount === 0 || isLoading}
+                        onClick={handleClearCompleted}
                         aria-label={
-                          isClearingCompleted
+                          isLoading
                             ? "Clearing completed todos"
                             : "Clear completed todos"
                         }
@@ -125,7 +210,7 @@ export function TodoListHeader({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent sideOffset={8}>
-                      {isClearingCompleted
+                      {isLoading
                         ? "Clearing completed todos"
                         : "Clear completed todos"}
                     </TooltipContent>

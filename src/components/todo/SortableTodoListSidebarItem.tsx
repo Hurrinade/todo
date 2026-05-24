@@ -1,33 +1,73 @@
 import { useSortable } from "@dnd-kit/react/sortable";
+import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
+import { useState } from "react";
 
+import { TodoListMembersHoverCard } from "@/components/todo/TodoListMembersHoverCard";
 import { Button } from "@/components/ui/button";
+import { todoApi } from "@/config/convex-api";
+import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
+import { useTodoErrorStore } from "@/stores";
 import type { TodoListWithStats } from "@/types";
-import { TodoListMembersHoverCard } from "./TodoListMembersHoverCard";
 
 type SortableTodoListSidebarItemProps = {
   index: number;
-  isActive: boolean;
   isReorderEnabled: boolean;
   list: TodoListWithStats;
-  onDeleteList: (list: TodoListWithStats) => void;
-  onSelectList: (listId: TodoListWithStats["_id"]) => void;
+  activeListId: TodoListWithStats["_id"] | null;
+  setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
 };
 
 export function SortableTodoListSidebarItem({
   index,
-  isActive,
   isReorderEnabled,
   list,
-  onDeleteList,
-  onSelectList,
+  activeListId,
+  setActiveListId,
 }: SortableTodoListSidebarItemProps) {
+  const { openModal } = useModal();
+  const deleteList = useMutation(todoApi.mutations.todoLists.remove);
+  const clearErrorMessage = useTodoErrorStore(
+    (state) => state.clearErrorMessage,
+  );
+  const setUnknownErrorMessage = useTodoErrorStore(
+    (state) => state.setUnknownErrorMessage,
+  );
+  const [isDeletingList, setIsDeletingList] = useState(false);
   const { ref, isDragging } = useSortable({
     id: list._id,
     index,
     disabled: !isReorderEnabled,
   });
+  const isActive = list._id === activeListId;
+
+  const handleDeleteList = () => {
+    openModal("confirm", {
+      title: "Delete todo list",
+      message: `Delete "${list.title}" and every todo inside it?`,
+      confirmText: "Delete list",
+      cancelText: "Keep list",
+      variant: "danger",
+      onConfirm: async () => {
+        setIsDeletingList(true);
+        clearErrorMessage();
+
+        try {
+          await deleteList({ listId: list._id });
+
+          if (activeListId === list._id) {
+            setActiveListId(null);
+          }
+        } catch (error) {
+          setUnknownErrorMessage(error);
+          throw error;
+        } finally {
+          setIsDeletingList(false);
+        }
+      },
+    });
+  };
 
   return (
     <li
@@ -36,7 +76,8 @@ export function SortableTodoListSidebarItem({
       data-sidebar="menu-item"
       tabIndex={isReorderEnabled ? 0 : undefined}
       onClick={() => {
-        onSelectList(list._id);
+        setActiveListId(list._id);
+        clearErrorMessage();
       }}
       className={cn(
         "group/menu-item relative flex h-auto items-center justify-between gap-2 rounded-lg border py-1 pr-2 pl-3",
@@ -60,9 +101,10 @@ export function SortableTodoListSidebarItem({
         aria-label={`Delete ${list.title}`}
         className="cursor-pointer"
         size="icon-sm"
+        disabled={isDeletingList}
         onClick={(event) => {
           event.stopPropagation();
-          onDeleteList(list);
+          handleDeleteList();
         }}
       >
         <Trash2 className="size-4" />

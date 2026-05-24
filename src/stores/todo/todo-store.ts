@@ -3,11 +3,13 @@ import { create } from "zustand";
 import type { TodoItem, TodoStoreState } from "@/types";
 
 export const useTodoStore = create<TodoStoreState>((set, get) => ({
-  currentListId: null,
+  lists: [],
+  setLists: (lists) => {
+    set({ lists: lists ?? [] });
+  },
   todosById: {},
-  setCurrentListTodos: (listId, todos) => {
+  setCurrentListTodos: (todos) => {
     set({
-      currentListId: listId,
       todosById: buildTodoMap(todos),
     });
   },

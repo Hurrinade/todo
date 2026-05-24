@@ -1,6 +1,7 @@
 import { SignOutButton } from "@clerk/react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
+import { useMutation } from "convex/react";
 import { ListChecks, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -8,7 +9,6 @@ import ThemeToggle from "@/components/common/ThemeToggle";
 import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
-import { useModal } from "@/hooks/modals/use-modal";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Sidebar,
@@ -19,30 +19,42 @@ import {
   SidebarInput,
   SidebarMenu,
 } from "@/components/ui/sidebar";
+import { todoApi } from "@/config/convex-api";
+import { useModal } from "@/hooks/modals/use-modal";
+import { useTodoErrorStore, useTodoStore } from "@/stores";
 import type { CreateTodoListModalValues, TodoListWithStats } from "@/types";
 
 type TodoListSidebarProps = {
-  lists: TodoListWithStats[];
+  parentLists: TodoListWithStats[] | undefined;
   activeListId: TodoListWithStats["_id"] | null;
-  isCreatingList: boolean;
-  onCreateList: (values: CreateTodoListModalValues) => Promise<boolean>;
-  onDeleteList: (list: TodoListWithStats) => void;
-  onReorderLists: (listIds: TodoListWithStats["_id"][]) => Promise<void>;
-  onSelectList: (listId: TodoListWithStats["_id"]) => void;
+  setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
 };
 
 export function TodoListSidebar({
-  lists,
+  parentLists,
   activeListId,
-  isCreatingList,
-  onCreateList,
-  onDeleteList,
-  onReorderLists,
-  onSelectList,
+  setActiveListId,
 }: TodoListSidebarProps) {
   const { openModal } = useModal();
+
+  // Store lists
+  const storedLists = useTodoStore((state) => state.lists);
+
+  // Take cached lists or lists that are fetched in parent
+  const lists =
+    parentLists && parentLists.length > 0 ? parentLists : storedLists;
+
+  const createList = useMutation(todoApi.mutations.todoLists.create);
+  const reorderLists = useMutation(todoApi.mutations.todoLists.reorder);
+  const clearErrorMessage = useTodoErrorStore(
+    (state) => state.clearErrorMessage,
+  );
+  const setUnknownErrorMessage = useTodoErrorStore(
+    (state) => state.setUnknownErrorMessage,
+  );
   const [searchQuery, setSearchQuery] = useState("");
   const [orderedLists, setOrderedLists] = useState(lists);
+  const [isLoading, setIsLoading] = useState(false);
   const isDraggingRef = useRef(false);
   const visibleLists = useMemo(() => {
     const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -63,6 +75,45 @@ export function TodoListSidebar({
     }
   }, [visibleLists]);
 
+  const handleCreateList = async ({
+    title,
+    kind,
+  }: CreateTodoListModalValues) => {
+    const normalizedTitle = title.trim();
+
+    if (!normalizedTitle || isLoading) {
+      return false;
+    }
+
+    setIsLoading(true);
+    clearErrorMessage();
+
+    try {
+      const listId = await createList({
+        title: normalizedTitle,
+        kind,
+      });
+      setActiveListId(listId);
+      return true;
+    } catch (error) {
+      setUnknownErrorMessage(error);
+      return false;
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleReorderLists = async (listIds: TodoListWithStats["_id"][]) => {
+    clearErrorMessage();
+
+    try {
+      await reorderLists({ listIds });
+    } catch (error) {
+      setUnknownErrorMessage(error);
+      throw error;
+    }
+  };
+
   return (
     <Sidebar className="border-sidebar-border">
       <SidebarHeader className="gap-4 border-b border-sidebar-border p-4">
@@ -81,10 +132,10 @@ export function TodoListSidebar({
               variant="outline"
               size="icon-sm"
               aria-label="Create a new list"
-              disabled={isCreatingList}
+              disabled={isLoading}
               onClick={() => {
                 openModal("createTodoList", {
-                  onSubmit: onCreateList,
+                  onSubmit: handleCreateList,
                 });
               }}
             >
@@ -160,11 +211,11 @@ export function TodoListSidebar({
                   nextLists.splice(index, 0, movedList);
                   setOrderedLists(nextLists);
 
-                  void onReorderLists(nextLists.map((list) => list._id)).catch(
-                    () => {
-                      setOrderedLists(visibleLists);
-                    },
-                  );
+                  void handleReorderLists(
+                    nextLists.map((list) => list._id),
+                  ).catch(() => {
+                    setOrderedLists(visibleLists);
+                  });
                 }}
               >
                 <SidebarMenu className="gap-2 pr-2">
@@ -172,11 +223,10 @@ export function TodoListSidebar({
                     <SortableTodoListSidebarItem
                       key={list._id}
                       index={index}
-                      isActive={list._id === activeListId}
+                      activeListId={activeListId}
+                      setActiveListId={setActiveListId}
                       isReorderEnabled={isReorderEnabled}
                       list={list}
-                      onDeleteList={onDeleteList}
-                      onSelectList={onSelectList}
                     />
                   ))}
                 </SidebarMenu>
