@@ -21,7 +21,6 @@ type TodoSectionedTaskListProps = {
   ) => Promise<void>;
   onReorderSections: (sectionIds: TodoSection["_id"][]) => Promise<void>;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
   onMoveTodo: (
     todoId: TodoItem["_id"],
     targetSectionId: TodoSection["_id"],
@@ -55,7 +54,6 @@ export function TodoSectionedTaskList({
   onRenameSection,
   onReorderSections,
   onToggleTodo,
-  onRenameTodo,
   onMoveTodo,
   onDeleteTodo,
 }: TodoSectionedTaskListProps) {
@@ -304,7 +302,6 @@ export function TodoSectionedTaskList({
                 todos={sectionTodoMap[section._id] ?? []}
                 activeFilter={activeFilter}
                 onToggleTodo={onToggleTodo}
-                onRenameTodo={onRenameTodo}
                 onDeleteTodo={onDeleteTodo}
                 onRenameSection={onRenameSection}
               />

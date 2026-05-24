@@ -47,7 +47,6 @@ export function TodoWorkspace({
     todoApi.mutations.todos.clearCompleted,
   );
   const toggleTodo = useMutation(todoApi.mutations.todos.toggle);
-  const renameTodo = useMutation(todoApi.mutations.todos.rename);
   const deleteTodo = useMutation(todoApi.mutations.todos.remove);
   const reorderTodos = useMutation(todoApi.mutations.todos.reorder);
   const moveTodo = useMutation(todoApi.mutations.todos.move);
@@ -218,17 +217,6 @@ export function TodoWorkspace({
       await toggleTodo({ todoId });
     } catch (error) {
       setErrorMessage(getErrorMessage(error));
-    }
-  };
-
-  const handleRenameTodo = async (todoId: TodoItem["_id"], title: string) => {
-    setErrorMessage(null);
-
-    try {
-      await renameTodo({ todoId, title });
-    } catch (error) {
-      setErrorMessage(getErrorMessage(error));
-      throw error;
     }
   };
 
@@ -408,7 +396,6 @@ export function TodoWorkspace({
             onMoveTodo={handleMoveTodo}
             onRenameList={handleRenameList}
             onRenameSection={handleRenameSection}
-            onRenameTodo={handleRenameTodo}
             onReorderSections={handleReorderSections}
             onReorderTodos={handleReorderTodos}
             onTitleDraftChange={(title) => {
@@ -454,7 +441,6 @@ type TodoWorkspaceContentProps = {
     sectionId: TodoSection["_id"],
     title: string,
   ) => Promise<void>;
-  onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
   onReorderSections: (sectionIds: TodoSection["_id"][]) => Promise<void>;
   onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
   onTitleDraftChange: (title: string) => void;
@@ -486,7 +472,6 @@ function TodoWorkspaceContent({
   onMoveTodo,
   onRenameList,
   onRenameSection,
-  onRenameTodo,
   onReorderSections,
   onReorderTodos,
   onTitleDraftChange,
@@ -553,7 +538,6 @@ function TodoWorkspaceContent({
                     onRenameSection={onRenameSection}
                     onReorderSections={onReorderSections}
                     onToggleTodo={onToggleTodo}
-                    onRenameTodo={onRenameTodo}
                     onMoveTodo={onMoveTodo}
                     onDeleteTodo={onDeleteTodo}
                   />
@@ -563,7 +547,6 @@ function TodoWorkspaceContent({
                     activeFilter={activeFilter}
                     isReorderEnabled={isReorderEnabled}
                     onToggleTodo={onToggleTodo}
-                    onRenameTodo={onRenameTodo}
                     onDeleteTodo={onDeleteTodo}
                     onReorderTodos={onReorderTodos}
                   />

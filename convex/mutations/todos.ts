@@ -4,7 +4,7 @@ import { mutation } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
-import { normalizeTodoTitle } from "../shared/todo";
+import { normalizeTodoDescription, normalizeTodoTitle } from "../shared/todo";
 
 export const create = mutation({
   args: {
@@ -108,6 +108,34 @@ export const rename = mutation({
 
     await ctx.db.patch(args.todoId, {
       title: normalizeTodoTitle(args.title),
+      updatedAt: now,
+    });
+    await ctx.db.patch(todo.listId, {
+      updatedAt: now,
+    });
+  },
+});
+
+export const updateDescription = mutation({
+  args: {
+    todoId: v.id("todos"),
+    description: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    const todo = await ctx.db.get(args.todoId);
+
+    if (!todo) {
+      throw new Error("Todo was not found.");
+    }
+
+    await requireListAccess(ctx, todo.listId, userId);
+
+    const now = Date.now();
+    const description = normalizeTodoDescription(args.description);
+
+    await ctx.db.patch(args.todoId, {
+      description: description || undefined,
       updatedAt: now,
     });
     await ctx.db.patch(todo.listId, {

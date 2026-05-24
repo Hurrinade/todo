@@ -17,4 +17,5 @@ export * from "@/components/ui/separator.tsx";
 export * from "@/components/ui/sheet.tsx";
 export * from "@/components/ui/skeleton.tsx";
 export * from "@/components/ui/spinner.tsx";
+export * from "@/components/ui/textarea.tsx";
 export * from "@/components/ui/tooltip.tsx";

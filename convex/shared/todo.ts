@@ -1,8 +1,21 @@
-const MAX_TITLE_LENGTH = 120;
+const MAX_TITLE_LENGTH = 240;
+const MAX_DESCRIPTION_LENGTH = 10000;
 export const DEFAULT_TODO_SECTION_TITLE = "Other";
 
 export function normalizeTodoTitle(title: string) {
   return normalizeTitle(title, "Title");
+}
+
+export function normalizeTodoDescription(description: string) {
+  const normalizedDescription = description.trim();
+
+  if (normalizedDescription.length > MAX_DESCRIPTION_LENGTH) {
+    throw new Error(
+      `Description must be ${MAX_DESCRIPTION_LENGTH} characters or less.`,
+    );
+  }
+
+  return normalizedDescription;
 }
 
 export function normalizeSectionTitle(title: string) {

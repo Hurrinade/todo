@@ -3,6 +3,24 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
 
+export const get = query({
+  args: {
+    todoId: v.id("todos"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    const todo = await ctx.db.get(args.todoId);
+
+    if (!todo) {
+      return null;
+    }
+
+    await requireListAccess(ctx, todo.listId, userId);
+
+    return todo;
+  },
+});
+
 export const list = query({
   args: {
     listId: v.id("todoLists"),

@@ -25,6 +25,7 @@ bun run check        # Lint, typecheck and prettier check without mutating files
 
 - `/` — Root route
 - `/home` — Authenticated todo workspace
+- `/home/todos/:todoId` — Authenticated todo detail edit route
 - `/invite/:token` — Public invite acceptance route
 
 ## Tech Stack (current versions)

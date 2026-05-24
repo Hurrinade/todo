@@ -45,6 +45,7 @@ export default defineSchema({
     listId: v.id("todoLists"),
     sectionId: v.optional(v.id("todoSections")),
     title: v.string(),
+    description: v.optional(v.string()),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.optional(v.number()),

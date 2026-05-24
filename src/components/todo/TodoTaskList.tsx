@@ -12,7 +12,6 @@ type TodoTaskListProps = {
   activeFilter: TodoFilter;
   isReorderEnabled: boolean;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
   onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
 };
@@ -22,7 +21,6 @@ export function TodoTaskList({
   activeFilter,
   isReorderEnabled,
   onToggleTodo,
-  onRenameTodo,
   onDeleteTodo,
   onReorderTodos,
 }: TodoTaskListProps) {
@@ -97,7 +95,6 @@ export function TodoTaskList({
             isReorderEnabled={isReorderEnabled}
             todo={todo}
             onToggleTodo={onToggleTodo}
-            onRenameTodo={onRenameTodo}
             onDeleteTodo={onDeleteTodo}
           />
         ))}

@@ -1,17 +1,14 @@
 import { CheckCircle2, Circle, GripVertical, Trash2 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useNavigate } from "react-router";
 
 import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import type { TodoItem } from "@/types";
 
 export type TodoTaskItemProps = {
   todo: TodoItem;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onRenameTodo: (todoId: TodoItem["_id"], title: string) => Promise<void>;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
-  onEditingChange?: (isEditing: boolean) => void;
   dragHandleRef?: (element: Element | null) => void;
   isReorderEnabled?: boolean;
 };
@@ -19,86 +16,11 @@ export type TodoTaskItemProps = {
 export function TodoTaskItem({
   todo,
   onToggleTodo,
-  onRenameTodo,
   onDeleteTodo,
-  onEditingChange,
   dragHandleRef,
   isReorderEnabled = false,
 }: TodoTaskItemProps) {
-  const [isEditing, setIsEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(todo.title);
-  const [isSaving, setIsSaving] = useState(false);
-  const shouldSkipBlurSaveRef = useRef(false);
-
-  const closeEdit = () => {
-    setIsEditing(false);
-    onEditingChange?.(false);
-  };
-
-  const handleBlur = async () => {
-    if (shouldSkipBlurSaveRef.current) {
-      shouldSkipBlurSaveRef.current = false;
-      return;
-    }
-
-    const nextTitle = draftTitle.trim();
-
-    if (!nextTitle || nextTitle === todo.title) {
-      setDraftTitle(todo.title);
-      closeEdit();
-      return;
-    }
-
-    setIsSaving(true);
-
-    try {
-      await onRenameTodo(todo._id, nextTitle);
-      closeEdit();
-    } catch {
-      // The parent mutation handler owns user-facing error state.
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleCancel = () => {
-    shouldSkipBlurSaveRef.current = true;
-    setDraftTitle(todo.title);
-    closeEdit();
-  };
-
-  // This will go to another route where we can edit that certain todo item
-  if (isEditing) {
-    return (
-      <div className="w-full min-w-0 max-w-full rounded-lg bg-card p-2">
-        <Input
-          aria-label="Todo title"
-          autoFocus
-          disabled={isSaving}
-          value={draftTitle}
-          onBlur={() => {
-            void handleBlur();
-          }}
-          onChange={(event) => {
-            setDraftTitle(event.target.value);
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              event.preventDefault();
-              event.currentTarget.blur();
-              return;
-            }
-
-            if (event.key === "Escape") {
-              event.preventDefault();
-              handleCancel();
-            }
-          }}
-          className="w-full min-w-0 max-w-full flex-1 px-3 py-2"
-        />
-      </div>
-    );
-  }
+  const navigate = useNavigate();
 
   return (
     <SwipeAction
@@ -157,10 +79,10 @@ export function TodoTaskItem({
           <button
             type="button"
             onClick={() => {
-              // Open edit route
+              navigate(`/home/todos/${todo._id}`);
             }}
             className="min-w-0 max-w-full flex-1 overflow-hidden rounded-md bg-transparent p-0 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-            aria-label="Edit todo title"
+            aria-label="Open todo"
           >
             <p
               className={

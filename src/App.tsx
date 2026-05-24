@@ -1,5 +1,6 @@
 import { Routes, Route, Outlet, Navigate } from "react-router";
 import Home from "@/pages/authenticated/home/Home";
+import TodoDetail from "@/pages/authenticated/home/todos/TodoDetail";
 import Invite from "@/pages/unauthenticated/invite/Invite";
 import Root from "@/pages/Root";
 import { AuthLoading, useConvexAuth } from "convex/react";
@@ -29,6 +30,7 @@ function App() {
 
           <Route element={<ProtectedRoutes />}>
             <Route path="/home" element={<Home />} />
+            <Route path="/home/todos/:todoId" element={<TodoDetail />} />
           </Route>
         </Routes>
       </main>

@@ -39,6 +39,12 @@ type TodoApi = {
       >;
     };
     todos: {
+      get: FunctionReference<
+        "query",
+        "public",
+        { todoId: Id<"todos"> },
+        TodoItem | null
+      >;
       list: FunctionReference<
         "query",
         "public",
@@ -125,6 +131,12 @@ type TodoApi = {
         "mutation",
         "public",
         { todoId: Id<"todos">; title: string },
+        null
+      >;
+      updateDescription: FunctionReference<
+        "mutation",
+        "public",
+        { todoId: Id<"todos">; description: string },
         null
       >;
       remove: FunctionReference<

@@ -32,6 +32,7 @@ export type TodoItem = {
   listId: Id<"todoLists">;
   sectionId?: Id<"todoSections">;
   title: string;
+  description?: string;
   isCompleted: boolean;
   completedAt?: number;
   order?: number;
