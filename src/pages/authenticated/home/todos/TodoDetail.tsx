@@ -7,6 +7,7 @@ import { TodoDetailView } from "@/components/todo/TodoDetailView";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { todoApi } from "@/config/convex-api";
+import { useTodoStore } from "@/stores";
 import type {
   TodoDetailUnavailableProps,
   TodoWorkspaceLocationState,
@@ -18,6 +19,9 @@ export default function TodoDetail() {
   const todo = useQuery(
     todoApi.queries.todos.get,
     todoId ? { todoId: todoId as Id<"todos"> } : "skip",
+  );
+  const storedTodo = useTodoStore((state) =>
+    todoId ? state.getTodoById(todoId as Id<"todos">) : null,
   );
   const renameTodo = useMutation(todoApi.mutations.todos.rename);
   const updateDescription = useMutation(
@@ -44,11 +48,13 @@ export default function TodoDetail() {
     );
   }
 
-  if (todo === undefined) {
+  const displayTodo = todo ?? storedTodo;
+
+  if (todo === undefined && !displayTodo) {
     return <TodoDetailLoading />;
   }
 
-  if (!todo) {
+  if (!displayTodo || (todo !== undefined && todo == null)) {
     return (
       <TodoDetailUnavailable
         message="Todo was not found."
@@ -61,16 +67,16 @@ export default function TodoDetail() {
 
   return (
     <TodoDetailView
-      todo={todo}
+      todo={displayTodo}
       errorMessage={errorMessage}
       onBack={() => {
-        handleBack(todo.listId);
+        handleBack(displayTodo.listId);
       }}
       onRenameTodo={async (title) => {
         setErrorMessage(null);
 
         try {
-          await renameTodo({ todoId: todo._id, title });
+          await renameTodo({ todoId: displayTodo._id, title });
         } catch (error) {
           setErrorMessage(getErrorMessage(error));
           throw error;
@@ -80,7 +86,7 @@ export default function TodoDetail() {
         setErrorMessage(null);
 
         try {
-          await updateDescription({ todoId: todo._id, description });
+          await updateDescription({ todoId: displayTodo._id, description });
         } catch (error) {
           setErrorMessage(getErrorMessage(error));
           throw error;

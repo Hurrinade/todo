@@ -1,1 +1,1 @@
-// Root store barrel. Add route-scoped or shared Zustand stores here when needed.
+export { useTodoStore } from "@/stores/todo/todo-store";

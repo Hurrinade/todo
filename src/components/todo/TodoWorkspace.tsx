@@ -1,6 +1,6 @@
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash, Loader2 } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -17,6 +17,7 @@ import {
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
+import { useTodoStore } from "@/stores";
 import type {
   CreateTodoListModalValues,
   TodoFilter,
@@ -66,6 +67,9 @@ export function TodoWorkspace({
   const [isRenamingList, setIsRenamingList] = useState(false);
   const [isClearingCompleted, setIsClearingCompleted] = useState(false);
   const [isUncheckingCompleted, setIsUncheckingCompleted] = useState(false);
+  const setCurrentListTodos = useTodoStore(
+    (state) => state.setCurrentListTodos,
+  );
 
   const lists = useMemo(() => listsResult ?? [], [listsResult]);
   const activeList = getActiveList(lists, activeListId);
@@ -88,6 +92,15 @@ export function TodoWorkspace({
     listTitleDraft ?? activeList?.title ?? "Untitled list";
   const normalizedDraftTitle = visibleListTitle.trim();
   const normalizedActiveListTitle = activeList?.title.trim() ?? "";
+
+  // On initial load add list to store
+  useEffect(() => {
+    if (!activeList || activeTodoResult === undefined) {
+      return;
+    }
+
+    setCurrentListTodos(activeList._id, activeTodoResult);
+  }, [activeList, activeTodoResult, setCurrentListTodos]);
 
   const handleCreateList = async ({
     title,
