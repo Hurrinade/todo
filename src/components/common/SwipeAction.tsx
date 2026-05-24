@@ -81,7 +81,10 @@ export function SwipeAction({
   return (
     <div
       aria-label={ariaLabel}
-      className={cn("relative overflow-hidden rounded-r-lg", className)}
+      className={cn(
+        "relative w-full min-w-0 max-w-full overflow-hidden rounded-r-lg",
+        className,
+      )}
       data-state={isOpen ? "open" : "closed"}
     >
       <div
@@ -103,7 +106,7 @@ export function SwipeAction({
 
       <motion.div
         className={cn(
-          "relative z-10 touch-pan-y rounded-l-lg bg-card",
+          "relative z-10 w-full min-w-0 max-w-full touch-pan-y rounded-l-lg bg-card",
           contentClassName,
         )}
         drag="x"

@@ -35,13 +35,6 @@ export function TodoTaskItem({
     onEditingChange?.(false);
   };
 
-  const handleEdit = () => {
-    shouldSkipBlurSaveRef.current = false;
-    setDraftTitle(todo.title);
-    setIsEditing(true);
-    onEditingChange?.(true);
-  };
-
   const handleBlur = async () => {
     if (shouldSkipBlurSaveRef.current) {
       shouldSkipBlurSaveRef.current = false;
@@ -74,9 +67,10 @@ export function TodoTaskItem({
     closeEdit();
   };
 
+  // This will go to another route where we can edit that certain todo item
   if (isEditing) {
     return (
-      <div className="rounded-lg bg-card p-2">
+      <div className="w-full min-w-0 max-w-full rounded-lg bg-card p-2">
         <Input
           aria-label="Todo title"
           autoFocus
@@ -100,7 +94,7 @@ export function TodoTaskItem({
               handleCancel();
             }
           }}
-          className="min-w-0 flex-1 px-3 py-2"
+          className="w-full min-w-0 max-w-full flex-1 px-3 py-2"
         />
       </div>
     );
@@ -123,10 +117,11 @@ export function TodoTaskItem({
         </Button>
       }
       actionWidth={56}
+      className="w-full min-w-0 max-w-full"
       contentClassName="p-2"
       ariaLabel="Todo actions"
     >
-      <div className="flex items-center gap-3">
+      <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden">
         <Button
           type="button"
           variant="ghost"
@@ -148,7 +143,7 @@ export function TodoTaskItem({
             e.stopPropagation();
             onToggleTodo(todo._id);
           }}
-          className="mt-0.5 text-muted-foreground hover:text-primary"
+          className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary"
           aria-label={todo.isCompleted ? "Mark todo open" : "Complete todo"}
         >
           {todo.isCompleted ? (
@@ -158,23 +153,27 @@ export function TodoTaskItem({
           )}
         </Button>
 
-        <button
-          type="button"
-          onClick={handleEdit}
-          className="min-w-0 flex-1 rounded-md bg-transparent p-0 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-          aria-label="Edit todo title"
-        >
-          <p
-            className={
-              "wrap-break-word text-md font-medium " +
-              (todo.isCompleted
-                ? "text-muted-foreground line-through"
-                : "text-foreground")
-            }
+        <div className="flex min-w-0 max-w-full flex-1 items-start gap-1.5 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => {
+              // Open edit route
+            }}
+            className="min-w-0 max-w-full flex-1 overflow-hidden rounded-md bg-transparent p-0 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+            aria-label="Edit todo title"
           >
-            {todo.title}
-          </p>
-        </button>
+            <p
+              className={
+                "wrap-break-word whitespace-normal text-md font-medium [word-break:break-word] " +
+                (todo.isCompleted
+                  ? "text-muted-foreground line-through"
+                  : "text-foreground")
+              }
+            >
+              {todo.title}
+            </p>
+          </button>
+        </div>
       </div>
     </SwipeAction>
   );
