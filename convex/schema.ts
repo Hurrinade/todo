@@ -12,6 +12,7 @@ export default defineSchema({
   }).index("by_clerk_id", ["clerkId"]),
   todoLists: defineTable({
     title: v.string(),
+    emoji: v.optional(v.string()),
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
     userId: v.string(),
     order: v.optional(v.number()),

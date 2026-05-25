@@ -68,15 +68,15 @@ export function TodoDetailView({
               htmlFor="todo-description"
               className="text-sm font-medium text-muted-foreground"
             >
-              Description
+              Note
             </label>
             <Textarea
               key={`${todo._id}-${todo.description ?? ""}`}
               id="todo-description"
-              aria-label="Todo description"
+              aria-label="Todo note"
               disabled={isSavingDescription}
               defaultValue={todo.description ?? ""}
-              placeholder="Add description"
+              placeholder="Add note"
               onBlur={(event) => {
                 void handleDescriptionBlur(event);
               }}

@@ -7,6 +7,7 @@ import {
 } from "../shared/auth";
 import {
   DEFAULT_TODO_SECTION_TITLE,
+  normalizeTodoListEmoji,
   normalizeSectionTitle,
   normalizeTodoTitle,
 } from "../shared/todo";
@@ -15,6 +16,7 @@ import { mutation } from "../triggers/todolistFunctions";
 export const create = mutation({
   args: {
     title: v.string(),
+    emoji: v.optional(v.string()),
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
   },
   handler: async (ctx, args) => {
@@ -25,9 +27,11 @@ export const create = mutation({
       .collect();
     const nextOrder = existingLists.length > 0 ? existingLists.length - 1 : 0;
     const now = Date.now();
+    const emoji = normalizeTodoListEmoji(args.emoji ?? "");
 
     const listId = await ctx.db.insert("todoLists", {
       title: normalizeTodoTitle(args.title),
+      emoji: emoji || undefined,
       kind: args.kind,
       userId,
       order: nextOrder,
@@ -71,6 +75,24 @@ export const rename = mutation({
 
     await ctx.db.patch(args.listId, {
       title: normalizeTodoTitle(args.title),
+      updatedAt: Date.now(),
+    });
+  },
+});
+
+export const updateEmoji = mutation({
+  args: {
+    listId: v.id("todoLists"),
+    emoji: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    await requireListAccess(ctx, args.listId, userId);
+
+    const emoji = normalizeTodoListEmoji(args.emoji);
+
+    await ctx.db.patch(args.listId, {
+      emoji: emoji || undefined,
       updatedAt: Date.now(),
     });
   },

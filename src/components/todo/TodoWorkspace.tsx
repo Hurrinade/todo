@@ -1,5 +1,5 @@
 import { useMutation, useQuery } from "convex/react";
-import { CircleSlash, Loader2 } from "lucide-react";
+import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
@@ -24,6 +24,7 @@ import type {
   TodoListWithStats,
   TodoSection,
 } from "@/types";
+import { TodoListSmallHeader } from "./TodoListSmallHeader";
 
 export function TodoWorkspace({
   initialActiveListId,
@@ -221,17 +222,6 @@ export function TodoWorkspace({
     }
   };
 
-  if (lists == null || lists.length === 0) {
-    return (
-      <main className="flex h-full w-full items-center justify-center bg-background p-6">
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          <Loader2 className="size-4" />
-          Loading todo workspace
-        </div>
-      </main>
-    );
-  }
-
   return (
     <main className="h-full w-full overflow-hidden bg-background text-foreground">
       <SidebarProvider className="h-full min-h-0 bg-background">
@@ -342,6 +332,8 @@ function TodoWorkspaceContent({
               activeFilter={activeFilter}
               onFilterChange={onFilterChange}
             />
+
+            <TodoListSmallHeader list={activeList} />
 
             <ScrollArea
               viewportRef={todoListViewportRef}

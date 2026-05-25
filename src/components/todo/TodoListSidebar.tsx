@@ -77,6 +77,7 @@ export function TodoListSidebar({
 
   const handleCreateList = async ({
     title,
+    emoji,
     kind,
   }: CreateTodoListModalValues) => {
     const normalizedTitle = title.trim();
@@ -91,6 +92,7 @@ export function TodoListSidebar({
     try {
       const listId = await createList({
         title: normalizedTitle,
+        emoji,
         kind,
       });
       setActiveListId(listId);

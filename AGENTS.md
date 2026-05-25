@@ -4,7 +4,8 @@
 
 This is an authenticated todo list app built from the company React template.
 The first product surface is a personal todo workspace with Convex storage and
-Clerk authentication, shared list memberships, and expiring invite links.
+Clerk authentication, todo notes, per-list emoji, shared list memberships, and
+expiring invite links.
 
 ## Commands
 

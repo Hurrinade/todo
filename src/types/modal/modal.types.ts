@@ -14,6 +14,7 @@ export type ConfirmModalPayload = {
 
 export type CreateTodoListModalValues = {
   title: string;
+  emoji?: string;
   kind: TodoListKind;
 };
 

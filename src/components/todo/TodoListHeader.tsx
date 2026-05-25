@@ -4,7 +4,6 @@ import { useMutation } from "convex/react";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import {
   Tooltip,
   TooltipContent,
@@ -29,7 +28,6 @@ export function TodoListHeader({
 }: TodoListHeaderProps) {
   const { openModal } = useModal();
 
-  const renameList = useMutation(todoApi.mutations.todoLists.rename);
   const uncheckCompletedTodos = useMutation(
     todoApi.mutations.todos.uncheckCompleted,
   );
@@ -47,48 +45,6 @@ export function TodoListHeader({
   const setUnknownErrorMessage = useTodoErrorStore(
     (state) => state.setUnknownErrorMessage,
   );
-  const [listTitleDraft, setListTitleDraft] = useState<{
-    listId: TodoListWithStats["_id"];
-    title: string;
-  } | null>(null);
-
-  let visibleListTitle = "Untitled list";
-  if (listTitleDraft && list && listTitleDraft.listId === list._id) {
-    visibleListTitle = listTitleDraft.title;
-  } else if (list) {
-    visibleListTitle = list.title;
-  }
-
-  const normalizedDraftTitle = visibleListTitle.trim();
-  const normalizedActiveListTitle = list?.title.trim() ?? "";
-
-  const handleRenameList = async () => {
-    if (!list || isLoading) {
-      return;
-    }
-
-    if (!normalizedDraftTitle) {
-      setListTitleDraft(null);
-      return;
-    }
-
-    if (normalizedDraftTitle === normalizedActiveListTitle) {
-      setListTitleDraft(null);
-      return;
-    }
-
-    setIsLoading(true);
-    clearErrorMessage();
-
-    try {
-      await renameList({ listId: list._id, title: normalizedDraftTitle });
-      setListTitleDraft(null);
-    } catch (error) {
-      setUnknownErrorMessage(error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   const handleClearCompleted = () => {
     if (!list || list.completedTodoCount === 0) {
@@ -143,24 +99,6 @@ export function TodoListHeader({
           <div className="flex min-w-0 items-center gap-2 justify-between flex-1">
             <div className="flex items-center gap-2 min-w-0">
               <TodoSidebarToggle placement="floating" />
-              <form
-                onSubmit={(event) => {
-                  event.preventDefault();
-                  handleRenameList();
-                }}
-              >
-                <Input
-                  aria-label="Todo list title"
-                  value={visibleListTitle}
-                  disabled={isLoading}
-                  onBlur={handleRenameList}
-                  onChange={(event) => {
-                    const title = event.target.value;
-                    setListTitleDraft({ listId: list._id, title });
-                  }}
-                  className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[18px]! p-0!"
-                />
-              </form>
             </div>
 
             <div className="flex shrink-0 items-center gap-2">

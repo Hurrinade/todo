@@ -58,13 +58,19 @@ type TodoApi = {
       create: FunctionReference<
         "mutation",
         "public",
-        { title: string; kind: TodoListKind },
+        { title: string; emoji?: string; kind: TodoListKind },
         Id<"todoLists">
       >;
       rename: FunctionReference<
         "mutation",
         "public",
         { listId: Id<"todoLists">; title: string },
+        null
+      >;
+      updateEmoji: FunctionReference<
+        "mutation",
+        "public",
+        { listId: Id<"todoLists">; emoji: string },
         null
       >;
       reorder: FunctionReference<

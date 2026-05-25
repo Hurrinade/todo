@@ -31,6 +31,7 @@ export default function CreateTodoListModal({
   payload,
 }: CreateTodoListModalProps) {
   const [title, setTitle] = useState("");
+  const [emoji, setEmoji] = useState("📝");
   const [kind, setKind] = useState<TodoListKind>("regular");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -56,6 +57,7 @@ export default function CreateTodoListModal({
     try {
       const didCreateList = await payload.onSubmit({
         title: normalizedTitle,
+        emoji: emoji.trim() || undefined,
         kind,
       });
 
@@ -90,6 +92,26 @@ export default function CreateTodoListModal({
             </DialogHeader>
 
             <div className="mt-5 flex flex-col gap-4">
+              <div className="flex flex-col gap-2">
+                <label
+                  htmlFor="create-todo-list-emoji"
+                  className="text-sm font-medium text-foreground"
+                >
+                  List emoji
+                </label>
+                <Input
+                  id="create-todo-list-emoji"
+                  aria-label="List emoji"
+                  value={emoji}
+                  maxLength={16}
+                  onChange={(event) => {
+                    setEmoji(event.target.value);
+                  }}
+                  placeholder="📝"
+                  className="h-10 w-16 text-center text-lg"
+                />
+              </div>
+
               <div className="flex flex-col gap-2">
                 <label
                   htmlFor="create-todo-list-kind"

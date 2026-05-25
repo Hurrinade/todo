@@ -16,6 +16,7 @@ export type TodoListWithStats = {
   _id: Id<"todoLists">;
   _creationTime: number;
   title: string;
+  emoji?: string;
   kind: TodoListKind;
   userId: string;
   createdAt: number;
