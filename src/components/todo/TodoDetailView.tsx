@@ -5,6 +5,9 @@ import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import type { TodoDetailViewProps } from "@/types";
+import { useTodoStore } from "@/stores/todo/todo-store";
+import { todoApi } from "@/config/convex-api";
+import { useQuery } from "convex/react";
 
 export function TodoDetailView({
   todo,
@@ -14,6 +17,15 @@ export function TodoDetailView({
   onUpdateDescription,
 }: TodoDetailViewProps) {
   const [isSavingDescription, setIsSavingDescription] = useState(false);
+
+  const listsResult = useQuery(todoApi.queries.todoLists.list);
+  const storeLists = useTodoStore((state) => state.lists);
+
+  const lists = listsResult ?? storeLists;
+
+  const list = lists.find((l) => l._id === todo.listId);
+
+  console.log(list);
 
   const handleDescriptionBlur = async (
     event: FocusEvent<HTMLTextAreaElement>,
@@ -49,8 +61,22 @@ export function TodoDetailView({
             size="icon-lg"
             onClick={onBack}
             aria-label="Back to todo workspace"
+            className="flex items-center gap-2 w-fit px-2"
           >
             <ArrowLeft className="size-5" />
+            {list && (
+              <span className="flex items-center gap-2 text-sm font-semibold">
+                {list.emoji ? (
+                  <span
+                    aria-hidden="true"
+                    className="shrink-0 text-base leading-none"
+                  >
+                    {list.emoji}
+                  </span>
+                ) : null}
+                <span className="block truncate">{list.title}</span>
+              </span>
+            )}
           </Button>
         </header>
 
@@ -63,10 +89,10 @@ export function TodoDetailView({
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-1 py-2 sm:px-2">
           <TodoDetailTitle todo={todo} onRenameTodo={onRenameTodo} />
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 border-t pt-4">
             <label
               htmlFor="todo-description"
-              className="text-sm font-medium text-muted-foreground"
+              className="text-md font-medium text-muted-foreground"
             >
               Note
             </label>
@@ -80,7 +106,7 @@ export function TodoDetailView({
               onBlur={(event) => {
                 void handleDescriptionBlur(event);
               }}
-              className="min-h-[45vh] resize-none border-none bg-transparent px-4 py-2 text-base leading-7 shadow-none outline-none placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0"
+              className="min-h-[45vh] resize-none border-none bg-transparent! px-0 py-2 text-base leading-7 shadow-none outline-none placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0"
             />
           </div>
         </section>

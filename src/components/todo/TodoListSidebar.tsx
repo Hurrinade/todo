@@ -21,28 +21,23 @@ import {
 } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
-import { useTodoErrorStore, useTodoStore } from "@/stores";
+import { useTodoErrorStore } from "@/stores";
 import type { CreateTodoListModalValues, TodoListWithStats } from "@/types";
 
 type TodoListSidebarProps = {
-  parentLists: TodoListWithStats[] | undefined;
+  lists: TodoListWithStats[];
   activeListId: TodoListWithStats["_id"] | null;
   setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
 };
 
 export function TodoListSidebar({
-  parentLists,
+  lists,
   activeListId,
   setActiveListId,
 }: TodoListSidebarProps) {
   const { openModal } = useModal();
 
   // Store lists
-  const storedLists = useTodoStore((state) => state.lists);
-
-  // Take cached lists or lists that are fetched in parent
-  const lists =
-    parentLists && parentLists.length > 0 ? parentLists : storedLists;
 
   const createList = useMutation(todoApi.mutations.todoLists.create);
   const reorderLists = useMutation(todoApi.mutations.todoLists.reorder);

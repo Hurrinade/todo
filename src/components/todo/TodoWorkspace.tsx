@@ -226,7 +226,7 @@ export function TodoWorkspace({
     <main className="h-full w-full overflow-hidden bg-background text-foreground">
       <SidebarProvider className="h-full min-h-0 bg-background">
         <TodoListSidebar
-          parentLists={lists}
+          lists={lists}
           activeListId={activeList?._id ?? null}
           setActiveListId={setActiveListId}
         />
