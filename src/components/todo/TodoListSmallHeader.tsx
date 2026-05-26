@@ -1,6 +1,7 @@
 import { useMutation } from "convex/react";
 import { useState } from "react";
 
+import { TodoListEmojiPicker } from "@/components/todo/TodoListEmojiPicker";
 import { Input } from "@/components/ui/input";
 import { todoApi } from "@/config/convex-api";
 import { useTodoErrorStore } from "@/stores/todo/todo-error-store";
@@ -55,12 +56,19 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
     }
   };
 
-  const handleUpdateListEmoji = async () => {
+  const handleUpdateListEmoji = async (emoji: string) => {
     if (isLoading) {
       return;
     }
 
-    if (normalizedDraftEmoji === normalizedActiveListEmoji) {
+    const normalizedEmoji = emoji.trim();
+
+    setListEmojiDraft({
+      listId: list._id,
+      emoji: normalizedEmoji,
+    });
+
+    if (normalizedEmoji === normalizedActiveListEmoji) {
       setListEmojiDraft(null);
       return;
     }
@@ -69,9 +77,10 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
     clearErrorMessage();
 
     try {
-      await updateListEmoji({ listId: list._id, emoji: normalizedDraftEmoji });
+      await updateListEmoji({ listId: list._id, emoji: normalizedEmoji });
       setListEmojiDraft(null);
     } catch (error) {
+      setListEmojiDraft(null);
       setUnknownErrorMessage(error);
     } finally {
       setIsLoading(false);
@@ -89,33 +98,19 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
 
   const normalizedDraftTitle = visibleListTitle.trim();
   const normalizedActiveListTitle = list.title.trim();
-  const normalizedDraftEmoji = visibleListEmoji.trim();
   const normalizedActiveListEmoji = list.emoji?.trim() ?? "";
 
   return (
     <div className="flex items-center gap-2 px-4 py-2">
-      <form
-        onSubmit={(event) => {
-          event.preventDefault();
-          handleUpdateListEmoji();
+      <TodoListEmojiPicker
+        value={visibleListEmoji}
+        ariaLabel="Todo list emoji"
+        onEmojiChange={(emoji) => {
+          void handleUpdateListEmoji(emoji);
         }}
-      >
-        <Input
-          aria-label="Todo list emoji"
-          value={visibleListEmoji}
-          disabled={isLoading}
-          maxLength={16}
-          onBlur={handleUpdateListEmoji}
-          onChange={(event) => {
-            setListEmojiDraft({
-              listId: list._id,
-              emoji: event.target.value,
-            });
-          }}
-          placeholder="📝"
-          className="size-10 shrink-0 border-none caret-transparent bg-transparent! p-0 text-center text-xl shadow-none outline-none focus-visible:ring-2"
-        />
-      </form>
+        disabled={isLoading}
+        className="size-10 border-none bg-card/80 shadow-none"
+      />
 
       <form
         onSubmit={(event) => {

@@ -163,7 +163,7 @@ export function TodoListSidebar({
         )}
       </SidebarHeader>
 
-      <SidebarContent className="overflow-hidden p-2">
+      <SidebarContent className="overflow-hidden pt-4">
         <SidebarGroup className="min-h-0 flex-1 p-0">
           {lists.length === 0 ? (
             <div className="flex items-center gap-3 rounded-lg border border-dashed border-sidebar-border bg-background/35 p-3 text-sm text-muted-foreground">
@@ -220,7 +220,7 @@ export function TodoListSidebar({
                   });
                 }}
               >
-                <SidebarMenu className="gap-2 pr-2">
+                <SidebarMenu className="gap-2">
                   {orderedLists.map((list, index) => (
                     <SortableTodoListSidebarItem
                       key={list._id}

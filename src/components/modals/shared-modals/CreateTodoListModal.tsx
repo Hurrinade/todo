@@ -1,5 +1,6 @@
 import { useState } from "react";
 
+import { TodoListEmojiPicker } from "@/components/todo/TodoListEmojiPicker";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -99,16 +100,13 @@ export default function CreateTodoListModal({
                 >
                   List emoji
                 </label>
-                <Input
+                <TodoListEmojiPicker
                   id="create-todo-list-emoji"
-                  aria-label="List emoji"
                   value={emoji}
-                  maxLength={16}
-                  onChange={(event) => {
-                    setEmoji(event.target.value);
-                  }}
-                  placeholder="📝"
-                  className="h-10 w-16 text-center text-lg"
+                  ariaLabel="List emoji"
+                  onEmojiChange={setEmoji}
+                  disabled={isSubmitting}
+                  className="size-10"
                 />
               </div>
 
