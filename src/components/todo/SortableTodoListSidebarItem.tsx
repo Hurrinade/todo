@@ -81,12 +81,9 @@ export function SortableTodoListSidebarItem({
       }}
       className={cn(
         "group/menu-item relative flex h-auto items-center justify-between gap-2 py-1 pr-2 pl-3",
-        isReorderEnabled
-          ? "cursor-grab active:cursor-grabbing"
-          : "cursor-pointer",
         isActive
           ? "border-sidebar-primary bg-sidebar-primary/15 text-sidebar-foreground"
-          : "border-sidebar-border bg-background/45 text-muted-foreground hover:border-sidebar-primary/60",
+          : "border-sidebar-border bg-transparenttext-muted-foreground hover:border-sidebar-primary/60",
         isDragging && "z-20 shadow-lg shadow-background/25",
       )}
     >
