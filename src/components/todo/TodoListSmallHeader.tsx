@@ -113,7 +113,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
             });
           }}
           placeholder="📝"
-          className="size-10 shrink-0 border-none bg-card/80 p-0 text-center text-xl shadow-none outline-none focus-visible:ring-2"
+          className="size-10 shrink-0 border-none caret-transparent bg-transparent! p-0 text-center text-xl shadow-none outline-none focus-visible:ring-2"
         />
       </form>
 
