@@ -220,7 +220,7 @@ export function TodoListSidebar({
                   });
                 }}
               >
-                <SidebarMenu className="gap-2">
+                <SidebarMenu>
                   {orderedLists.map((list, index) => (
                     <SortableTodoListSidebarItem
                       key={list._id}
