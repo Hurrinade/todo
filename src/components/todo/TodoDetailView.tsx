@@ -25,8 +25,6 @@ export function TodoDetailView({
 
   const list = lists.find((l) => l._id === todo.listId);
 
-  console.log(list);
-
   const handleDescriptionBlur = async (
     event: FocusEvent<HTMLTextAreaElement>,
   ) => {
