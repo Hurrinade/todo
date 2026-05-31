@@ -44,19 +44,20 @@ export function TodoTaskItem({
       ariaLabel="Todo actions"
     >
       <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden">
-        <Button
-          type="button"
-          variant="ghost"
-          size="icon-sm"
-          aria-label="Reorder todo"
-          disabled={!isReorderEnabled}
-          className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
-          ref={(element) => {
-            dragHandleRef?.(element);
-          }}
-        >
-          <GripVertical className="size-4" />
-        </Button>
+        {isReorderEnabled && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            aria-label="Reorder todo"
+            className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
+            ref={(element) => {
+              dragHandleRef?.(element);
+            }}
+          >
+            <GripVertical className="size-4" />
+          </Button>
+        )}
         <Button
           type="button"
           variant="ghost"

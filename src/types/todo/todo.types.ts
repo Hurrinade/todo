@@ -1,6 +1,5 @@
 import type { Id } from "@convex/_generated/dataModel";
 
-export type TodoFilter = "all" | "open" | "completed";
 export type TodoListKind = "regular" | "sectioned";
 export type TodoWorkspaceLocationState = {
   selectedListId?: Id<"todoLists">;

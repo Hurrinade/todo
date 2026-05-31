@@ -1,4 +1,4 @@
-import { CheckCheck, Eye, EyeClosed, RotateCcw, Trash2 } from "lucide-react";
+import { RotateCcw, Trash2 } from "lucide-react";
 
 import { useMutation } from "convex/react";
 import { TodoListInviteActions } from "@/components/todo/TodoListInviteActions";
@@ -9,7 +9,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TodoFilter, TodoListWithStats } from "@/types";
+import type { TodoListWithStats } from "@/types";
 import { useState } from "react";
 import { todoApi } from "@/config/convex-api";
 import { useTodoErrorStore } from "@/stores/todo/todo-error-store";
@@ -17,15 +17,9 @@ import { useModal } from "@/hooks/modals/use-modal";
 
 type TodoListHeaderProps = {
   list: TodoListWithStats;
-  activeFilter: TodoFilter;
-  onFilterChange: (filter: TodoFilter) => void;
 };
 
-export function TodoListHeader({
-  list,
-  activeFilter,
-  onFilterChange,
-}: TodoListHeaderProps) {
+export function TodoListHeader({ list }: TodoListHeaderProps) {
   const { openModal } = useModal();
 
   const uncheckCompletedTodos = useMutation(
@@ -35,9 +29,6 @@ export function TodoListHeader({
     todoApi.mutations.todos.clearCompleted,
   );
 
-  const shouldShowBulkActions = activeFilter !== "open";
-  const nextFilter = getNextFilter(activeFilter);
-  const filterActionLabel = getFilterActionLabel(nextFilter);
   const [isLoading, setIsLoading] = useState(false);
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
@@ -103,80 +94,52 @@ export function TodoListHeader({
 
             <div className="flex shrink-0 items-center gap-2">
               <TodoListInviteActions list={list} />
-              {shouldShowBulkActions && (
-                <>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-lg"
-                        disabled={list.completedTodoCount === 0 || isLoading}
-                        onClick={handleUncheckCompleted}
-                        aria-label={
-                          isLoading
-                            ? "Unchecking completed todos"
-                            : "Uncheck completed todos"
-                        }
-                      >
-                        <RotateCcw className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {isLoading
-                        ? "Unchecking completed todos"
-                        : "Uncheck completed todos"}
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="icon-lg"
-                        disabled={list.completedTodoCount === 0 || isLoading}
-                        onClick={handleClearCompleted}
-                        aria-label={
-                          isLoading
-                            ? "Clearing completed todos"
-                            : "Clear completed todos"
-                        }
-                        className="text-destructive hover:text-destructive"
-                      >
-                        <Trash2 className="size-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent sideOffset={8}>
-                      {isLoading
-                        ? "Clearing completed todos"
-                        : "Clear completed todos"}
-                    </TooltipContent>
-                  </Tooltip>
-                </>
-              )}
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
                     type="button"
                     variant="outline"
                     size="icon-lg"
-                    onClick={() => {
-                      onFilterChange(nextFilter);
-                    }}
-                    aria-label={filterActionLabel}
+                    disabled={list.completedTodoCount === 0 || isLoading}
+                    onClick={handleUncheckCompleted}
+                    aria-label={
+                      isLoading
+                        ? "Unchecking completed todos"
+                        : "Uncheck completed todos"
+                    }
                   >
-                    {activeFilter === "all" ? (
-                      <Eye className="size-4" />
-                    ) : activeFilter === "open" ? (
-                      <EyeClosed className="size-4" />
-                    ) : (
-                      <CheckCheck className="size-4" />
-                    )}
+                    <RotateCcw className="size-4" />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent sideOffset={8}>
-                  {filterActionLabel}
+                  {isLoading
+                    ? "Unchecking completed todos"
+                    : "Uncheck completed todos"}
+                </TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon-lg"
+                    disabled={list.completedTodoCount === 0 || isLoading}
+                    onClick={handleClearCompleted}
+                    aria-label={
+                      isLoading
+                        ? "Clearing completed todos"
+                        : "Clear completed todos"
+                    }
+                    className="text-destructive hover:text-destructive"
+                  >
+                    <Trash2 className="size-4" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent sideOffset={8}>
+                  {isLoading
+                    ? "Clearing completed todos"
+                    : "Clear completed todos"}
                 </TooltipContent>
               </Tooltip>
             </div>
@@ -185,28 +148,4 @@ export function TodoListHeader({
       </div>
     </header>
   );
-}
-
-function getNextFilter(activeFilter: TodoFilter): TodoFilter {
-  if (activeFilter === "all") {
-    return "open";
-  }
-
-  if (activeFilter === "open") {
-    return "completed";
-  }
-
-  return "all";
-}
-
-function getFilterActionLabel(filter: TodoFilter) {
-  if (filter === "open") {
-    return "Show open items";
-  }
-
-  if (filter === "completed") {
-    return "Show completed items";
-  }
-
-  return "Show all items";
 }

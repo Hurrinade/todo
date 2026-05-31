@@ -5,112 +5,140 @@ import { useEffect, useRef, useState } from "react";
 
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
-import type { TodoFilter, TodoItem } from "@/types";
+import { TodoTaskItem } from "@/components/todo/TodoTaskItem";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
+import type { TodoItem } from "@/types";
 
 type TodoTaskListProps = {
-  todos: TodoItem[];
-  activeFilter: TodoFilter;
-  isReorderEnabled: boolean;
+  completedTodos: TodoItem[];
+  openTodos: TodoItem[];
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
   onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
 };
 
 export function TodoTaskList({
-  todos,
-  activeFilter,
-  isReorderEnabled,
+  completedTodos,
+  openTodos,
   onToggleTodo,
   onDeleteTodo,
   onReorderTodos,
 }: TodoTaskListProps) {
-  const [orderedTodos, setOrderedTodos] = useState(todos);
+  const [orderedOpenTodos, setOrderedOpenTodos] = useState(openTodos);
   const isDraggingRef = useRef(false);
+  const hasOpenTodos = openTodos.length > 0;
+  const hasCompletedTodos = completedTodos.length > 0;
 
   useEffect(() => {
     if (!isDraggingRef.current) {
-      setOrderedTodos(todos);
+      setOrderedOpenTodos(openTodos);
     }
-  }, [todos]);
+  }, [openTodos]);
 
-  if (todos.length === 0) {
+  if (!hasOpenTodos && !hasCompletedTodos) {
     return (
       <TodoEmptyState
         icon={ClipboardList}
         title="No todos here"
-        description={getEmptyDescription(activeFilter)}
+        description="Add a todo to start shaping this list."
       />
     );
   }
 
   return (
-    <DragDropProvider
-      onDragStart={() => {
-        isDraggingRef.current = true;
-      }}
-      onDragEnd={(event) => {
-        isDraggingRef.current = false;
+    <div className="flex flex-col gap-3">
+      {hasOpenTodos ? (
+        <DragDropProvider
+          onDragStart={() => {
+            isDraggingRef.current = true;
+          }}
+          onDragEnd={(event) => {
+            isDraggingRef.current = false;
 
-        if (event.canceled) {
-          setOrderedTodos(todos);
-          return;
-        }
+            if (event.canceled) {
+              setOrderedOpenTodos(openTodos);
+              return;
+            }
 
-        const { source } = event.operation;
+            const { source } = event.operation;
 
-        if (!isReorderEnabled || !isSortable(source)) {
-          setOrderedTodos(todos);
-          return;
-        }
+            if (!isSortable(source)) {
+              setOrderedOpenTodos(openTodos);
+              return;
+            }
 
-        const { initialIndex, index } = source;
+            const { initialIndex, index } = source;
 
-        if (initialIndex === index) {
-          setOrderedTodos(todos);
-          return;
-        }
+            if (initialIndex === index) {
+              setOrderedOpenTodos(openTodos);
+              return;
+            }
 
-        const nextTodos = [...orderedTodos];
-        const [movedTodo] = nextTodos.splice(initialIndex, 1);
+            const nextTodos = [...orderedOpenTodos];
+            const [movedTodo] = nextTodos.splice(initialIndex, 1);
 
-        if (!movedTodo) {
-          setOrderedTodos(todos);
-          return;
-        }
+            if (!movedTodo) {
+              setOrderedOpenTodos(openTodos);
+              return;
+            }
 
-        nextTodos.splice(index, 0, movedTodo);
-        setOrderedTodos(nextTodos);
+            nextTodos.splice(index, 0, movedTodo);
+            setOrderedOpenTodos(nextTodos);
 
-        void onReorderTodos(nextTodos.map((todo) => todo._id)).catch(() => {
-          setOrderedTodos(todos);
-        });
-      }}
-    >
-      <ul className="flex flex-col gap-1">
-        {orderedTodos.map((todo, index) => (
-          <SortableTodoTaskItem
-            key={todo._id}
-            index={index}
-            group="regular-list"
-            isReorderEnabled={isReorderEnabled}
-            todo={todo}
-            onToggleTodo={onToggleTodo}
-            onDeleteTodo={onDeleteTodo}
-          />
-        ))}
-      </ul>
-    </DragDropProvider>
+            void onReorderTodos(nextTodos.map((todo) => todo._id)).catch(() => {
+              setOrderedOpenTodos(openTodos);
+            });
+          }}
+        >
+          <ul className="flex flex-col gap-1">
+            {orderedOpenTodos.map((todo, index) => (
+              <SortableTodoTaskItem
+                key={todo._id}
+                index={index}
+                group="regular-list"
+                isReorderEnabled
+                todo={todo}
+                onToggleTodo={onToggleTodo}
+                onDeleteTodo={onDeleteTodo}
+              />
+            ))}
+          </ul>
+        </DragDropProvider>
+      ) : (
+        <TodoEmptyState
+          icon={ClipboardList}
+          title="No open todos"
+          description="There are no open todos in this list right now."
+        />
+      )}
+
+      {hasCompletedTodos && (
+        <Accordion type="single" collapsible className="px-2">
+          <AccordionItem value="completed" className="border-none">
+            <AccordionTrigger className="rounded-md px-2 py-2 text-muted-foreground hover:text-foreground hover:no-underline gap-2 flex-none">
+              Completed ({completedTodos.length})
+            </AccordionTrigger>
+            <AccordionContent className="pb-0">
+              <ul className="flex flex-col gap-1 pt-1">
+                {completedTodos.map((todo) => (
+                  <li key={todo._id} className="rounded-lg">
+                    <TodoTaskItem
+                      todo={todo}
+                      onToggleTodo={onToggleTodo}
+                      onDeleteTodo={onDeleteTodo}
+                    />
+                  </li>
+                ))}
+              </ul>
+            </AccordionContent>
+          </AccordionItem>
+        </Accordion>
+      )}
+    </div>
   );
-}
-
-function getEmptyDescription(activeFilter: TodoFilter) {
-  if (activeFilter === "completed") {
-    return "Completed work will land here when you check items off.";
-  }
-
-  if (activeFilter === "open") {
-    return "There are no open todos in this list right now.";
-  }
-
-  return "Add a todo to start shaping this list.";
 }

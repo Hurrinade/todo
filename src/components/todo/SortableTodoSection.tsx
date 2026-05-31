@@ -12,13 +12,12 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
-import type { TodoFilter, TodoItem, TodoSection } from "@/types";
+import type { TodoItem, TodoSection } from "@/types";
 
 type SortableTodoSectionProps = {
   section: TodoSection;
   index: number;
   todos: TodoItem[];
-  activeFilter: TodoFilter;
   onToggleTodo: (todoId: TodoItem["_id"]) => void;
   onDeleteTodo: (todoId: TodoItem["_id"]) => void;
   onRenameSection: (
@@ -31,7 +30,6 @@ export function SortableTodoSection({
   section,
   index,
   todos,
-  activeFilter,
   onToggleTodo,
   onDeleteTodo,
   onRenameSection,
@@ -74,13 +72,6 @@ export function SortableTodoSection({
       // Do nothing
     }
   };
-
-  const emptyMessage =
-    activeFilter === "completed"
-      ? "No completed todos in this section."
-      : activeFilter === "open"
-        ? "No open todos in this section."
-        : "No todos in this section yet.";
 
   return (
     <li
@@ -128,7 +119,7 @@ export function SortableTodoSection({
           <div ref={dropRef} className={cn("rounded-xl bg-background/35")}>
             {todos.length === 0 ? (
               <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                {emptyMessage}
+                No todos in this section yet.
               </div>
             ) : (
               <ul className="flex flex-col gap-2">
@@ -137,7 +128,7 @@ export function SortableTodoSection({
                     key={todo._id}
                     index={todoIndex}
                     group={section._id}
-                    isReorderEnabled
+                    isReorderEnabled={!todo.isCompleted}
                     todo={todo}
                     onToggleTodo={onToggleTodo}
                     onDeleteTodo={onDeleteTodo}

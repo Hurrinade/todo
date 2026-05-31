@@ -8,12 +8,11 @@ import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import type { TodoFilter, TodoItem, TodoSection } from "@/types";
+import type { TodoItem, TodoSection } from "@/types";
 
 type TodoSectionedTaskListProps = {
   sections: TodoSection[];
   todos: TodoItem[];
-  activeFilter: TodoFilter;
   onCreateSection: (title: string) => Promise<void>;
   onRenameSection: (
     sectionId: TodoSection["_id"],
@@ -49,7 +48,6 @@ type SectionDragData =
 export function TodoSectionedTaskList({
   sections,
   todos,
-  activeFilter,
   onCreateSection,
   onRenameSection,
   onReorderSections,
@@ -141,6 +139,11 @@ export function TodoSectionedTaskList({
           const sourceData = getSortableData(event.operation.source);
 
           if (sourceData?.type === "todo") {
+            if (sourceData.isCompleted) {
+              isDraggingRef.current = false;
+              return;
+            }
+
             const sectionId = findSectionIdForTodo(
               sectionTodoMap,
               sourceData.todoId,
@@ -165,7 +168,12 @@ export function TodoSectionedTaskList({
           const target = event.operation.target;
           const sourceData = getSortableData(source);
 
-          if (!isSortable(source) || sourceData?.type !== "todo" || !target) {
+          if (
+            !isSortable(source) ||
+            sourceData?.type !== "todo" ||
+            sourceData.isCompleted ||
+            !target
+          ) {
             return;
           }
 
@@ -241,7 +249,11 @@ export function TodoSectionedTaskList({
             return;
           }
 
-          if (sourceData?.type !== "todo" || !todoDragRef.current) {
+          if (
+            sourceData?.type !== "todo" ||
+            sourceData.isCompleted ||
+            !todoDragRef.current
+          ) {
             return;
           }
 
@@ -300,7 +312,6 @@ export function TodoSectionedTaskList({
                 section={section}
                 index={index}
                 todos={sectionTodoMap[section._id] ?? []}
-                activeFilter={activeFilter}
                 onToggleTodo={onToggleTodo}
                 onDeleteTodo={onDeleteTodo}
                 onRenameSection={onRenameSection}

@@ -18,12 +18,7 @@ import {
 import { todoApi } from "@/config/convex-api";
 import { cn } from "@/lib/utils";
 import { useTodoErrorStore, useTodoStore } from "@/stores";
-import type {
-  TodoFilter,
-  TodoItem,
-  TodoListWithStats,
-  TodoSection,
-} from "@/types";
+import type { TodoItem, TodoListWithStats, TodoSection } from "@/types";
 import { TodoListSmallHeader } from "./TodoListSmallHeader";
 
 export function TodoWorkspace({
@@ -46,7 +41,6 @@ export function TodoWorkspace({
   const setLists = useTodoStore((state) => state.setLists);
   const [newTodoTitle, setNewTodoTitle] = useState("");
 
-  const [activeFilter, setActiveFilter] = useState<TodoFilter>("all");
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
   const [activeListId, setActiveListId] = useState<
     TodoListWithStats["_id"] | null
@@ -80,11 +74,14 @@ export function TodoWorkspace({
   );
   const todos = useMemo(() => activeTodoResult ?? [], [activeTodoResult]);
   const sections = useMemo(() => sectionResult ?? [], [sectionResult]);
-  const visibleTodos = useMemo(
-    () => filterTodos(todos, activeFilter),
-    [todos, activeFilter],
+  const openTodos = useMemo(
+    () => todos.filter((todo) => !todo.isCompleted),
+    [todos],
   );
-  const isReorderEnabled = activeFilter === "all";
+  const completedTodos = useMemo(
+    () => todos.filter((todo) => todo.isCompleted),
+    [todos],
+  );
 
   // Set zustand data from queries, for local cache
   useEffect(() => {
@@ -116,9 +113,6 @@ export function TodoWorkspace({
     try {
       await createTodo({ listId: activeList._id, title: newTodoTitle });
       setNewTodoTitle("");
-      setActiveFilter((currentFilter) =>
-        currentFilter === "completed" ? "all" : currentFilter,
-      );
       return true;
     } catch (error) {
       setUnknownErrorMessage(error);
@@ -208,14 +202,17 @@ export function TodoWorkspace({
   };
 
   const handleReorderTodos = async (todoIds: TodoItem["_id"][]) => {
-    if (!activeList || !isReorderEnabled) {
+    if (!activeList) {
       return;
     }
 
     clearErrorMessage();
 
     try {
-      await reorderTodos({ listId: activeList._id, todoIds });
+      await reorderTodos({
+        listId: activeList._id,
+        todoIds: [...todoIds, ...completedTodos.map((todo) => todo._id)],
+      });
     } catch (error) {
       setUnknownErrorMessage(error);
       throw error;
@@ -233,26 +230,25 @@ export function TodoWorkspace({
 
         <SidebarInset className="min-h-0 overflow-hidden">
           <TodoWorkspaceContent
-            activeFilter={activeFilter}
             activeList={activeList}
             activeTodoResult={activeTodoResult}
+            completedTodos={completedTodos}
             errorMessage={errorMessage}
             isCreatingTodo={isCreatingTodo}
-            isReorderEnabled={isReorderEnabled}
             newTodoTitle={newTodoTitle}
             onCreateSection={handleCreateSection}
             onCreateTodo={handleCreateTodo}
             onDeleteTodo={handleDeleteTodo}
-            onFilterChange={setActiveFilter}
             onMoveTodo={handleMoveTodo}
             onRenameSection={handleRenameSection}
             onReorderSections={handleReorderSections}
             onReorderTodos={handleReorderTodos}
             onTodoTitleChange={setNewTodoTitle}
             onToggleTodo={handleToggleTodo}
+            openTodos={openTodos}
             sectionResult={sectionResult}
             sections={sections}
-            visibleTodos={visibleTodos}
+            todos={todos}
           />
         </SidebarInset>
       </SidebarProvider>
@@ -261,17 +257,15 @@ export function TodoWorkspace({
 }
 
 type TodoWorkspaceContentProps = {
-  activeFilter: TodoFilter;
   activeList: TodoListWithStats | null;
   activeTodoResult: TodoItem[] | undefined;
+  completedTodos: TodoItem[];
   errorMessage: string | null;
   isCreatingTodo: boolean;
-  isReorderEnabled: boolean;
   newTodoTitle: string;
   onCreateSection: (title: string) => Promise<void>;
   onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
   onDeleteTodo: (todoId: TodoItem["_id"]) => Promise<void>;
-  onFilterChange: (filter: TodoFilter) => void;
   onMoveTodo: (
     todoId: TodoItem["_id"],
     targetSectionId: TodoSection["_id"],
@@ -285,32 +279,32 @@ type TodoWorkspaceContentProps = {
   onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
   onTodoTitleChange: (title: string) => void;
   onToggleTodo: (todoId: TodoItem["_id"]) => Promise<void>;
+  openTodos: TodoItem[];
   sectionResult: TodoSection[] | undefined;
   sections: TodoSection[];
-  visibleTodos: TodoItem[];
+  todos: TodoItem[];
 };
 
 function TodoWorkspaceContent({
-  activeFilter,
   activeList,
   activeTodoResult,
+  completedTodos,
   errorMessage,
   isCreatingTodo,
-  isReorderEnabled,
   newTodoTitle,
   onCreateSection,
   onCreateTodo,
   onDeleteTodo,
-  onFilterChange,
   onMoveTodo,
   onRenameSection,
   onReorderSections,
   onReorderTodos,
   onTodoTitleChange,
   onToggleTodo,
+  openTodos,
   sectionResult,
   sections,
-  visibleTodos,
+  todos,
 }: TodoWorkspaceContentProps) {
   const { isMobile, open, openMobile } = useSidebar();
   const todoListViewportRef = useRef<HTMLDivElement>(null);
@@ -327,11 +321,7 @@ function TodoWorkspaceContent({
       <div className="relative min-h-0 flex-1 overflow-hidden">
         {activeList ? (
           <div className={cn("flex h-full min-h-0 flex-col")}>
-            <TodoListHeader
-              list={activeList}
-              activeFilter={activeFilter}
-              onFilterChange={onFilterChange}
-            />
+            <TodoListHeader list={activeList} />
 
             <TodoListSmallHeader list={activeList} />
 
@@ -353,8 +343,7 @@ function TodoWorkspaceContent({
                   <TodoSectionedTaskList
                     key={activeList._id}
                     sections={sections}
-                    todos={visibleTodos}
-                    activeFilter={activeFilter}
+                    todos={todos}
                     onCreateSection={onCreateSection}
                     onRenameSection={onRenameSection}
                     onReorderSections={onReorderSections}
@@ -364,9 +353,8 @@ function TodoWorkspaceContent({
                   />
                 ) : (
                   <TodoTaskList
-                    todos={visibleTodos}
-                    activeFilter={activeFilter}
-                    isReorderEnabled={isReorderEnabled}
+                    completedTodos={completedTodos}
+                    openTodos={openTodos}
                     onToggleTodo={onToggleTodo}
                     onDeleteTodo={onDeleteTodo}
                     onReorderTodos={onReorderTodos}
@@ -422,16 +410,4 @@ function getActiveList(
   }
 
   return lists.find((list) => list._id === activeListId) ?? lists[0] ?? null;
-}
-
-function filterTodos(todos: TodoItem[], activeFilter: TodoFilter) {
-  if (activeFilter === "completed") {
-    return todos.filter((todo) => todo.isCompleted);
-  }
-
-  if (activeFilter === "open") {
-    return todos.filter((todo) => !todo.isCompleted);
-  }
-
-  return todos;
 }
