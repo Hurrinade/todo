@@ -1,5 +1,16 @@
-import { animate, motion, useMotionValue, type PanInfo } from "motion/react";
-import { useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  animate,
+  motion,
+  useDragControls,
+  useMotionValue,
+  type PanInfo,
+} from "motion/react";
+import {
+  useRef,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 
 import { cn } from "@/lib/utils";
 import type { SwipeActionProps } from "@/types";
@@ -27,6 +38,7 @@ export function SwipeAction({
 }: SwipeActionProps) {
   const [isOpen, setIsOpen] = useState(false);
   const shouldSuppressClickRef = useRef(false);
+  const dragControls = useDragControls();
   const direction = actionSide === "right" ? -1 : 1;
   const openX = actionWidth * direction;
   const x = useMotionValue(0);
@@ -78,6 +90,14 @@ export function SwipeAction({
     shouldSuppressClickRef.current = false;
   };
 
+  const handlePointerDown = (event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0 || isSwipeIgnored(event.target)) {
+      return;
+    }
+
+    dragControls.start(event);
+  };
+
   return (
     <div
       aria-label={ariaLabel}
@@ -110,10 +130,13 @@ export function SwipeAction({
           contentClassName,
         )}
         drag="x"
+        dragControls={dragControls}
         dragConstraints={dragConstraints}
         dragElastic={0.08}
+        dragListener={false}
         dragMomentum={false}
         onPointerDownCapture={handlePointerDownCapture}
+        onPointerDown={handlePointerDown}
         onClickCapture={handleClickCapture}
         onDragEnd={handleDragEnd}
         style={{ x }}
@@ -122,5 +145,11 @@ export function SwipeAction({
         {children}
       </motion.div>
     </div>
+  );
+}
+
+function isSwipeIgnored(target: EventTarget | null) {
+  return (
+    target instanceof Element && Boolean(target.closest("[data-swipe-ignore]"))
   );
 }

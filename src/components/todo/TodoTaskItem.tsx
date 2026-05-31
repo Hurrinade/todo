@@ -50,6 +50,7 @@ export function TodoTaskItem({
             variant="ghost"
             size="icon-sm"
             aria-label="Reorder todo"
+            data-swipe-ignore
             className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
             ref={(element) => {
               dragHandleRef?.(element);
