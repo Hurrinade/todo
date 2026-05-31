@@ -11,10 +11,9 @@ type TodoTaskMotionItemProps = Omit<
 };
 
 const todoTaskLayoutTransition = {
-  type: "spring",
-  stiffness: 360,
-  damping: 35,
-  mass: 1,
+  type: "tween",
+  duration: 0.2,
+  ease: "easeOut",
 } satisfies Transition;
 
 export function TodoTaskMotionItem({
@@ -29,9 +28,8 @@ export function TodoTaskMotionItem({
       layoutId={`todo-task-${todoId}`}
       initial={false}
       animate={{ opacity: 1, scale: 1 }}
-      exit={{ opacity: 0, scale: 0.98 }}
       transition={todoTaskLayoutTransition}
-      className={cn("relative z-20 rounded-lg", className)}
+      className={cn("relative z-50 rounded-lg", className)}
       {...props}
     >
       {children}

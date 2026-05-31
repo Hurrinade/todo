@@ -1,7 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { ClipboardList } from "lucide-react";
-import { AnimatePresence, LayoutGroup, motion } from "motion/react";
+import { LayoutGroup, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -101,19 +101,17 @@ export function TodoTaskList({
             }}
           >
             <motion.ul layout className="flex flex-col gap-1">
-              <AnimatePresence initial={false}>
-                {orderedOpenTodos.map((todo, index) => (
-                  <SortableTodoTaskItem
-                    key={todo._id}
-                    index={index}
-                    group="regular-list"
-                    isReorderEnabled
-                    todo={todo}
-                    onToggleTodo={onToggleTodo}
-                    onDeleteTodo={onDeleteTodo}
-                  />
-                ))}
-              </AnimatePresence>
+              {orderedOpenTodos.map((todo, index) => (
+                <SortableTodoTaskItem
+                  key={todo._id}
+                  index={index}
+                  group="regular-list"
+                  isReorderEnabled
+                  todo={todo}
+                  onToggleTodo={onToggleTodo}
+                  onDeleteTodo={onDeleteTodo}
+                />
+              ))}
             </motion.ul>
           </DragDropProvider>
         ) : (
@@ -132,17 +130,15 @@ export function TodoTaskList({
               </AccordionTrigger>
               <AccordionContent className="pb-0">
                 <motion.ul layout className="flex flex-col gap-1 pt-1">
-                  <AnimatePresence initial={false}>
-                    {completedTodos.map((todo) => (
-                      <TodoTaskMotionItem key={todo._id} todoId={todo._id}>
-                        <TodoTaskItem
-                          todo={todo}
-                          onToggleTodo={onToggleTodo}
-                          onDeleteTodo={onDeleteTodo}
-                        />
-                      </TodoTaskMotionItem>
-                    ))}
-                  </AnimatePresence>
+                  {completedTodos.map((todo) => (
+                    <TodoTaskMotionItem key={todo._id} todoId={todo._id}>
+                      <TodoTaskItem
+                        todo={todo}
+                        onToggleTodo={onToggleTodo}
+                        onDeleteTodo={onDeleteTodo}
+                      />
+                    </TodoTaskMotionItem>
+                  ))}
                 </motion.ul>
               </AccordionContent>
             </AccordionItem>
