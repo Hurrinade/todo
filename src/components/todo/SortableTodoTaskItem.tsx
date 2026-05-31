@@ -4,6 +4,7 @@ import {
   TodoTaskItem,
   type TodoTaskItemProps,
 } from "@/components/todo/TodoTaskItem";
+import { TodoTaskMotionItem } from "@/components/todo/TodoTaskMotionItem";
 import { cn } from "@/lib/utils";
 
 type SortableTodoTaskItemProps = TodoTaskItemProps & {
@@ -35,11 +36,12 @@ export function SortableTodoTaskItem({
   });
 
   return (
-    <li
+    <TodoTaskMotionItem
       ref={ref}
+      todoId={todo._id}
       tabIndex={isReorderEnabled ? 0 : undefined}
       className={cn(
-        "rounded-lg outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
+        "outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
         isDragging && "relative z-20 shadow-lg shadow-background/25",
       )}
     >
@@ -50,6 +52,6 @@ export function SortableTodoTaskItem({
         dragHandleRef={handleRef}
         isReorderEnabled={isReorderEnabled}
       />
-    </li>
+    </TodoTaskMotionItem>
   );
 }

@@ -1,6 +1,7 @@
 import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { GripVertical } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
@@ -122,19 +123,21 @@ export function SortableTodoSection({
                 No todos in this section yet.
               </div>
             ) : (
-              <ul className="flex flex-col gap-2">
-                {todos.map((todo, todoIndex) => (
-                  <SortableTodoTaskItem
-                    key={todo._id}
-                    index={todoIndex}
-                    group={section._id}
-                    isReorderEnabled={!todo.isCompleted}
-                    todo={todo}
-                    onToggleTodo={onToggleTodo}
-                    onDeleteTodo={onDeleteTodo}
-                  />
-                ))}
-              </ul>
+              <motion.ul layout className="flex flex-col gap-2">
+                <AnimatePresence initial={false}>
+                  {todos.map((todo, todoIndex) => (
+                    <SortableTodoTaskItem
+                      key={todo._id}
+                      index={todoIndex}
+                      group={section._id}
+                      isReorderEnabled={!todo.isCompleted}
+                      todo={todo}
+                      onToggleTodo={onToggleTodo}
+                      onDeleteTodo={onDeleteTodo}
+                    />
+                  ))}
+                </AnimatePresence>
+              </motion.ul>
             )}
           </div>
         </AccordionContent>

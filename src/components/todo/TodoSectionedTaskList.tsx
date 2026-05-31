@@ -1,6 +1,7 @@
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { FolderTree, Plus } from "lucide-react";
+import { LayoutGroup } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 
 import { SortableTodoSection } from "@/components/todo/SortableTodoSection";
@@ -132,194 +133,198 @@ export function TodoSectionedTaskList({
         </div>
       </form>
 
-      <DragDropProvider
-        onDragStart={(event) => {
-          isDraggingRef.current = true;
+      <LayoutGroup>
+        <DragDropProvider
+          onDragStart={(event) => {
+            isDraggingRef.current = true;
 
-          const sourceData = getSortableData(event.operation.source);
+            const sourceData = getSortableData(event.operation.source);
 
-          if (sourceData?.type === "todo") {
-            if (sourceData.isCompleted) {
-              isDraggingRef.current = false;
+            if (sourceData?.type === "todo") {
+              if (sourceData.isCompleted) {
+                isDraggingRef.current = false;
+                return;
+              }
+
+              const sectionId = findSectionIdForTodo(
+                sectionTodoMap,
+                sourceData.todoId,
+              );
+
+              if (!sectionId) {
+                return;
+              }
+
+              todoDragRef.current = {
+                todoId: sourceData.todoId,
+                sectionId,
+                bucketIndex: getTodoBucketIndex(
+                  sectionTodoMap,
+                  sourceData.todoId,
+                ),
+              };
+            }
+          }}
+          onDragOver={(event) => {
+            const source = event.operation.source;
+            const target = event.operation.target;
+            const sourceData = getSortableData(source);
+
+            if (
+              !isSortable(source) ||
+              sourceData?.type !== "todo" ||
+              sourceData.isCompleted ||
+              !target
+            ) {
               return;
             }
 
-            const sectionId = findSectionIdForTodo(
+            const activeTodo = findTodoById(sectionTodoMap, sourceData.todoId);
+            const sourceSectionId = findSectionIdForTodo(
               sectionTodoMap,
               sourceData.todoId,
             );
 
-            if (!sectionId) {
+            if (!activeTodo || !sourceSectionId) {
               return;
             }
 
-            todoDragRef.current = {
-              todoId: sourceData.todoId,
-              sectionId,
-              bucketIndex: getTodoBucketIndex(
-                sectionTodoMap,
-                sourceData.todoId,
-              ),
-            };
-          }
-        }}
-        onDragOver={(event) => {
-          const source = event.operation.source;
-          const target = event.operation.target;
-          const sourceData = getSortableData(source);
-
-          if (
-            !isSortable(source) ||
-            sourceData?.type !== "todo" ||
-            sourceData.isCompleted ||
-            !target
-          ) {
-            return;
-          }
-
-          const activeTodo = findTodoById(sectionTodoMap, sourceData.todoId);
-          const sourceSectionId = findSectionIdForTodo(
-            sectionTodoMap,
-            sourceData.todoId,
-          );
-
-          if (!activeTodo || !sourceSectionId) {
-            return;
-          }
-
-          const targetLocation = getTargetLocation(
-            sectionTodoMap,
-            target,
-            activeTodo,
-            sourceData.todoId,
-          );
-
-          if (!targetLocation) {
-            return;
-          }
-
-          setSectionTodoMap((currentMap) =>
-            moveTodoInSectionMap(
-              currentMap,
+            const targetLocation = getTargetLocation(
+              sectionTodoMap,
+              target,
+              activeTodo,
               sourceData.todoId,
-              sourceSectionId,
-              targetLocation.sectionId,
-              targetLocation.bucketIndex,
-            ),
-          );
-        }}
-        onDragEnd={(event) => {
-          isDraggingRef.current = false;
-          const sourceData = getSortableData(event.operation.source);
+            );
 
-          if (event.canceled) {
-            todoDragRef.current = null;
-            setOrderedSections(sections);
-            setSectionTodoMap(buildSectionTodoMap(sections, todos));
-            return;
-          }
-
-          if (
-            sourceData?.type === "section" &&
-            isSortable(event.operation.source)
-          ) {
-            const { initialIndex, index } = event.operation.source;
-
-            if (initialIndex === index) {
-              setOrderedSections(sections);
+            if (!targetLocation) {
               return;
             }
 
-            const nextSections = [...orderedSections];
-            const [movedSection] = nextSections.splice(initialIndex, 1);
-
-            if (!movedSection) {
-              setOrderedSections(sections);
-              return;
-            }
-
-            nextSections.splice(index, 0, movedSection);
-            setOrderedSections(nextSections);
-
-            void onReorderSections(
-              nextSections.map((section) => section._id),
-            ).catch(() => {
-              setOrderedSections(sections);
-            });
-            return;
-          }
-
-          if (
-            sourceData?.type !== "todo" ||
-            sourceData.isCompleted ||
-            !todoDragRef.current
-          ) {
-            return;
-          }
-
-          const finalSectionId = findSectionIdForTodo(
-            sectionTodoMap,
-            todoDragRef.current.todoId,
-          );
-
-          if (!finalSectionId) {
-            todoDragRef.current = null;
-            setSectionTodoMap(buildSectionTodoMap(sections, todos));
-            return;
-          }
-
-          const finalBucketIndex = getTodoBucketIndex(
-            sectionTodoMap,
-            todoDragRef.current.todoId,
-          );
-          const shouldPersist =
-            finalSectionId !== todoDragRef.current.sectionId ||
-            finalBucketIndex !== todoDragRef.current.bucketIndex;
-
-          if (!shouldPersist) {
-            todoDragRef.current = null;
-            return;
-          }
-
-          const activeTodoId = todoDragRef.current.todoId;
-          todoDragRef.current = null;
-
-          void onMoveTodo(activeTodoId, finalSectionId, finalBucketIndex).catch(
-            () => {
-              setSectionTodoMap(buildSectionTodoMap(sections, todos));
-            },
-          );
-        }}
-      >
-        <Accordion
-          type="multiple"
-          value={openSectionIds}
-          onValueChange={(nextOpenSectionIds) => {
-            const nextOpenSectionIdSet = new Set(nextOpenSectionIds);
-
-            setClosedSectionIds(
-              sections
-                .map((section) => section._id)
-                .filter((sectionId) => !nextOpenSectionIdSet.has(sectionId)),
+            setSectionTodoMap((currentMap) =>
+              moveTodoInSectionMap(
+                currentMap,
+                sourceData.todoId,
+                sourceSectionId,
+                targetLocation.sectionId,
+                targetLocation.bucketIndex,
+              ),
             );
           }}
-          className="gap-4"
+          onDragEnd={(event) => {
+            isDraggingRef.current = false;
+            const sourceData = getSortableData(event.operation.source);
+
+            if (event.canceled) {
+              todoDragRef.current = null;
+              setOrderedSections(sections);
+              setSectionTodoMap(buildSectionTodoMap(sections, todos));
+              return;
+            }
+
+            if (
+              sourceData?.type === "section" &&
+              isSortable(event.operation.source)
+            ) {
+              const { initialIndex, index } = event.operation.source;
+
+              if (initialIndex === index) {
+                setOrderedSections(sections);
+                return;
+              }
+
+              const nextSections = [...orderedSections];
+              const [movedSection] = nextSections.splice(initialIndex, 1);
+
+              if (!movedSection) {
+                setOrderedSections(sections);
+                return;
+              }
+
+              nextSections.splice(index, 0, movedSection);
+              setOrderedSections(nextSections);
+
+              void onReorderSections(
+                nextSections.map((section) => section._id),
+              ).catch(() => {
+                setOrderedSections(sections);
+              });
+              return;
+            }
+
+            if (
+              sourceData?.type !== "todo" ||
+              sourceData.isCompleted ||
+              !todoDragRef.current
+            ) {
+              return;
+            }
+
+            const finalSectionId = findSectionIdForTodo(
+              sectionTodoMap,
+              todoDragRef.current.todoId,
+            );
+
+            if (!finalSectionId) {
+              todoDragRef.current = null;
+              setSectionTodoMap(buildSectionTodoMap(sections, todos));
+              return;
+            }
+
+            const finalBucketIndex = getTodoBucketIndex(
+              sectionTodoMap,
+              todoDragRef.current.todoId,
+            );
+            const shouldPersist =
+              finalSectionId !== todoDragRef.current.sectionId ||
+              finalBucketIndex !== todoDragRef.current.bucketIndex;
+
+            if (!shouldPersist) {
+              todoDragRef.current = null;
+              return;
+            }
+
+            const activeTodoId = todoDragRef.current.todoId;
+            todoDragRef.current = null;
+
+            void onMoveTodo(
+              activeTodoId,
+              finalSectionId,
+              finalBucketIndex,
+            ).catch(() => {
+              setSectionTodoMap(buildSectionTodoMap(sections, todos));
+            });
+          }}
         >
-          <ul className="flex flex-col gap-4">
-            {orderedSections.map((section, index) => (
-              <SortableTodoSection
-                key={section._id}
-                section={section}
-                index={index}
-                todos={sectionTodoMap[section._id] ?? []}
-                onToggleTodo={onToggleTodo}
-                onDeleteTodo={onDeleteTodo}
-                onRenameSection={onRenameSection}
-              />
-            ))}
-          </ul>
-        </Accordion>
-      </DragDropProvider>
+          <Accordion
+            type="multiple"
+            value={openSectionIds}
+            onValueChange={(nextOpenSectionIds) => {
+              const nextOpenSectionIdSet = new Set(nextOpenSectionIds);
+
+              setClosedSectionIds(
+                sections
+                  .map((section) => section._id)
+                  .filter((sectionId) => !nextOpenSectionIdSet.has(sectionId)),
+              );
+            }}
+            className="gap-4"
+          >
+            <ul className="flex flex-col gap-4">
+              {orderedSections.map((section, index) => (
+                <SortableTodoSection
+                  key={section._id}
+                  section={section}
+                  index={index}
+                  todos={sectionTodoMap[section._id] ?? []}
+                  onToggleTodo={onToggleTodo}
+                  onDeleteTodo={onDeleteTodo}
+                  onRenameSection={onRenameSection}
+                />
+              ))}
+            </ul>
+          </Accordion>
+        </DragDropProvider>
+      </LayoutGroup>
     </div>
   );
 }
