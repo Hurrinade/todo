@@ -27,7 +27,7 @@ export default function ThemeToggle() {
   return (
     <div
       aria-label="Theme selection"
-      className="flex rounded-lg border border-border bg-card/95 text-card-foreground shadow-sm w-[70%] gap-0"
+      className="flex min-w-0 flex-1 rounded-lg border border-border bg-card/95 text-card-foreground shadow-sm"
       role="group"
     >
       {themeOptions.map(({ value, label, icon: Icon }) => {

@@ -5,6 +5,7 @@ import { useMutation } from "convex/react";
 import { ListChecks, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import BackgroundColorPicker from "@/components/common/BackgroundColorPicker";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
@@ -233,8 +234,11 @@ export function TodoListSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4 flex items-center">
-        <ThemeToggle />
+      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4">
+        <div className="flex w-full items-center gap-2">
+          <ThemeToggle />
+          <BackgroundColorPicker />
+        </div>
 
         <SignOutButton>
           <Button type="button" variant="outline" className="h-9 w-full">

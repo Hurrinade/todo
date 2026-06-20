@@ -1,4 +1,5 @@
 // Shared common components
+export { default as BackgroundColorPicker } from "@/components/common/BackgroundColorPicker";
 export { SwipeAction } from "@/components/common/SwipeAction";
 export { default as ThemeToggle } from "@/components/common/ThemeToggle";
 

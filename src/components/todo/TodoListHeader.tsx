@@ -102,6 +102,7 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
                     size="icon-lg"
                     disabled={list.completedTodoCount === 0 || isLoading}
                     onClick={handleUncheckCompleted}
+                    className="bg-card"
                     aria-label={
                       isLoading
                         ? "Unchecking completed todos"
@@ -131,7 +132,7 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
                         ? "Clearing completed todos"
                         : "Clear completed todos"
                     }
-                    className="text-destructive hover:text-destructive"
+                    className="text-destructive hover:text-destructive bg-card"
                   >
                     <Trash2 className="size-4" />
                   </Button>

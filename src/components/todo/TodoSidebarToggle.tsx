@@ -35,7 +35,7 @@ export function TodoSidebarToggle({
       className={cn(
         "text-muted-foreground hover:text-foreground",
         placement === "floating" &&
-          "border-border bg-background/95 text-foreground shadow-sm backdrop-blur-sm",
+          "border-border bg-card shadow-sm backdrop-blur-sm",
         className,
       )}
     >

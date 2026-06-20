@@ -47,6 +47,18 @@
   --radius: 1rem;
 }
 
+:root.background-blue {
+  --background: #c8defa;
+}
+
+:root.background-purple {
+  --background: #d4c4fb;
+}
+
+:root.background-regular {
+  --background: #f6f1e8;
+}
+
 .dark {
   color-scheme: dark;
   --background: #040609;
@@ -86,6 +98,18 @@
   --chart-3: #f45000;
   --chart-4: #f0004d;
   --chart-5: #983ace;
+}
+
+.dark.background-blue {
+  --background: #18355e;
+}
+
+.dark.background-purple {
+  --background: #3c296c;
+}
+
+.dark.background-regular {
+  --background: #040609;
 }
 
 @theme inline {
@@ -143,22 +167,8 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image:
-      radial-gradient(
-        circle at top left,
-        rgb(31 92 91 / 0.08),
-        transparent 34%
-      ),
-      radial-gradient(circle at bottom, rgb(200 137 47 / 0.1), transparent 40%);
-    background-attachment: fixed;
   }
   html {
     @apply font-sans;
-  }
-
-  .dark body {
-    background-image:
-      radial-gradient(circle at top, #2ca2ff24, transparent 32%),
-      radial-gradient(circle at bottom, #f04c5a14, transparent 42%);
   }
 }

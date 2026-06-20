@@ -1,6 +1,11 @@
 import { useSyncExternalStore } from "react";
-import type { ThemePreference } from "@/types";
-import { getThemeSnapshot, setThemePreference, subscribeTheme } from "@/utils";
+import type { BackgroundColorPreference, ThemePreference } from "@/types";
+import {
+  getThemeSnapshot,
+  setBackgroundColorPreference,
+  setThemePreference,
+  subscribeTheme,
+} from "@/utils";
 
 export function useTheme() {
   const theme = useSyncExternalStore(
@@ -13,6 +18,11 @@ export function useTheme() {
     ...theme,
     setThemePreference: (preference: ThemePreference) => {
       setThemePreference(preference);
+    },
+    setBackgroundColorPreference: (
+      backgroundColor: BackgroundColorPreference,
+    ) => {
+      setBackgroundColorPreference(backgroundColor);
     },
   };
 }

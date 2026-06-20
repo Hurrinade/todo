@@ -118,6 +118,12 @@ Examples
 - keep the `vite-plugin-pwa` setup generic at template level and replace
   placeholder manifest metadata and PWA assets per project
 
+## Theme and background
+
+- The theme system lives in `src/utils/theme/theme-utils.ts` and is consumed through `useTheme`.
+- Keep the blue, purple, and green background picker as a background-only preference shared across light and dark mode.
+- Background classes are applied to `<html>` as `background-blue`, `background-purple`, or `background-green`.
+
 ## Important notes
 
 - Do not run dev server.

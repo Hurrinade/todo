@@ -52,7 +52,7 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
           aria-label={
             isGeneratingInvite ? "Generating invite link" : "Copy invite link"
           }
-          className="shrink-0"
+          className="shrink-0 bg-card"
         >
           <Link2 className="size-4" />
         </Button>
