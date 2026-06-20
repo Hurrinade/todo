@@ -13,12 +13,12 @@ const backgroundColorOptions: BackgroundColorOption[] = [
   {
     value: "blue",
     label: "Use blue background",
-    className: "bg-[#c8defa] dark:bg-[#18355e]",
+    className: "bg-[#9dc7ff] dark:bg-[#18355e]",
   },
   {
     value: "purple",
     label: "Use purple background",
-    className: "bg-[#d4c4fb] dark:bg-[#3c296c]",
+    className: "bg-[#c5afff] dark:bg-[#3c296c]",
   },
   {
     value: "regular",

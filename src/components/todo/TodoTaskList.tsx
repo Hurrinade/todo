@@ -130,15 +130,42 @@ export function TodoTaskList({
               </AccordionTrigger>
               <AccordionContent className="pb-0">
                 <motion.ul layout className="flex flex-col gap-1 pt-1">
-                  {completedTodos.map((todo) => (
-                    <TodoTaskMotionItem key={todo._id} todoId={todo._id}>
-                      <TodoTaskItem
-                        todo={todo}
-                        onToggleTodo={onToggleTodo}
-                        onDeleteTodo={onDeleteTodo}
-                      />
-                    </TodoTaskMotionItem>
-                  ))}
+                  {completedTodos
+                    .sort((a, b) => {
+                      if (
+                        a.completedAt === undefined &&
+                        b.completedAt === undefined
+                      ) {
+                        return 0;
+                      }
+
+                      if (a.completedAt === undefined) {
+                        return 1;
+                      }
+
+                      if (b.completedAt === undefined) {
+                        return -1;
+                      }
+
+                      if (a.completedAt < b.completedAt) {
+                        return 1;
+                      }
+
+                      if (a.completedAt > b.completedAt) {
+                        return -1;
+                      }
+
+                      return 0;
+                    })
+                    .map((todo) => (
+                      <TodoTaskMotionItem key={todo._id} todoId={todo._id}>
+                        <TodoTaskItem
+                          todo={todo}
+                          onToggleTodo={onToggleTodo}
+                          onDeleteTodo={onDeleteTodo}
+                        />
+                      </TodoTaskMotionItem>
+                    ))}
                 </motion.ul>
               </AccordionContent>
             </AccordionItem>
