@@ -121,8 +121,8 @@ Examples
 ## Theme and background
 
 - The theme system lives in `src/utils/theme/theme-utils.ts` and is consumed through `useTheme`.
-- Keep the blue, purple, and green background picker as a background-only preference shared across light and dark mode.
-- Background classes are applied to `<html>` as `background-blue`, `background-purple`, or `background-green`.
+- Keep the blue, purple, and regular background picker as a background-only preference stored separately for light and dark mode.
+- Background classes are applied to `<html>` as `background-blue`, `background-purple`, or `background-regular`.
 
 ## Important notes
 

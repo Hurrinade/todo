@@ -6,7 +6,10 @@ import type {
 } from "@/types";
 
 const THEME_STORAGE_KEY = "theme";
-const BACKGROUND_STORAGE_KEY = "background-color";
+const BACKGROUND_STORAGE_KEYS: Record<ResolvedTheme, string> = {
+  light: "background-color-light",
+  dark: "background-color-dark",
+};
 const SYSTEM_THEME_QUERY = "(prefers-color-scheme: dark)";
 const BACKGROUND_CLASSES: Record<BackgroundColorPreference, string> = {
   blue: "background-blue",
@@ -40,7 +43,7 @@ function isThemePreference(value: string | null): value is ThemePreference {
 function isBackgroundColorPreference(
   value: string | null,
 ): value is BackgroundColorPreference {
-  return value === "blue" || value === "purple" || value === "green";
+  return value === "blue" || value === "purple" || value === "regular";
 }
 
 function getStoredThemePreference(): ThemePreference {
@@ -61,22 +64,26 @@ function getStoredThemePreference(): ThemePreference {
   return "system";
 }
 
-function getStoredBackgroundColorPreference(): BackgroundColorPreference {
+function getStoredBackgroundColorPreference(
+  resolvedTheme: ResolvedTheme,
+): BackgroundColorPreference {
   if (!isBrowser) {
-    return "blue";
+    return "regular";
   }
 
   try {
-    const backgroundColor = window.localStorage.getItem(BACKGROUND_STORAGE_KEY);
+    const backgroundColor = window.localStorage.getItem(
+      BACKGROUND_STORAGE_KEYS[resolvedTheme],
+    );
 
     if (isBackgroundColorPreference(backgroundColor)) {
       return backgroundColor;
     }
   } catch {
-    return "blue";
+    return "regular";
   }
 
-  return "blue";
+  return "regular";
 }
 
 function getSystemTheme(): ResolvedTheme {
@@ -97,11 +104,12 @@ function resolveThemePreference(preference: ThemePreference): ResolvedTheme {
 
 function createThemeSnapshot(): ThemeSnapshot {
   const preference = getStoredThemePreference();
+  const resolvedTheme = resolveThemePreference(preference);
 
   return {
     preference,
-    resolvedTheme: resolveThemePreference(preference),
-    backgroundColor: getStoredBackgroundColorPreference(),
+    resolvedTheme,
+    backgroundColor: getStoredBackgroundColorPreference(resolvedTheme),
   };
 }
 
@@ -167,7 +175,8 @@ function handleSystemThemeChange() {
 function handleStorageChange(event: StorageEvent) {
   if (
     event.key === THEME_STORAGE_KEY ||
-    event.key === BACKGROUND_STORAGE_KEY ||
+    event.key === BACKGROUND_STORAGE_KEYS.light ||
+    event.key === BACKGROUND_STORAGE_KEYS.dark ||
     event.key == null
   ) {
     notifyThemeListeners();
@@ -208,7 +217,10 @@ export function setBackgroundColorPreference(
   }
 
   try {
-    window.localStorage.setItem(BACKGROUND_STORAGE_KEY, backgroundColor);
+    window.localStorage.setItem(
+      BACKGROUND_STORAGE_KEYS[themeSnapshot.resolvedTheme],
+      backgroundColor,
+    );
   } catch {
     return;
   }

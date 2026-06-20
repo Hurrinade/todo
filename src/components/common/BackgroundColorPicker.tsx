@@ -21,8 +21,8 @@ const backgroundColorOptions: BackgroundColorOption[] = [
     className: "bg-[#d4c4fb] dark:bg-[#3c296c]",
   },
   {
-    value: "green",
-    label: "Use green background",
+    value: "regular",
+    label: "Use regular background",
     className: "bg-[#f6f1e8] dark:bg-[#040609]",
   },
 ];
