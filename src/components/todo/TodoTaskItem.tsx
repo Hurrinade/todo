@@ -40,7 +40,7 @@ export function TodoTaskItem({
       }
       actionWidth={56}
       className="w-full min-w-0 max-w-full"
-      contentClassName="p-2"
+      contentClassName="md:p-2 p-1"
       ariaLabel="Todo actions"
     >
       <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden">
