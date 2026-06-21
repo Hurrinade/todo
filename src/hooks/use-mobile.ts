@@ -1,27 +1,51 @@
 import * as React from "react";
 
 const MOBILE_BREAKPOINT = 768;
+const MOBILE_MEDIA_QUERY = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
-function getIsMobile() {
-  if (typeof window === "undefined") {
+type LegacyMediaQueryList = MediaQueryList & {
+  addListener?: (listener: () => void) => void;
+  removeListener?: (listener: () => void) => void;
+};
+
+function getIsMobile(mediaQueryList?: MediaQueryList) {
+  if (mediaQueryList) {
+    return mediaQueryList.matches;
+  }
+
+  if (typeof window === "undefined" || !("matchMedia" in window)) {
     return false;
   }
 
-  return window.innerWidth < MOBILE_BREAKPOINT;
+  return window.matchMedia(MOBILE_MEDIA_QUERY).matches;
 }
 
 export function useIsMobile() {
   const [isMobile, setIsMobile] = React.useState(getIsMobile);
 
   React.useEffect(() => {
-    const mql = window.matchMedia(`(max-width: ${MOBILE_BREAKPOINT - 1}px)`);
+    const mql: LegacyMediaQueryList = window.matchMedia(MOBILE_MEDIA_QUERY);
     const onChange = () => {
-      setIsMobile(getIsMobile());
+      setIsMobile(getIsMobile(mql));
     };
-    mql.addEventListener("change", onChange);
+
+    onChange();
+
+    const addLegacyListener = mql.addListener;
+    const removeLegacyListener = mql.removeListener;
+
+    if (typeof mql.addEventListener === "function") {
+      mql.addEventListener("change", onChange);
+
+      return () => {
+        mql.removeEventListener("change", onChange);
+      };
+    }
+
+    addLegacyListener?.call(mql, onChange);
 
     return () => {
-      mql.removeEventListener("change", onChange);
+      removeLegacyListener?.call(mql, onChange);
     };
   }, []);
 
