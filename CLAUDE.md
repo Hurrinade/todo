@@ -23,7 +23,7 @@ bun run check        # Lint, typecheck and prettier check without mutating files
 
 ## Current Routes
 
-- `/` — Root route
+- `/` — Public landing page
 - `/home` — Authenticated todo workspace
 - `/home/todos/:todoId` — Authenticated todo detail edit route
 - `/invite/:token` — Public invite acceptance route
