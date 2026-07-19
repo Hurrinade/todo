@@ -94,7 +94,7 @@ function getTodoNoteTextLength(node: unknown): number {
     );
   }
 
-  const textValue = text ?? "";
+  const textValue = typeof text === "string" ? text : "";
   const contentValue = Array.isArray(content) ? content : [];
   const marksValue = Array.isArray(marks) ? marks : [];
   let textLength = textValue.length;
