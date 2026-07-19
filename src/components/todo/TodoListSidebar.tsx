@@ -19,6 +19,7 @@ import {
   SidebarHeader,
   SidebarInput,
   SidebarMenu,
+  useSidebar,
 } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
@@ -37,6 +38,7 @@ export function TodoListSidebar({
   setActiveListId,
 }: TodoListSidebarProps) {
   const { openModal } = useModal();
+  const { isMobile, setOpenMobile } = useSidebar();
 
   // Store lists
 
@@ -223,6 +225,11 @@ export function TodoListSidebar({
                       index={index}
                       activeListId={activeListId}
                       setActiveListId={setActiveListId}
+                      onSelect={() => {
+                        if (isMobile) {
+                          setOpenMobile(false);
+                        }
+                      }}
                       isReorderEnabled={isReorderEnabled}
                       list={list}
                     />

@@ -17,6 +17,7 @@ type SortableTodoListSidebarItemProps = {
   list: TodoListWithStats;
   activeListId: TodoListWithStats["_id"] | null;
   setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
+  onSelect: () => void;
 };
 
 export function SortableTodoListSidebarItem({
@@ -25,6 +26,7 @@ export function SortableTodoListSidebarItem({
   list,
   activeListId,
   setActiveListId,
+  onSelect,
 }: SortableTodoListSidebarItemProps) {
   const { openModal } = useModal();
   const deleteList = useMutation(todoApi.mutations.todoLists.remove);
@@ -78,6 +80,7 @@ export function SortableTodoListSidebarItem({
       onClick={() => {
         setActiveListId(list._id);
         clearErrorMessage();
+        onSelect();
       }}
       className={cn(
         "group/menu-item relative flex h-auto items-center justify-between gap-2 py-1 pr-2 pl-3",
