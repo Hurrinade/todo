@@ -1,6 +1,8 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { todoNoteContentValidator } from "./shared/todo";
+
 export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
@@ -46,7 +48,7 @@ export default defineSchema({
     listId: v.id("todoLists"),
     sectionId: v.optional(v.id("todoSections")),
     title: v.string(),
-    description: v.optional(v.string()),
+    description: v.optional(todoNoteContentValidator),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
     order: v.optional(v.number()),

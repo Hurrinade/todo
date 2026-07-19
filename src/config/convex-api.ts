@@ -9,6 +9,7 @@ import type {
   TodoItem,
   TodoListKind,
   TodoListWithStats,
+  TodoNoteContent,
   TodoSection,
 } from "@/types";
 
@@ -142,7 +143,7 @@ type TodoApi = {
       updateDescription: FunctionReference<
         "mutation",
         "public",
-        { todoId: Id<"todos">; description: string },
+        { todoId: Id<"todos">; description?: TodoNoteContent },
         null
       >;
       remove: FunctionReference<

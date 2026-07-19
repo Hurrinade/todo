@@ -1,4 +1,4 @@
-import type { TodoItem } from "@/types/todo/todo.types";
+import type { TodoItem, TodoNoteContent } from "@/types/todo/todo.types";
 
 export type TodoDetailTitleProps = {
   todo: TodoItem;
@@ -10,7 +10,12 @@ export type TodoDetailViewProps = {
   errorMessage: string | null;
   onBack: () => void;
   onRenameTodo: (title: string) => Promise<void>;
-  onUpdateDescription: (description: string) => Promise<void>;
+  onUpdateDescription: (description?: TodoNoteContent) => Promise<void>;
+};
+
+export type TodoNoteEditorProps = {
+  description?: TodoNoteContent;
+  onUpdateDescription: (description?: TodoNoteContent) => Promise<void>;
 };
 
 export type TodoDetailUnavailableProps = {

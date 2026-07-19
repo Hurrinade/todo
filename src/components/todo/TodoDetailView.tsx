@@ -1,9 +1,8 @@
 import { ArrowLeft } from "lucide-react";
-import { useState, type FocusEvent } from "react";
 
 import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
+import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import type { TodoDetailViewProps } from "@/types";
 import { useTodoStore } from "@/stores/todo/todo-store";
 import { todoApi } from "@/config/convex-api";
@@ -16,38 +15,12 @@ export function TodoDetailView({
   onRenameTodo,
   onUpdateDescription,
 }: TodoDetailViewProps) {
-  const [isSavingDescription, setIsSavingDescription] = useState(false);
-
   const listsResult = useQuery(todoApi.queries.todoLists.list);
   const storeLists = useTodoStore((state) => state.lists);
 
   const lists = listsResult ?? storeLists;
 
   const list = lists.find((l) => l._id === todo.listId);
-
-  const handleDescriptionBlur = async (
-    event: FocusEvent<HTMLTextAreaElement>,
-  ) => {
-    const textarea = event.currentTarget;
-    const currentDescription = todo.description ?? "";
-    const nextDescription = textarea.value.trim();
-
-    if (nextDescription === currentDescription) {
-      textarea.value = currentDescription;
-      return;
-    }
-
-    setIsSavingDescription(true);
-
-    try {
-      await onUpdateDescription(nextDescription);
-      textarea.value = nextDescription;
-    } catch {
-      textarea.value = currentDescription;
-    } finally {
-      setIsSavingDescription(false);
-    }
-  };
 
   return (
     <main className="h-full w-full overflow-y-auto bg-background text-foreground">
@@ -94,17 +67,10 @@ export function TodoDetailView({
             >
               Note
             </label>
-            <Textarea
-              key={`${todo._id}-${todo.description ?? ""}`}
-              id="todo-description"
-              aria-label="Todo note"
-              disabled={isSavingDescription}
-              defaultValue={todo.description ?? ""}
-              placeholder="Add note"
-              onBlur={(event) => {
-                void handleDescriptionBlur(event);
-              }}
-              className="min-h-[45vh] resize-none border-none bg-transparent! px-0 py-2 text-base leading-7 shadow-none outline-none placeholder:text-muted-foreground focus-visible:border-transparent focus-visible:ring-0"
+            <TodoNoteEditor
+              key={`${todo._id}-${JSON.stringify(todo.description ?? null)}`}
+              description={todo.description}
+              onUpdateDescription={onUpdateDescription}
             />
           </div>
         </section>

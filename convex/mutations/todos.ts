@@ -4,7 +4,11 @@ import { mutation } from "../_generated/server";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
-import { normalizeTodoDescription, normalizeTodoTitle } from "../shared/todo";
+import {
+  normalizeTodoDescription,
+  normalizeTodoTitle,
+  todoNoteContentValidator,
+} from "../shared/todo";
 
 export const create = mutation({
   args: {
@@ -119,7 +123,7 @@ export const rename = mutation({
 export const updateDescription = mutation({
   args: {
     todoId: v.id("todos"),
-    description: v.string(),
+    description: v.optional(todoNoteContentValidator),
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
@@ -135,7 +139,7 @@ export const updateDescription = mutation({
     const description = normalizeTodoDescription(args.description);
 
     await ctx.db.patch(args.todoId, {
-      description: description || undefined,
+      description,
       updatedAt: now,
     });
     await ctx.db.patch(todo.listId, {

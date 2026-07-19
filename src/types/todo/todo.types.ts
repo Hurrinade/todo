@@ -5,6 +5,24 @@ export type TodoWorkspaceLocationState = {
   selectedListId?: Id<"todoLists">;
 };
 
+export type TodoNoteMark = {
+  type: string;
+  attrs?: Record<string, unknown>;
+};
+
+export type TodoNoteNode = {
+  type: string;
+  attrs?: Record<string, unknown>;
+  content?: TodoNoteNode[];
+  marks?: TodoNoteMark[];
+  text?: string;
+};
+
+export type TodoNoteContent = {
+  type: "doc";
+  content: TodoNoteNode[];
+};
+
 export type TodoListMember = {
   userId: string;
   firstName?: string;
@@ -32,7 +50,7 @@ export type TodoItem = {
   listId: Id<"todoLists">;
   sectionId?: Id<"todoSections">;
   title: string;
-  description?: string;
+  description?: TodoNoteContent;
   isCompleted: boolean;
   completedAt?: number;
   order?: number;
