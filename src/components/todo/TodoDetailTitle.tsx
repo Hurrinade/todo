@@ -1,193 +1,237 @@
-import { useRef, useState } from "react";
+import { EditorContent, useEditor } from "@tiptap/react";
+import StarterKit from "@tiptap/starter-kit";
+import { useRef, useState, type KeyboardEvent } from "react";
 
-import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
-import type { TitlePart, TodoDetailTitleProps } from "@/types";
-
-const TITLE_LINK_PATTERN = /(https?:\/\/[^\s]+|www\.[^\s]+)/gi;
-const TRAILING_LINK_PUNCTUATION_PATTERN = /[),.!?:;]+$/;
+import type { TodoDetailTitleProps, TodoTitleContent } from "@/types";
+import { getTodoTitleText } from "@/utils";
 
 export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
   const [isEditing, setIsEditing] = useState(false);
-  const [draftTitle, setDraftTitle] = useState(todo.title);
   const [isSaving, setIsSaving] = useState(false);
+  const isDirtyRef = useRef(false);
   const shouldSkipBlurSaveRef = useRef(false);
+  const lastSavedTitleRef = useRef({
+    title: todo.title,
+    serializedTitle: JSON.stringify(todo.title),
+  });
+
+  const editor = useEditor({
+    content: todo.title,
+    editable: false,
+    extensions: [
+      StarterKit.configure({
+        blockquote: false,
+        bold: false,
+        bulletList: false,
+        code: false,
+        codeBlock: false,
+        dropcursor: false,
+        gapcursor: false,
+        hardBreak: false,
+        heading: false,
+        horizontalRule: false,
+        italic: false,
+        listItem: false,
+        listKeymap: false,
+        link: {
+          autolink: true,
+          defaultProtocol: "https",
+          HTMLAttributes: {
+            rel: "noopener noreferrer",
+            target: "_blank",
+          },
+          isAllowedUri: (url, context) => {
+            if (!context.defaultValidate(url)) {
+              return false;
+            }
+
+            try {
+              const parsedUrl = new URL(url, "https://example.com");
+
+              return (
+                parsedUrl.protocol === "http:" ||
+                parsedUrl.protocol === "https:"
+              );
+            } catch {
+              return false;
+            }
+          },
+          linkOnPaste: true,
+          openOnClick: true,
+        },
+        orderedList: false,
+        strike: false,
+        trailingNode: false,
+        underline: false,
+      }),
+    ],
+    editorProps: {
+      attributes: {
+        "aria-label": "Todo title",
+        class:
+          "min-h-12 whitespace-pre-wrap text-2xl font-semibold leading-tight wrap-anywhere outline-none [word-break:break-word] [&_a]:cursor-pointer [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4",
+      },
+      handleKeyDown: (_view, event) => {
+        if (event.key === "Enter") {
+          event.preventDefault();
+          editor?.commands.blur();
+          return true;
+        }
+
+        if (event.key === "Escape") {
+          event.preventDefault();
+          restoreLastSavedTitle();
+          editor?.commands.blur();
+          return true;
+        }
+
+        return false;
+      },
+      handlePaste: (view, event) => {
+        const pastedText = event.clipboardData?.getData("text/plain");
+
+        if (!pastedText || !/[\r\n]/.test(pastedText)) {
+          return false;
+        }
+
+        event.preventDefault();
+        view.dispatch(view.state.tr.insertText(getPlainTitle(pastedText)));
+        return true;
+      },
+    },
+    onCreate: ({ editor: currentEditor }) => {
+      lastSavedTitleRef.current.serializedTitle = JSON.stringify(
+        currentEditor.getJSON(),
+      );
+    },
+    onUpdate: () => {
+      isDirtyRef.current = true;
+    },
+    onBlur: async ({ editor: currentEditor }) => {
+      if (shouldSkipBlurSaveRef.current) {
+        shouldSkipBlurSaveRef.current = false;
+        closeEditor(currentEditor);
+        return;
+      }
+
+      if (!isDirtyRef.current) {
+        closeEditor(currentEditor);
+        return;
+      }
+
+      const previousTitle = lastSavedTitleRef.current;
+      const nextTitle = currentEditor.getJSON() as unknown as TodoTitleContent;
+      const nextTitleText = getTodoTitleText(nextTitle);
+      const serializedNextTitle = JSON.stringify(nextTitle);
+
+      isDirtyRef.current = false;
+
+      if (!nextTitleText.trim()) {
+        currentEditor.commands.setContent(previousTitle.title, {
+          emitUpdate: false,
+        });
+        closeEditor(currentEditor);
+        return;
+      }
+
+      if (serializedNextTitle === previousTitle.serializedTitle) {
+        closeEditor(currentEditor);
+        return;
+      }
+
+      setIsSaving(true);
+
+      try {
+        await onRenameTodo(nextTitle);
+        lastSavedTitleRef.current = {
+          title: nextTitle,
+          serializedTitle: serializedNextTitle,
+        };
+      } catch {
+        if (!currentEditor.isDestroyed) {
+          currentEditor.commands.setContent(previousTitle.title, {
+            emitUpdate: false,
+          });
+        }
+      } finally {
+        if (!currentEditor.isDestroyed) {
+          closeEditor(currentEditor);
+        }
+
+        setIsSaving(false);
+      }
+    },
+  });
 
   const startEditing = () => {
-    setDraftTitle(todo.title);
+    if (!editor || isEditing || isSaving) {
+      return;
+    }
+
+    editor.setEditable(true);
     setIsEditing(true);
+    editor.commands.focus("end");
   };
 
-  const closeEdit = () => {
-    setIsEditing(false);
-  };
-
-  const handleBlur = async () => {
-    if (shouldSkipBlurSaveRef.current) {
-      shouldSkipBlurSaveRef.current = false;
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!editor) {
       return;
     }
 
-    const nextTitle = draftTitle.trim();
+    if (!isEditing) {
+      if (event.target instanceof HTMLElement && event.target.closest("a")) {
+        return;
+      }
 
-    if (!nextTitle || nextTitle === todo.title) {
-      setDraftTitle(todo.title);
-      closeEdit();
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        startEditing();
+      }
+
       return;
     }
-
-    setIsSaving(true);
-
-    try {
-      await onRenameTodo(nextTitle);
-      closeEdit();
-    } catch {
-      // The parent owns user-facing error state.
-    } finally {
-      setIsSaving(false);
-    }
   };
-
-  const handleCancel = () => {
-    shouldSkipBlurSaveRef.current = true;
-    setDraftTitle(todo.title);
-    closeEdit();
-  };
-
-  if (isEditing) {
-    return (
-      <Textarea
-        aria-label="Todo title"
-        autoFocus
-        disabled={isSaving}
-        value={draftTitle}
-        onBlur={() => {
-          void handleBlur();
-        }}
-        onChange={(event) => {
-          setDraftTitle(event.target.value);
-        }}
-        onFocus={(event) => {
-          const titleLength = event.currentTarget.value.length;
-
-          event.currentTarget.setSelectionRange(titleLength, titleLength);
-        }}
-        onKeyDown={(event) => {
-          if (event.key === "Enter") {
-            event.preventDefault();
-            event.currentTarget.blur();
-            return;
-          }
-
-          if (event.key === "Escape") {
-            event.preventDefault();
-            handleCancel();
-          }
-        }}
-        rows={1}
-        className="min-h-12 resize-none overflow-hidden whitespace-pre-wrap border-none bg-transparent! p-0 text-2xl! font-semibold leading-tight shadow-none outline-none wrap-anywhere [word-break:break-word] focus-visible:ring-0"
-      />
-    );
-  }
 
   return (
     <div
-      role="button"
-      tabIndex={0}
-      aria-label="Edit todo title"
-      onClick={startEditing}
-      onKeyDown={(event) => {
+      role={isEditing ? undefined : "button"}
+      tabIndex={isEditing ? -1 : 0}
+      aria-label={isEditing ? undefined : "Edit todo title"}
+      aria-busy={isSaving}
+      onClick={(event) => {
         if (event.target instanceof HTMLElement && event.target.closest("a")) {
           return;
         }
 
-        if (event.key === "Enter" || event.key === " ") {
-          event.preventDefault();
-          startEditing();
-        }
+        startEditing();
       }}
+      onKeyDown={handleKeyDown}
       className={cn(
-        "min-h-12 w-full cursor-text rounded-md text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-        todo.isCompleted ? "text-muted-foreground" : "text-foreground",
+        "min-h-12 w-full cursor-text rounded-md text-left outline-none focus-within:ring-3 focus-within:ring-ring/40 focus-visible:ring-3 focus-visible:ring-ring/40",
+        todo.isCompleted
+          ? "text-muted-foreground line-through"
+          : "text-foreground",
       )}
     >
-      <h1
-        className={cn(
-          "whitespace-pre-wrap text-2xl font-semibold leading-tight wrap-anywhere [word-break:break-word]",
-          todo.isCompleted && "line-through",
-        )}
-      >
-        {getTitleParts(todo.title).map((part, index) =>
-          part.type === "link" ? (
-            <a
-              key={`${part.value}-${index}`}
-              href={
-                (part as { type: "link"; value: string; href: string }).href
-              }
-              target="_blank"
-              rel="noreferrer"
-              onClick={(event) => {
-                event.stopPropagation();
-              }}
-              className="cursor-pointer text-primary underline underline-offset-4 text-2xl"
-            >
-              {part.value}
-            </a>
-          ) : (
-            <span key={`${part.value}-${index}`}>{part.value}</span>
-          ),
-        )}
-      </h1>
+      <EditorContent editor={editor} />
     </div>
   );
-}
 
-function getTitleParts(title: string) {
-  const parts: TitlePart[] = [];
-  let lastIndex = 0;
-
-  for (const match of title.matchAll(TITLE_LINK_PATTERN)) {
-    const value = match[0];
-    const index = match.index ?? 0;
-
-    if (index > lastIndex) {
-      parts.push({
-        type: "text",
-        value: title.slice(lastIndex, index),
-      });
-    }
-
-    const trailingPunctuation = value.match(TRAILING_LINK_PUNCTUATION_PATTERN);
-    const linkValue = trailingPunctuation
-      ? value.slice(0, -trailingPunctuation[0].length)
-      : value;
-
-    parts.push({
-      type: "link",
-      value: linkValue,
-      href: getLinkHref(linkValue),
-    });
-
-    if (trailingPunctuation) {
-      parts.push({
-        type: "text",
-        value: trailingPunctuation[0],
-      });
-    }
-
-    lastIndex = index + value.length;
+  function closeEditor(currentEditor: NonNullable<typeof editor>) {
+    currentEditor.setEditable(false);
+    setIsEditing(false);
   }
 
-  if (lastIndex < title.length) {
-    parts.push({
-      type: "text",
-      value: title.slice(lastIndex),
+  function restoreLastSavedTitle() {
+    shouldSkipBlurSaveRef.current = true;
+    isDirtyRef.current = false;
+    editor?.commands.setContent(lastSavedTitleRef.current.title, {
+      emitUpdate: false,
     });
   }
-
-  return parts.length > 0 ? parts : [{ type: "text", value: title }];
 }
 
-function getLinkHref(value: string) {
-  return value.startsWith("www.") ? `https://${value}` : value;
+function getPlainTitle(title: string) {
+  return title.replace(/\s+/g, " ").trim();
 }

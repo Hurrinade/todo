@@ -11,6 +11,7 @@ import type {
   TodoListWithStats,
   TodoNoteContent,
   TodoSection,
+  TodoTitleContent,
 } from "@/types";
 
 type TodoApi = {
@@ -125,7 +126,7 @@ type TodoApi = {
       create: FunctionReference<
         "mutation",
         "public",
-        { listId: Id<"todoLists">; title: string },
+        { listId: Id<"todoLists">; title: TodoTitleContent },
         Id<"todos">
       >;
       toggle: FunctionReference<
@@ -137,7 +138,7 @@ type TodoApi = {
       rename: FunctionReference<
         "mutation",
         "public",
-        { todoId: Id<"todos">; title: string },
+        { todoId: Id<"todos">; title: TodoTitleContent },
         null
       >;
       updateDescription: FunctionReference<

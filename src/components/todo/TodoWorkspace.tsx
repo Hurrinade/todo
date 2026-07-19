@@ -19,6 +19,7 @@ import { todoApi } from "@/config/convex-api";
 import { cn } from "@/lib/utils";
 import { useTodoErrorStore, useTodoStore } from "@/stores";
 import type { TodoItem, TodoListWithStats, TodoSection } from "@/types";
+import { createTodoTitleContent } from "@/utils";
 import { TodoListSmallHeader } from "./TodoListSmallHeader";
 
 export function TodoWorkspace({
@@ -111,7 +112,10 @@ export function TodoWorkspace({
     clearErrorMessage();
 
     try {
-      await createTodo({ listId: activeList._id, title: newTodoTitle });
+      await createTodo({
+        listId: activeList._id,
+        title: createTodoTitleContent(newTodoTitle),
+      });
       setNewTodoTitle("");
       return true;
     } catch (error) {

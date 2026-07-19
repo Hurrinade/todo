@@ -58,7 +58,11 @@ export function TodoDetailView({
         ) : null}
 
         <section className="flex min-w-0 flex-1 flex-col gap-8 px-1 py-2 sm:px-2">
-          <TodoDetailTitle todo={todo} onRenameTodo={onRenameTodo} />
+          <TodoDetailTitle
+            key={`${todo._id}-${JSON.stringify(todo.title)}`}
+            todo={todo}
+            onRenameTodo={onRenameTodo}
+          />
 
           <div className="flex min-w-0 flex-1 flex-col gap-3 border-t pt-4">
             <label

@@ -23,6 +23,33 @@ export type TodoNoteContent = {
   content: TodoNoteNode[];
 };
 
+export type TodoTitleLinkMark = {
+  type: "link";
+  attrs: {
+    href: string;
+    target?: "_blank" | null;
+    rel?: "noopener noreferrer" | null;
+    class?: null;
+    title?: string | null;
+  };
+};
+
+export type TodoTitleTextNode = {
+  type: "text";
+  marks?: TodoTitleLinkMark[];
+  text: string;
+};
+
+export type TodoTitleParagraphNode = {
+  type: "paragraph";
+  content?: TodoTitleTextNode[];
+};
+
+export type TodoTitleContent = {
+  type: "doc";
+  content: [TodoTitleParagraphNode];
+};
+
 export type TodoListMember = {
   userId: string;
   firstName?: string;
@@ -49,7 +76,7 @@ export type TodoItem = {
   _creationTime: number;
   listId: Id<"todoLists">;
   sectionId?: Id<"todoSections">;
-  title: string;
+  title: TodoTitleContent;
   description?: TodoNoteContent;
   isCompleted: boolean;
   completedAt?: number;

@@ -4,6 +4,7 @@ import { useNavigate } from "react-router";
 import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
 import type { TodoItem } from "@/types";
+import { getTodoTitleText } from "@/utils";
 
 export type TodoTaskItemProps = {
   todo: TodoItem;
@@ -94,7 +95,7 @@ export function TodoTaskItem({
                   : "text-foreground")
               }
             >
-              {todo.title}
+              {getTodoTitleText(todo.title)}
             </p>
           </button>
         </div>

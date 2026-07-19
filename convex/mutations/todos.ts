@@ -6,14 +6,15 @@ import type { MutationCtx } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
 import {
   normalizeTodoDescription,
-  normalizeTodoTitle,
+  normalizeTodoTitleContent,
   todoNoteContentValidator,
+  todoTitleContentValidator,
 } from "../shared/todo";
 
 export const create = mutation({
   args: {
     listId: v.id("todoLists"),
-    title: v.string(),
+    title: todoTitleContentValidator,
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
@@ -38,7 +39,7 @@ export const create = mutation({
     const todoId = await ctx.db.insert("todos", {
       listId: args.listId,
       sectionId: defaultSectionId,
-      title: normalizeTodoTitle(args.title),
+      title: normalizeTodoTitleContent(args.title),
       isCompleted: false,
       order: nextOrder,
       updatedAt: now,
@@ -96,7 +97,7 @@ export const toggle = mutation({
 export const rename = mutation({
   args: {
     todoId: v.id("todos"),
-    title: v.string(),
+    title: todoTitleContentValidator,
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
@@ -111,7 +112,7 @@ export const rename = mutation({
     const now = Date.now();
 
     await ctx.db.patch(args.todoId, {
-      title: normalizeTodoTitle(args.title),
+      title: normalizeTodoTitleContent(args.title),
       updatedAt: now,
     });
     await ctx.db.patch(todo.listId, {
