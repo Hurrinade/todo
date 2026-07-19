@@ -164,13 +164,6 @@ export default function CreateTodoListModal({
           <div className="bg-card px-5 py-4 sm:px-6">
             <DialogFooter className="gap-2 border-t-0 pt-0 sm:justify-end">
               <Button
-                type="submit"
-                disabled={isSubmitting || !title.trim()}
-                className="w-full sm:min-w-28 sm:w-auto"
-              >
-                {isSubmitting ? "Creating..." : "Create list"}
-              </Button>
-              <Button
                 type="button"
                 variant="outline"
                 onClick={handleClose}
@@ -178,6 +171,13 @@ export default function CreateTodoListModal({
                 className="w-full sm:min-w-24 sm:w-auto"
               >
                 Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={isSubmitting || !title.trim()}
+                className="w-full sm:min-w-28 sm:w-auto"
+              >
+                {isSubmitting ? "Creating..." : "Create list"}
               </Button>
             </DialogFooter>
           </div>
