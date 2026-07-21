@@ -1,12 +1,14 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useRef, useState, type KeyboardEvent } from "react";
+import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
 import { cn } from "@/lib/utils";
+import { useNetworkStore } from "@/stores";
 import type { TodoDetailTitleProps, TodoTitleContent } from "@/types";
 import { getTodoTitleText } from "@/utils";
 
 export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isDirtyRef = useRef(false);
@@ -164,8 +166,15 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
     },
   });
 
+  useEffect(() => {
+    if (!isOnline && editor?.isEditable) {
+      editor.commands.blur();
+      editor.setEditable(false);
+    }
+  }, [editor, isOnline]);
+
   const startEditing = () => {
-    if (!editor || isEditing || isSaving) {
+    if (!isOnline || !editor || isEditing || isSaving) {
       return;
     }
 
@@ -198,6 +207,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
       role={isEditing ? undefined : "button"}
       tabIndex={isEditing ? -1 : 0}
       aria-label={isEditing ? undefined : "Edit todo title"}
+      aria-disabled={!isOnline}
       aria-busy={isSaving}
       onClick={(event) => {
         if (event.target instanceof HTMLElement && event.target.closest("a")) {
@@ -208,7 +218,8 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "min-h-12 w-full cursor-text rounded-md text-left outline-none focus-within:ring-3 focus-within:ring-ring/40 focus-visible:ring-3 focus-visible:ring-ring/40",
+        "min-h-12 w-full rounded-md text-left outline-none focus-within:ring-3 focus-within:ring-ring/40 focus-visible:ring-3 focus-visible:ring-ring/40",
+        isOnline ? "cursor-text" : "cursor-default",
         todo.isCompleted
           ? "text-muted-foreground line-through"
           : "text-foreground",

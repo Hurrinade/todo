@@ -3,6 +3,7 @@ import { SignInButton, SignUpButton } from "@clerk/react";
 import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { useNetworkStore } from "@/stores";
 
 const landingHighlights = [
   "Organize boards with focused task lists.",
@@ -12,6 +13,7 @@ const landingHighlights = [
 
 export default function Root() {
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const isOnline = useNetworkStore((state) => state.isOnline);
 
   if (isLoading) {
     return null;
@@ -23,12 +25,15 @@ export default function Root() {
 
   return (
     <main className="min-h-full w-full bg-background text-foreground">
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-5 py-6 sm:px-8 lg:px-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-12 px-5 pt-6 pb-[calc(1.5rem+env(safe-area-inset-bottom))] sm:px-8 lg:px-10">
         <nav className="flex items-center justify-between gap-4">
           <span className="font-semibold text-xl">RiTodo</span>
           <Unauthenticated>
             <SignInButton mode="modal">
-              <button className="text-muted-foreground transition-colors hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none">
+              <button
+                className="-mr-2 inline-flex min-h-11 items-center px-2 text-muted-foreground transition-colors pointer-fine:min-h-6 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
+                disabled={!isOnline}
+              >
                 Sign in
               </button>
             </SignInButton>
@@ -52,14 +57,18 @@ export default function Root() {
               <Unauthenticated>
                 <>
                   <SignUpButton mode="modal">
-                    <Button size="lg">
+                    <Button size="mobile-lg" disabled={!isOnline}>
                       <UserPlus />
                       Create account
                       <ArrowRight data-icon="inline-end" />
                     </Button>
                   </SignUpButton>
                   <SignInButton mode="modal">
-                    <Button variant="outline" size="lg">
+                    <Button
+                      variant="outline"
+                      size="mobile-lg"
+                      disabled={!isOnline}
+                    >
                       <LogIn />
                       Sign in
                     </Button>

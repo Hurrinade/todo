@@ -7,15 +7,17 @@ import { TodoDetailView } from "@/components/todo/TodoDetailView";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { todoApi } from "@/config/convex-api";
-import { useTodoStore } from "@/stores";
+import { useNetworkStore, useTodoStore } from "@/stores";
 import type {
   TodoDetailUnavailableProps,
   TodoWorkspaceLocationState,
 } from "@/types";
+import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export default function TodoDetail() {
   const { todoId } = useParams<{ todoId: string }>();
   const navigate = useNavigate();
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const todo = useQuery(
     todoApi.queries.todos.get,
     todoId ? { todoId: todoId as Id<"todos"> } : "skip",
@@ -75,6 +77,11 @@ export default function TodoDetail() {
       onRenameTodo={async (title) => {
         setErrorMessage(null);
 
+        if (!isOnline) {
+          setErrorMessage(OFFLINE_ACTION_MESSAGE);
+          throw new Error(OFFLINE_ACTION_MESSAGE);
+        }
+
         try {
           await renameTodo({ todoId: displayTodo._id, title });
         } catch (error) {
@@ -84,6 +91,11 @@ export default function TodoDetail() {
       }}
       onUpdateDescription={async (description) => {
         setErrorMessage(null);
+
+        if (!isOnline) {
+          setErrorMessage(OFFLINE_ACTION_MESSAGE);
+          throw new Error(OFFLINE_ACTION_MESSAGE);
+        }
 
         try {
           await updateDescription({ todoId: displayTodo._id, description });
@@ -99,7 +111,7 @@ export default function TodoDetail() {
 function TodoDetailLoading() {
   return (
     <main className="h-full w-full overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <header className="flex min-w-0 items-center gap-2">
           <Skeleton className="size-9 rounded-md" />
           <Skeleton className="h-4 w-24" />

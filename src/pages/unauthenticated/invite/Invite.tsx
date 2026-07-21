@@ -13,11 +13,14 @@ import { Link, useNavigate, useParams } from "react-router";
 import { todoApi } from "@/config/convex-api";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useNetworkStore } from "@/stores";
+import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export default function Invite() {
   const navigate = useNavigate();
   const params = useParams<{ token: string }>();
   const { isAuthenticated, isLoading } = useConvexAuth();
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const acceptInvite = useMutation(todoApi.mutations.todoInvites.accept);
   const inviteResult = useQuery(
     todoApi.queries.todoInvites.getByToken,
@@ -30,6 +33,11 @@ export default function Invite() {
 
   const handleAcceptInvite = async () => {
     if (!params.token) {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
     }
 
@@ -77,7 +85,7 @@ export default function Invite() {
   }
 
   return (
-    <main className="relative flex min-h-full items-center justify-center overflow-hidden px-6 py-10">
+    <main className="relative flex min-h-full items-center justify-center overflow-hidden px-6 pt-10 pb-[calc(2.5rem+env(safe-area-inset-bottom))]">
       <div className="pointer-events-none absolute inset-x-0 top-10 mx-auto h-40 w-[min(42rem,92vw)] rounded-full bg-primary/10 blur-3xl" />
 
       <section className="relative w-full max-w-3xl overflow-hidden rounded-[2rem] border border-border/80 bg-card/95 shadow-[0_24px_80px_rgba(31,26,23,0.12)]">
@@ -168,7 +176,7 @@ export default function Invite() {
                     <Button
                       type="button"
                       className="h-11 w-full"
-                      disabled={isAcceptingInvite}
+                      disabled={!isOnline || isAcceptingInvite}
                       onClick={() => {
                         if (invite.isCurrentUserMember) {
                           navigate("/home", {
@@ -202,7 +210,11 @@ export default function Invite() {
                 ) : (
                   <>
                     <SignInButton mode="modal">
-                      <Button type="button" className="h-11 w-full">
+                      <Button
+                        type="button"
+                        className="h-11 w-full"
+                        disabled={!isOnline}
+                      >
                         Sign in to join
                       </Button>
                     </SignInButton>

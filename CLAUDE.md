@@ -1,3 +1,3 @@
 # Concrete instructions
 
-- instructions @AGENTSe.md
+- instructions @AGENTS.md

@@ -13,6 +13,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
+import { useNetworkStore } from "@/stores";
 import type { TodoItem, TodoSection } from "@/types";
 
 type SortableTodoSectionProps = {
@@ -35,6 +36,7 @@ export function SortableTodoSection({
   onDeleteTodo,
   onRenameSection,
 }: SortableTodoSectionProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [draftTitle, setDraftTitle] = useState(section.title);
   const {
     ref: sectionRef,
@@ -45,6 +47,7 @@ export function SortableTodoSection({
     index,
     group: "sections",
     type: "section",
+    disabled: !isOnline,
     data: {
       type: "section",
       sectionId: section._id,
@@ -88,7 +91,8 @@ export function SortableTodoSection({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="icon-mobile-sm"
+            disabled={!isOnline}
             aria-label="Reorder section"
             className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground"
             ref={(element) => {
@@ -103,6 +107,7 @@ export function SortableTodoSection({
               <Input
                 aria-label="Section title"
                 value={draftTitle}
+                disabled={!isOnline}
                 onChange={(event) => {
                   setDraftTitle(event.target.value);
                 }}
@@ -110,7 +115,7 @@ export function SortableTodoSection({
                 onClick={(e) => {
                   e.stopPropagation();
                 }}
-                className="font-semibold min-w-0 flex-1 border-none outline-none focus-visible:ring-0 bg-transparent! text-[16px]! p-0!"
+                className="h-11 min-w-0 flex-1 border-none bg-transparent! p-0! text-[16px]! font-semibold outline-none pointer-fine:h-8 focus-visible:ring-0"
               />
             </AccordionTrigger>
           </div>
@@ -123,7 +128,7 @@ export function SortableTodoSection({
                 No todos in this section yet.
               </div>
             ) : (
-              <motion.ul layout className="flex flex-col gap-2">
+              <motion.ul layout className="flex flex-col gap-1">
                 {todos.map((todo, todoIndex) => (
                   <SortableTodoTaskItem
                     key={todo._id}

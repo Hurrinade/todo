@@ -1,6 +1,4 @@
-import data from "@emoji-mart/data";
-import Picker from "@emoji-mart/react";
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -24,6 +22,9 @@ type EmojiMartSelection = {
 };
 
 const DEFAULT_LIST_EMOJI = "📝";
+const TodoListEmojiPickerContent = lazy(
+  () => import("@/components/todo/TodoListEmojiPickerContent"),
+);
 
 export function TodoListEmojiPicker({
   id,
@@ -52,7 +53,7 @@ export function TodoListEmojiPicker({
           id={id}
           type="button"
           variant="outline"
-          size="icon-lg"
+          size="icon-mobile-lg"
           aria-label={ariaLabel}
           disabled={disabled}
           className={cn("text-xl", className)}
@@ -63,14 +64,20 @@ export function TodoListEmojiPicker({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="bg-transparent border-none p-0 shadow-lg [&_em-emoji-picker]:[--font-size:17px]"
+        className="w-[calc(100vw-2rem)] max-w-[352px] border-none bg-transparent p-0 shadow-lg [&_em-emoji-picker]:h-[min(435px,calc(100dvh-2rem))] [&_em-emoji-picker]:w-full [&_em-emoji-picker]:[--font-size:17px]"
       >
-        <Picker
-          data={data}
-          onEmojiSelect={handleEmojiSelect}
-          previewPosition="none"
-          skinTonePosition="none"
-        />
+        <Suspense
+          fallback={
+            <div
+              className="flex h-80 w-full items-center justify-center rounded-lg bg-popover text-sm text-muted-foreground"
+              role="status"
+            >
+              Loading emoji picker
+            </div>
+          }
+        >
+          <TodoListEmojiPickerContent onEmojiSelect={handleEmojiSelect} />
+        </Suspense>
       </PopoverContent>
     </Popover>
   );

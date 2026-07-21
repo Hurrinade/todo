@@ -125,7 +125,7 @@ export function TodoTaskList({
         {hasCompletedTodos && (
           <Accordion type="single" collapsible className="px-2">
             <AccordionItem value="completed" className="border-none">
-              <AccordionTrigger className="rounded-md px-2 py-2 text-muted-foreground hover:text-foreground hover:no-underline gap-2 flex-none">
+              <AccordionTrigger className="min-h-11 flex-none gap-2 rounded-md px-2 py-2 text-muted-foreground pointer-fine:min-h-0 hover:text-foreground hover:no-underline">
                 Completed ({completedTodos.length})
               </AccordionTrigger>
               <AccordionContent className="pb-0">
