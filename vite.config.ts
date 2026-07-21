@@ -35,8 +35,7 @@ export default defineConfig({
       includeAssets: [
         "favicon.ico",
         "favicon.svg",
-        "favicon-96x96.png",
-        "apple-touch-icon.png",
+        "apple-touch-icon-180x180.png",
       ],
       manifest: {
         id: "/",
@@ -51,16 +50,28 @@ export default defineConfig({
         categories: ["productivity"],
         icons: [
           {
-            src: "web-app-manifest-192x192.png",
-            sizes: "192x192",
+            src: "pwa-64x64.png",
+            sizes: "64x64",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
           },
           {
-            src: "web-app-manifest-512x512.png",
+            src: "pwa-192x192.png",
+            sizes: "192x192",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: "pwa-512x512.png",
             sizes: "512x512",
             type: "image/png",
-            purpose: "any maskable",
+            purpose: "any",
+          },
+          {
+            src: "maskable-icon-512x512.png",
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
           },
         ],
       },
