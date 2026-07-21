@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
+import { useNetworkStore } from "@/stores";
 import type { TodoItem } from "@/types";
 import { getTodoTitleText } from "@/utils";
 
@@ -22,6 +23,7 @@ export function TodoTaskItem({
   isReorderEnabled = false,
 }: TodoTaskItemProps) {
   const navigate = useNavigate();
+  const isOnline = useNetworkStore((state) => state.isOnline);
 
   return (
     <SwipeAction
@@ -30,6 +32,7 @@ export function TodoTaskItem({
           type="button"
           size="icon"
           variant="ghost"
+          disabled={!isOnline}
           onClick={() => {
             onDeleteTodo(todo._id);
           }}
@@ -49,7 +52,7 @@ export function TodoTaskItem({
           <Button
             type="button"
             variant="ghost"
-            size="icon-sm"
+            size="icon-mobile-sm"
             aria-label="Reorder todo"
             data-swipe-ignore
             className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
@@ -63,7 +66,8 @@ export function TodoTaskItem({
         <Button
           type="button"
           variant="ghost"
-          size="icon-sm"
+          size="icon-mobile-sm"
+          disabled={!isOnline}
           onClick={(e) => {
             e.stopPropagation();
             onToggleTodo(todo._id);

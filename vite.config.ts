@@ -11,6 +11,27 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: "autoUpdate",
+      workbox: {
+        globIgnores: [
+          "**/TodoDetail-*.js",
+          "**/TodoListEmojiPickerContent-*.js",
+          "**/todo-list-emoji-data-*.js",
+        ],
+        runtimeCaching: [
+          {
+            urlPattern:
+              /\/assets\/(?:TodoDetail|TodoListEmojiPickerContent|todo-list-emoji-data)-[^/]+\.js$/,
+            handler: "CacheFirst",
+            options: {
+              cacheName: "ritodo-optional-features",
+              expiration: {
+                maxEntries: 8,
+                maxAgeSeconds: 60 * 60 * 24 * 30,
+              },
+            },
+          },
+        ],
+      },
       includeAssets: [
         "favicon.ico",
         "favicon.svg",
@@ -18,6 +39,7 @@ export default defineConfig({
         "apple-touch-icon.png",
       ],
       manifest: {
+        id: "/",
         name: "RiTodo",
         short_name: "RiTodo",
         description:
@@ -26,6 +48,7 @@ export default defineConfig({
         background_color: "#f6f1e8",
         display: "standalone",
         start_url: "/",
+        categories: ["productivity"],
         icons: [
           {
             src: "web-app-manifest-192x192.png",

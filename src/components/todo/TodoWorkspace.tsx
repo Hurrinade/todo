@@ -17,9 +17,9 @@ import {
 } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { cn } from "@/lib/utils";
-import { useTodoErrorStore, useTodoStore } from "@/stores";
+import { useNetworkStore, useTodoErrorStore, useTodoStore } from "@/stores";
 import type { TodoItem, TodoListWithStats, TodoSection } from "@/types";
-import { createTodoTitleContent } from "@/utils";
+import { createTodoTitleContent, OFFLINE_ACTION_MESSAGE } from "@/utils";
 import { TodoListSmallHeader } from "./TodoListSmallHeader";
 
 export function TodoWorkspace({
@@ -40,6 +40,7 @@ export function TodoWorkspace({
   const moveTodo = useMutation(todoApi.mutations.todos.move);
 
   const setLists = useTodoStore((state) => state.setLists);
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [newTodoTitle, setNewTodoTitle] = useState("");
 
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
@@ -61,6 +62,7 @@ export function TodoWorkspace({
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
   );
+  const setErrorMessage = useTodoErrorStore((state) => state.setErrorMessage);
   const setUnknownErrorMessage = useTodoErrorStore(
     (state) => state.setUnknownErrorMessage,
   );
@@ -108,6 +110,11 @@ export function TodoWorkspace({
       return false;
     }
 
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return false;
+    }
+
     setIsCreatingTodo(true);
     clearErrorMessage();
 
@@ -127,6 +134,11 @@ export function TodoWorkspace({
   };
 
   const handleToggleTodo = async (todoId: TodoItem["_id"]) => {
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return;
+    }
+
     clearErrorMessage();
 
     try {
@@ -137,6 +149,11 @@ export function TodoWorkspace({
   };
 
   const handleDeleteTodo = async (todoId: TodoItem["_id"]) => {
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return;
+    }
+
     clearErrorMessage();
 
     try {
@@ -148,6 +165,11 @@ export function TodoWorkspace({
 
   const handleCreateSection = async (title: string) => {
     if (!activeList || activeList.kind !== "sectioned") {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
     }
 
@@ -165,6 +187,11 @@ export function TodoWorkspace({
     sectionId: TodoSection["_id"],
     title: string,
   ) => {
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return;
+    }
+
     clearErrorMessage();
 
     try {
@@ -177,6 +204,11 @@ export function TodoWorkspace({
 
   const handleReorderSections = async (sectionIds: TodoSection["_id"][]) => {
     if (!activeList || activeList.kind !== "sectioned") {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
     }
 
@@ -195,6 +227,11 @@ export function TodoWorkspace({
     targetSectionId: TodoSection["_id"],
     targetIndex: number,
   ) => {
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return;
+    }
+
     clearErrorMessage();
 
     try {
@@ -207,6 +244,11 @@ export function TodoWorkspace({
 
   const handleReorderTodos = async (todoIds: TodoItem["_id"][]) => {
     if (!activeList) {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
     }
 
@@ -239,6 +281,7 @@ export function TodoWorkspace({
             completedTodos={completedTodos}
             errorMessage={errorMessage}
             isCreatingTodo={isCreatingTodo}
+            isOnline={isOnline}
             newTodoTitle={newTodoTitle}
             onCreateSection={handleCreateSection}
             onCreateTodo={handleCreateTodo}
@@ -266,6 +309,7 @@ type TodoWorkspaceContentProps = {
   completedTodos: TodoItem[];
   errorMessage: string | null;
   isCreatingTodo: boolean;
+  isOnline: boolean;
   newTodoTitle: string;
   onCreateSection: (title: string) => Promise<void>;
   onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
@@ -295,6 +339,7 @@ function TodoWorkspaceContent({
   completedTodos,
   errorMessage,
   isCreatingTodo,
+  isOnline,
   newTodoTitle,
   onCreateSection,
   onCreateTodo,
@@ -367,10 +412,11 @@ function TodoWorkspaceContent({
               </div>
             </ScrollArea>
 
-            <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 p-2">
+            <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
               <TodoComposer
                 title={newTodoTitle}
                 isCreatingTodo={isCreatingTodo}
+                isOnline={isOnline}
                 onTitleChange={onTodoTitleChange}
                 onCreateTodo={onCreateTodo}
                 onCreateSuccess={() => {

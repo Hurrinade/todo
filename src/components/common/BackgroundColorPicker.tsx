@@ -44,14 +44,14 @@ export default function BackgroundColorPicker() {
             aria-label={label}
             aria-pressed={isSelected}
             className={cn(
-              "size-7 rounded-md border border-transparent p-0 hover:bg-transparent",
+              "rounded-md border border-transparent p-0 pointer-fine:size-7 hover:bg-transparent",
               isSelected && "border-ring ring-2 ring-ring/35",
             )}
             key={value}
             onClick={() => {
               setBackgroundColorPreference(value);
             }}
-            size="icon-sm"
+            size="icon-mobile-sm"
             title={label}
             type="button"
             variant="ghost"

@@ -1,8 +1,9 @@
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 
 import type { TodoNoteContent, TodoNoteEditorProps } from "@/types";
+import { useNetworkStore } from "@/stores";
 
 const EMPTY_TODO_NOTE: TodoNoteContent = {
   type: "doc",
@@ -13,11 +14,13 @@ export function TodoNoteEditor({
   description,
   onUpdateDescription,
 }: TodoNoteEditorProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const lastSavedDescriptionRef = useRef(description);
   const isDirtyRef = useRef(false);
 
   const editor = useEditor({
     content: description ?? EMPTY_TODO_NOTE,
+    editable: isOnline,
     extensions: [
       StarterKit.configure({
         link: {
@@ -75,5 +78,21 @@ export function TodoNoteEditor({
     },
   });
 
-  return <EditorContent editor={editor} />;
+  useEffect(() => {
+    if (!editor) {
+      return;
+    }
+
+    if (!isOnline && editor.isFocused) {
+      editor.commands.blur();
+    }
+
+    editor.setEditable(isOnline);
+  }, [editor, isOnline]);
+
+  return (
+    <div aria-disabled={!isOnline}>
+      <EditorContent editor={editor} />
+    </div>
+  );
 }

@@ -23,8 +23,9 @@ import {
 } from "@/components/ui/sidebar";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
-import { useTodoErrorStore } from "@/stores";
+import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type { CreateTodoListModalValues, TodoListWithStats } from "@/types";
+import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 type TodoListSidebarProps = {
   lists: TodoListWithStats[];
@@ -39,6 +40,7 @@ export function TodoListSidebar({
 }: TodoListSidebarProps) {
   const { openModal } = useModal();
   const { isMobile, setOpenMobile } = useSidebar();
+  const isOnline = useNetworkStore((state) => state.isOnline);
 
   // Store lists
 
@@ -47,6 +49,7 @@ export function TodoListSidebar({
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
   );
+  const setErrorMessage = useTodoErrorStore((state) => state.setErrorMessage);
   const setUnknownErrorMessage = useTodoErrorStore(
     (state) => state.setUnknownErrorMessage,
   );
@@ -65,7 +68,7 @@ export function TodoListSidebar({
       list.title.toLowerCase().includes(normalizedSearchQuery),
     );
   }, [lists, searchQuery]);
-  const isReorderEnabled = searchQuery.trim().length === 0;
+  const isReorderEnabled = isOnline && searchQuery.trim().length === 0;
 
   useEffect(() => {
     if (!isDraggingRef.current) {
@@ -84,6 +87,11 @@ export function TodoListSidebar({
       return false;
     }
 
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return false;
+    }
+
     setIsLoading(true);
     clearErrorMessage();
 
@@ -94,6 +102,11 @@ export function TodoListSidebar({
         kind,
       });
       setActiveListId(listId);
+
+      if (isMobile) {
+        setOpenMobile(false);
+      }
+
       return true;
     } catch (error) {
       setUnknownErrorMessage(error);
@@ -104,6 +117,11 @@ export function TodoListSidebar({
   };
 
   const handleReorderLists = async (listIds: TodoListWithStats["_id"][]) => {
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      return;
+    }
+
     clearErrorMessage();
 
     try {
@@ -116,7 +134,7 @@ export function TodoListSidebar({
 
   return (
     <Sidebar className="border-sidebar-border">
-      <SidebarHeader className="gap-4 border-b border-sidebar-border p-4">
+      <SidebarHeader className="gap-4 border-b border-sidebar-border p-4 pt-[calc(1rem+env(safe-area-inset-top))]">
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-[0.22em] text-sidebar-primary uppercase">
@@ -130,9 +148,9 @@ export function TodoListSidebar({
             <Button
               type="button"
               variant="outline"
-              size="icon-sm"
+              size="icon-mobile-sm"
               aria-label="Create a new list"
-              disabled={isLoading}
+              disabled={!isOnline || isLoading}
               onClick={() => {
                 openModal("createTodoList", {
                   onSubmit: handleCreateList,
@@ -155,7 +173,7 @@ export function TodoListSidebar({
                 setSearchQuery(event.target.value);
               }}
               placeholder="Search lists"
-              className="pl-8"
+              className="h-11 pl-8 pointer-fine:h-8"
             />
           </div>
         )}
@@ -241,14 +259,18 @@ export function TodoListSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4">
+      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
         <div className="flex w-full items-center gap-2">
           <ThemeToggle />
           <BackgroundColorPicker />
         </div>
 
         <SignOutButton>
-          <Button type="button" variant="outline" className="h-9 w-full">
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 w-full pointer-fine:h-9"
+          >
             Log out
           </Button>
         </SignOutButton>

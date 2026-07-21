@@ -9,6 +9,7 @@ import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useNetworkStore } from "@/stores";
 import type { TodoItem, TodoSection } from "@/types";
 
 type TodoSectionedTaskListProps = {
@@ -56,6 +57,7 @@ export function TodoSectionedTaskList({
   onMoveTodo,
   onDeleteTodo,
 }: TodoSectionedTaskListProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isCreatingSection, setIsCreatingSection] = useState(false);
   const [orderedSections, setOrderedSections] = useState(sections);
@@ -120,12 +122,13 @@ export function TodoSectionedTaskList({
               setNewSectionTitle(event.target.value);
             }}
             placeholder="Add a new section"
-            className="h-10 min-w-0 flex-1"
+            disabled={!isOnline}
+            className="h-11 min-w-0 flex-1 pointer-fine:h-10"
           />
           <Button
             type="submit"
-            disabled={isCreatingSection || !newSectionTitle.trim()}
-            className="h-10 shrink-0"
+            disabled={!isOnline || isCreatingSection || !newSectionTitle.trim()}
+            className="h-11 shrink-0 pointer-fine:h-10"
           >
             <Plus data-icon="inline-start" />
             Add section
@@ -136,6 +139,10 @@ export function TodoSectionedTaskList({
       <LayoutGroup>
         <DragDropProvider
           onDragStart={(event) => {
+            if (!isOnline) {
+              return;
+            }
+
             isDraggingRef.current = true;
 
             const sourceData = getSortableData(event.operation.source);
@@ -166,6 +173,10 @@ export function TodoSectionedTaskList({
             }
           }}
           onDragOver={(event) => {
+            if (!isOnline) {
+              return;
+            }
+
             const source = event.operation.source;
             const target = event.operation.target;
             const sourceData = getSortableData(source);
@@ -211,6 +222,10 @@ export function TodoSectionedTaskList({
             );
           }}
           onDragEnd={(event) => {
+            if (!isOnline) {
+              return;
+            }
+
             isDraggingRef.current = false;
             const sourceData = getSortableData(event.operation.source);
 

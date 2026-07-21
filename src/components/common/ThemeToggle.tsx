@@ -42,7 +42,7 @@ export default function ThemeToggle() {
             onClick={() => {
               setThemePreference(value);
             }}
-            size="icon-sm"
+            size="icon-mobile-sm"
             title={label}
             type="button"
             variant={isSelected ? "secondary" : "ghost"}

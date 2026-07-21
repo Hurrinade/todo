@@ -24,12 +24,12 @@ export function TodoDetailView({
 
   return (
     <main className="h-full w-full overflow-y-auto bg-background text-foreground">
-      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 py-4 sm:px-6 sm:py-6">
+      <div className="mx-auto flex min-h-full w-full max-w-3xl flex-col gap-5 px-4 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-6 sm:pb-[calc(1.5rem+env(safe-area-inset-bottom))]">
         <header className="flex min-w-0 items-center gap-2">
           <Button
             type="button"
             variant="ghost"
-            size="icon-lg"
+            size="icon-mobile-lg"
             onClick={onBack}
             aria-label="Back to todo workspace"
             className="flex items-center gap-2 w-fit px-2"

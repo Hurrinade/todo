@@ -5,7 +5,7 @@ import {
   type TodoTaskItemProps,
 } from "@/components/todo/TodoTaskItem";
 import { TodoTaskMotionItem } from "@/components/todo/TodoTaskMotionItem";
-import { cn } from "@/lib/utils";
+import { useNetworkStore } from "@/stores";
 
 type SortableTodoTaskItemProps = TodoTaskItemProps & {
   index: number;
@@ -21,7 +21,9 @@ export function SortableTodoTaskItem({
   onToggleTodo,
   onDeleteTodo,
 }: SortableTodoTaskItemProps) {
-  const { ref, handleRef, isDragging } = useSortable({
+  const isOnline = useNetworkStore((state) => state.isOnline);
+  const canReorder = isOnline && isReorderEnabled;
+  const { ref, handleRef } = useSortable({
     id: todo._id,
     index,
     group,
@@ -32,25 +34,21 @@ export function SortableTodoTaskItem({
       sectionId: todo.sectionId,
       isCompleted: todo.isCompleted,
     },
-    disabled: !isReorderEnabled,
+    disabled: !canReorder,
   });
 
   return (
     <TodoTaskMotionItem
       ref={ref}
       todoId={todo._id}
-      tabIndex={isReorderEnabled ? 0 : undefined}
-      className={cn(
-        "outline-none focus-visible:ring-3 focus-visible:ring-ring/40",
-        isDragging && "relative z-20 shadow-lg shadow-background/25",
-      )}
+      tabIndex={canReorder ? 0 : undefined}
     >
       <TodoTaskItem
         todo={todo}
         onToggleTodo={onToggleTodo}
         onDeleteTodo={onDeleteTodo}
         dragHandleRef={handleRef}
-        isReorderEnabled={isReorderEnabled}
+        isReorderEnabled={canReorder}
       />
     </TodoTaskMotionItem>
   );
