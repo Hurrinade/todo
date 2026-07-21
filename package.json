@@ -9,7 +9,6 @@
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
-    "format:check": "prettier --check .",
     "typecheck": "tsc -b -noEmit",
     "check": "bun run lint && bun run typecheck && bun run format:check",
     "preview": "vite preview"
