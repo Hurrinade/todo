@@ -63,7 +63,7 @@ export function TodoListEmojiPicker({
       <PopoverContent
         align="start"
         sideOffset={8}
-        className="bg-transparent border-none p-0 shadow-lg"
+        className="bg-transparent border-none p-0 shadow-lg [&_em-emoji-picker]:[--font-size:17px]"
       >
         <Picker
           data={data}

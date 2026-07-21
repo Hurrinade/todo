@@ -94,6 +94,11 @@ export function TodoListSidebar({
         kind,
       });
       setActiveListId(listId);
+
+      if (isMobile) {
+        setOpenMobile(false);
+      }
+
       return true;
     } catch (error) {
       setUnknownErrorMessage(error);
