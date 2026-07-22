@@ -3,7 +3,8 @@
 This is an authenticated todo list app built from the company React template.
 The first product surface is a personal todo workspace with Convex storage and
 Clerk authentication, todo notes, per-list emoji, shared list memberships, and
-expiring invite links.
+expiring invite links. A stateless Streamable HTTP MCP endpoint at `/mcp`
+exposes authenticated todo operations to Codex through Clerk user API keys.
 
 ## Commands
 
@@ -14,8 +15,23 @@ bun run lint         # Run lint checks
 bun run lint:fix     # Run lint checks and auto-fix
 bun run format       # Format project files
 bun run typecheck    # Check for ts errors
-bun run check        # Lint, typecheck and prettier check without mutating files
+bun run check        # Run lint and typecheck without mutating files
+bun test             # Run Bun unit, MCP protocol and Convex operation tests
 ```
+
+## MCP
+
+- `/mcp` is served by the Convex HTTP deployment and uses the web-standard MCP
+  transport in stateless JSON-response mode.
+- MCP authentication accepts only revocable Clerk user API keys. Keep
+  `CLERK_SECRET_KEY` in the Convex backend environment and never in Vite client
+  variables or Codex TOML.
+- Users create and revoke their user-scoped MCP keys from the API Keys page in
+  Clerk's profile modal, opened through the account menu in the todo sidebar.
+- MCP tools must derive the Clerk user ID from the verified key and reuse the
+  existing list membership checks; never accept a user ID from tool input.
+- Read tools must be marked read-only, writes must be marked as writes, and
+  destructive annotations are reserved for destructive operations.
 
 ## Current Routes
 
@@ -38,6 +54,7 @@ bun run check        # Lint, typecheck and prettier check without mutating files
 | Icons            | Lucide React           | 1.8     |
 | Auth             | Clerk (`@clerk/react`) | 6       |
 | Database         | Convex                 | 1.36    |
+| MCP              | MCP TypeScript SDK     | 1.29    |
 | State Management | Zustand                | 5       |
 | Data Fetching    | TanStack React Query   | 5       |
 | Date Handling    | dayjs                  | 1.11    |
