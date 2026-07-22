@@ -63,6 +63,38 @@ export function createTodoTitleContent(
   };
 }
 
+export function getTodoTitleText(
+  title: Infer<typeof todoTitleContentValidator>,
+) {
+  return title.content[0]?.content?.map((node) => node.text).join("") ?? "";
+}
+
+export function createTodoNoteContent(
+  description: string,
+): Infer<typeof todoNoteContentValidator> | undefined {
+  if (!description.trim()) {
+    return undefined;
+  }
+
+  return normalizeTodoDescription({
+    type: "doc",
+    content: description.split(/\r?\n/).map((line) => ({
+      type: "paragraph",
+      content: line ? [{ type: "text", text: line }] : undefined,
+    })),
+  });
+}
+
+export function getTodoNoteText(
+  description: Infer<typeof todoNoteContentValidator> | undefined,
+) {
+  if (!description) {
+    return undefined;
+  }
+
+  return getNodePlainText(description).trimEnd();
+}
+
 export function normalizeTodoTitleContent(
   title: Infer<typeof todoTitleContentValidator>,
 ) {
@@ -220,6 +252,33 @@ function getTodoNoteTextLength(node: unknown): number {
   }
 
   return textLength;
+}
+
+function getNodePlainText(node: unknown): string {
+  if (!isRecord(node)) {
+    return "";
+  }
+
+  if (typeof node.text === "string") {
+    return node.text;
+  }
+
+  if (!Array.isArray(node.content)) {
+    return "";
+  }
+
+  const separator = separatesChildBlocks(node.type) ? "\n" : "";
+
+  return node.content.map(getNodePlainText).join(separator);
+}
+
+function separatesChildBlocks(type: unknown) {
+  return (
+    type === "doc" ||
+    type === "blockquote" ||
+    type === "bulletList" ||
+    type === "orderedList"
+  );
 }
 
 function validateTodoNoteMark(mark: unknown) {

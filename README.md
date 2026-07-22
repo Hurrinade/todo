@@ -50,8 +50,10 @@ bun run build
 
 - The template ships with a generated `manifest.webmanifest` and service worker
   through `vite-plugin-pwa`.
-- Placeholder favicon and install icon assets live in `public/` and should be
-  replaced for each real project.
+- RiTodo uses a blue list-to-check mark on a permanent black tile for its
+  favicon, Apple touch icon, and install icons. Regenerate the raster assets
+  from `public/ritodo-icon.svg` with
+  `bun run generate:pwa-assets`.
 - This baseline is intentionally minimal: there is no custom install prompt,
   update prompt, or offline-specific UI yet.
 - Production deployments should serve the app over HTTPS and serve
@@ -64,12 +66,80 @@ bun run lint
 bun run lint:fix
 bun run typecheck
 bun run format
-bun run format:check
 bun run check
+bun test
 ```
 
-`bun run check` is non-mutating. It runs linting, typechecking, and Prettier in
-check mode.
+`bun run check` is non-mutating. It runs linting and typechecking.
+
+## RiTodo MCP Server
+
+The Convex deployment exposes a stateless Streamable HTTP MCP server at
+`/mcp`. It uses revocable Clerk user API keys and applies the same list
+membership rules as the web app, including access to shared lists.
+
+### Backend setup
+
+1. Open [Clerk Platform API Keys](https://dashboard.clerk.com/~/platform/api-keys)
+   and enable **User API keys** in every Clerk instance that should support MCP
+   access. Keep Organization API keys disabled for RiTodo.
+2. Set `CLERK_SECRET_KEY` in the matching Convex deployment environment. Keep
+   this backend secret out of Vite environment files and client code.
+3. Deploy the Convex functions. The production MCP URL is:
+
+```text
+https://expert-guineapig-443.eu-west-1.convex.site/mcp
+```
+
+The development endpoint uses the development `VITE_CONVEX_SITE_URL` with the
+same `/mcp` path.
+
+### Codex setup
+
+In RiTodo, open the account menu in the sidebar, choose **Manage account**, and
+use the **API Keys** page to create or revoke a user-scoped key. Copy the
+`ak_live_...` secret when it is created because Clerk displays it only once.
+
+On macOS, store that user API key in the GUI launch environment used by the
+Codex app without putting the secret in shell history:
+
+```bash
+read -s "RITODO_KEY?Clerk API key: "
+echo
+launchctl setenv RITODO_API_KEY "$RITODO_KEY"
+unset RITODO_KEY
+```
+
+`RITODO_API_KEY` must contain the user-scoped `ak_live_...` key, not Clerk's
+frontend `pk_live_...` key or backend `sk_live_...` key. The backend
+`CLERK_SECRET_KEY` remains only in the matching Convex environment.
+
+Add the following to the global `~/.codex/config.toml`. Do not place the key
+itself in TOML or commit it to the repository.
+
+```toml
+[mcp_servers.ritodo]
+url = "https://expert-guineapig-443.eu-west-1.convex.site/mcp"
+bearer_token_env_var = "RITODO_API_KEY"
+enabled = true
+default_tools_approval_mode = "writes"
+tool_timeout_sec = 30
+```
+
+Quit the Codex app completely with `Cmd-Q` after changing its environment or
+configuration, reopen it, and create a new task. Run `codex mcp list` to confirm
+that `ritodo` is enabled.
+
+### Available MCP tools
+
+- Read: `list_todo_lists`, `list_todos`, `get_todo`
+- Lists and sections: `create_todo_list`, `rename_todo_list`,
+  `create_todo_section`, `rename_todo_section`
+- Todos: `create_todo`, `update_todo`, `move_todo`, `set_todo_completed`,
+  `delete_todo`
+
+`list_todos` accepts optional list, section, and completion filters. Omitting
+all filters loads open and completed todos from every accessible list.
 
 ## Current Routes
 
