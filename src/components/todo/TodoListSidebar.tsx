@@ -1,10 +1,10 @@
-import { SignOutButton } from "@clerk/react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { useMutation } from "convex/react";
 import { ListChecks, Plus, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import AccountMenu from "@/components/common/AccountMenu";
 import BackgroundColorPicker from "@/components/common/BackgroundColorPicker";
 import ThemeToggle from "@/components/common/ThemeToggle";
 import { SortableTodoListSidebarItem } from "@/components/todo/SortableTodoListSidebarItem";
@@ -265,15 +265,7 @@ export function TodoListSidebar({
           <BackgroundColorPicker />
         </div>
 
-        <SignOutButton>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full pointer-fine:h-9"
-          >
-            Log out
-          </Button>
-        </SignOutButton>
+        <AccountMenu />
       </SidebarFooter>
     </Sidebar>
   );
