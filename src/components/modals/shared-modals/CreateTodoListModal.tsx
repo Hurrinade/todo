@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CreateTodoListModalPayload, TodoListKind } from "@/types";
+import { useNetworkStore } from "@/stores";
 
 type CreateTodoListModalProps = {
   open: boolean;
@@ -31,6 +32,7 @@ export default function CreateTodoListModal({
   onOpenChange,
   payload,
 }: CreateTodoListModalProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("📝");
   const [kind, setKind] = useState<TodoListKind>("regular");
@@ -50,6 +52,10 @@ export default function CreateTodoListModal({
     const normalizedTitle = title.trim();
 
     if (!normalizedTitle || isSubmitting) {
+      return;
+    }
+
+    if (!isOnline) {
       return;
     }
 
@@ -80,7 +86,7 @@ export default function CreateTodoListModal({
       }}
     >
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-w-md gap-0 overflow-hidden p-0"
+        className="w-[calc(100vw-2rem)] max-w-md gap-0 overflow-y-auto p-0"
         showCloseButton={!isSubmitting}
       >
         <form onSubmit={handleSubmit}>
@@ -105,8 +111,8 @@ export default function CreateTodoListModal({
                   value={emoji}
                   ariaLabel="List emoji"
                   onEmojiChange={setEmoji}
-                  disabled={isSubmitting}
-                  className="size-10"
+                  disabled={!isOnline || isSubmitting}
+                  className="pointer-fine:size-10"
                 />
               </div>
 
@@ -119,6 +125,7 @@ export default function CreateTodoListModal({
                 </label>
                 <Select
                   value={kind}
+                  disabled={!isOnline || isSubmitting}
                   onValueChange={(value) => {
                     setKind(value as TodoListKind);
                   }}
@@ -149,6 +156,7 @@ export default function CreateTodoListModal({
                   aria-label="List name"
                   value={title}
                   autoFocus
+                  disabled={!isOnline || isSubmitting}
                   onChange={(event) => {
                     setTitle(event.target.value);
                   }}
@@ -159,6 +167,11 @@ export default function CreateTodoListModal({
                 />
               </div>
             </div>
+            {!isOnline ? (
+              <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-foreground">
+                Reconnect to create a list.
+              </p>
+            ) : null}
           </div>
 
           <div className="bg-card px-5 py-4 sm:px-6">
@@ -169,13 +182,15 @@ export default function CreateTodoListModal({
                 onClick={handleClose}
                 disabled={isSubmitting}
                 className="w-full sm:min-w-24 sm:w-auto"
+                size="mobile"
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
-                disabled={isSubmitting || !title.trim()}
+                disabled={!isOnline || isSubmitting || !title.trim()}
                 className="w-full sm:min-w-28 sm:w-auto"
+                size="mobile"
               >
                 {isSubmitting ? "Creating..." : "Create list"}
               </Button>

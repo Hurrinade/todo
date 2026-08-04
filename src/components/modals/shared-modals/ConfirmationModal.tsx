@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useNetworkStore } from "@/stores";
 import type { ConfirmModalPayload, ConfirmVariant } from "@/types";
 
 type ConfirmationModalProps = {
@@ -38,6 +39,7 @@ export default function ConfirmationModal({
   onOpenChange,
   payload,
 }: ConfirmationModalProps) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmVariant = payload.variant ?? "danger";
 
@@ -84,7 +86,7 @@ export default function ConfirmationModal({
       }}
     >
       <DialogContent
-        className="w-[calc(100vw-2rem)] max-h-[90vh] max-w-xl gap-0 overflow-hidden p-0"
+        className="w-[calc(100vw-2rem)] max-w-xl gap-0 overflow-y-auto p-0"
         showCloseButton={!isConfirming}
       >
         <div className="px-5 pt-6 pb-5 sm:px-6">
@@ -99,7 +101,7 @@ export default function ConfirmationModal({
                 <TriangleAlert className="size-5" aria-hidden="true" />
               </div>
               <div className="min-w-0">
-                <DialogTitle className="wrap-break-word pr-8">
+                <DialogTitle className="wrap-break-word pr-12 md:pr-8">
                   {payload.title}
                 </DialogTitle>
                 <DialogDescription className="mt-2 wrap-break-word">
@@ -108,6 +110,11 @@ export default function ConfirmationModal({
               </div>
             </div>
           </DialogHeader>
+          {!isOnline ? (
+            <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-foreground">
+              Reconnect before confirming this change.
+            </p>
+          ) : null}
         </div>
 
         <div className="bg-card px-5 py-4 sm:px-6">
@@ -116,8 +123,9 @@ export default function ConfirmationModal({
               type="button"
               variant={confirmButtonVariants[confirmVariant]}
               onClick={() => void handleConfirm()}
-              disabled={isConfirming}
+              disabled={!isOnline || isConfirming}
               className="w-full sm:min-w-28 sm:w-auto"
+              size="mobile"
             >
               {isConfirming
                 ? "Processing..."
@@ -129,6 +137,7 @@ export default function ConfirmationModal({
               onClick={() => void handleClose()}
               disabled={isConfirming}
               className="w-full sm:min-w-24 sm:w-auto"
+              size="mobile"
             >
               {payload.cancelText ?? "Cancel"}
             </Button>

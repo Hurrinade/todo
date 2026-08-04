@@ -10,8 +10,10 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useNetworkStore } from "@/stores";
 
 export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
   const createInvite = useMutation(todoApi.mutations.todoInvites.create);
@@ -44,8 +46,8 @@ export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
         <Button
           type="button"
           variant="outline"
-          size="icon-lg"
-          disabled={isGeneratingInvite}
+          size="icon-mobile-lg"
+          disabled={!isOnline || isGeneratingInvite}
           onClick={() => {
             void handleGenerateInvite();
           }}

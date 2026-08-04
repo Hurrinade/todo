@@ -12,7 +12,7 @@ import {
 import type { TodoListWithStats } from "@/types";
 import { useState } from "react";
 import { todoApi } from "@/config/convex-api";
-import { useTodoErrorStore } from "@/stores/todo/todo-error-store";
+import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import { useModal } from "@/hooks/modals/use-modal";
 
 type TodoListHeaderProps = {
@@ -21,6 +21,7 @@ type TodoListHeaderProps = {
 
 export function TodoListHeader({ list }: TodoListHeaderProps) {
   const { openModal } = useModal();
+  const isOnline = useNetworkStore((state) => state.isOnline);
 
   const uncheckCompletedTodos = useMutation(
     todoApi.mutations.todos.uncheckCompleted,
@@ -66,21 +67,33 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
     });
   };
 
-  const handleUncheckCompleted = async () => {
+  const handleUncheckCompleted = () => {
     if (list.completedTodoCount === 0) {
       return;
     }
 
-    setIsLoading(true);
-    clearErrorMessage();
+    const completedLabel = list.completedTodoCount === 1 ? "todo" : "todos";
 
-    try {
-      await uncheckCompletedTodos({ listId: list._id });
-    } catch (error) {
-      setUnknownErrorMessage(error);
-    } finally {
-      setIsLoading(false);
-    }
+    openModal("confirm", {
+      title: "Uncheck completed todos",
+      message: `Mark ${list.completedTodoCount} completed ${completedLabel} in "${list.title}" as unchecked?`,
+      confirmText: "Uncheck completed",
+      cancelText: "Keep checked",
+      variant: "secondary",
+      onConfirm: async () => {
+        setIsLoading(true);
+        clearErrorMessage();
+
+        try {
+          await uncheckCompletedTodos({ listId: list._id });
+        } catch (error) {
+          setUnknownErrorMessage(error);
+          throw error;
+        } finally {
+          setIsLoading(false);
+        }
+      },
+    });
   };
 
   return (
@@ -99,8 +112,10 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon-lg"
-                    disabled={list.completedTodoCount === 0 || isLoading}
+                    size="icon-mobile-lg"
+                    disabled={
+                      !isOnline || list.completedTodoCount === 0 || isLoading
+                    }
                     onClick={handleUncheckCompleted}
                     className="bg-card"
                     aria-label={
@@ -124,8 +139,10 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
                   <Button
                     type="button"
                     variant="outline"
-                    size="icon-lg"
-                    disabled={list.completedTodoCount === 0 || isLoading}
+                    size="icon-mobile-lg"
+                    disabled={
+                      !isOnline || list.completedTodoCount === 0 || isLoading
+                    }
                     onClick={handleClearCompleted}
                     aria-label={
                       isLoading

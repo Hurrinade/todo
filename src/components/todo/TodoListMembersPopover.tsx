@@ -1,33 +1,33 @@
 import { Users } from "lucide-react";
 
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from "@/components/ui/hover-card";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import type { TodoListMember } from "@/types";
 
-type TodoListMembersHoverCardProps = {
+type TodoListMembersPopoverProps = {
   members: TodoListMember[];
 };
 
-export function TodoListMembersHoverCard({
+export function TodoListMembersPopover({
   members,
-}: TodoListMembersHoverCardProps) {
+}: TodoListMembersPopoverProps) {
   return (
-    <HoverCard openDelay={500} closeDelay={80}>
-      <HoverCardTrigger asChild>
+    <Popover>
+      <PopoverTrigger asChild>
         <button
           type="button"
-          className="inline-flex h-6 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-2.5 text-xs font-medium text-foreground shadow-sm transition-colors hover:bg-accent/60"
+          className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 text-xs font-medium text-foreground shadow-sm transition-colors pointer-fine:h-6 pointer-fine:px-2.5 hover:bg-accent/60"
           aria-label={`Show ${members.length} list members`}
         >
           <Users className="size-4 text-primary" />
           <span>{members.length}</span>
         </button>
-      </HoverCardTrigger>
+      </PopoverTrigger>
 
-      <HoverCardContent
+      <PopoverContent
         align="end"
         sideOffset={10}
         className="w-72 rounded-md border border-border/80 bg-card/98 p-0 text-card-foreground shadow-[0_18px_50px_rgba(31,26,23,0.16)]"
@@ -47,8 +47,8 @@ export function TodoListMembersHoverCard({
             ))}
           </div>
         )}
-      </HoverCardContent>
-    </HoverCard>
+      </PopoverContent>
+    </Popover>
   );
 }
 

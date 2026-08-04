@@ -9,6 +9,11 @@
  */
 
 import type * as http from "../http.js";
+import type * as mcp_auth from "../mcp/auth.js";
+import type * as mcp_format from "../mcp/format.js";
+import type * as mcp_http from "../mcp/http.js";
+import type * as mcp_queries from "../mcp/queries.js";
+import type * as mcp_server from "../mcp/server.js";
 import type * as mutations_todoInvites from "../mutations/todoInvites.js";
 import type * as mutations_todoLists from "../mutations/todoLists.js";
 import type * as mutations_todoSections from "../mutations/todoSections.js";
@@ -30,6 +35,11 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   http: typeof http;
+  "mcp/auth": typeof mcp_auth;
+  "mcp/format": typeof mcp_format;
+  "mcp/http": typeof mcp_http;
+  "mcp/queries": typeof mcp_queries;
+  "mcp/server": typeof mcp_server;
   "mutations/todoInvites": typeof mutations_todoInvites;
   "mutations/todoLists": typeof mutations_todoLists;
   "mutations/todoSections": typeof mutations_todoSections;

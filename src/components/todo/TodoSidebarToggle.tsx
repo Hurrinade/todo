@@ -27,7 +27,7 @@ export function TodoSidebarToggle({
     <Button
       type="button"
       variant={placement === "floating" ? "outline" : "ghost"}
-      size={placement === "floating" ? "icon-lg" : "icon"}
+      size={placement === "floating" ? "icon-mobile-lg" : "icon-mobile"}
       onClick={toggleSidebar}
       aria-label={
         isOpen ? "Close todo lists sidebar" : "Open todo lists sidebar"

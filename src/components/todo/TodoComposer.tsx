@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 type TodoComposerProps = {
   title: string;
   isCreatingTodo: boolean;
+  isOnline: boolean;
   onTitleChange: (title: string) => void;
   onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
   onCreateSuccess?: () => void;
@@ -15,6 +16,7 @@ type TodoComposerProps = {
 export function TodoComposer({
   title,
   isCreatingTodo,
+  isOnline,
   onTitleChange,
   onCreateTodo,
   onCreateSuccess,
@@ -43,12 +45,14 @@ export function TodoComposer({
           onTitleChange(event.target.value);
         }}
         placeholder="Add the next thing"
-        className="min-w-0 flex-1 h-8 py-2"
+        className="h-11 min-w-0 flex-1 py-2 pointer-fine:h-8"
       />
       <Button
         type="submit"
-        disabled={isCreatingTodo || !title.trim()}
-        className="h-8 w-8 rounded-full bg-card text-muted-foreground"
+        size="icon-mobile"
+        disabled={!isOnline || isCreatingTodo || !title.trim()}
+        className="rounded-full bg-card text-muted-foreground"
+        aria-label={isOnline ? "Add todo" : "Reconnect to add todo"}
       >
         <Plus />
       </Button>

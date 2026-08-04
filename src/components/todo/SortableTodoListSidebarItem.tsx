@@ -3,12 +3,12 @@ import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
 import { useState } from "react";
 
-import { TodoListMembersHoverCard } from "@/components/todo/TodoListMembersHoverCard";
+import { TodoListMembersPopover } from "@/components/todo/TodoListMembersPopover";
 import { Button } from "@/components/ui/button";
 import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
-import { useTodoErrorStore } from "@/stores";
+import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type { TodoListWithStats } from "@/types";
 
 type SortableTodoListSidebarItemProps = {
@@ -29,6 +29,7 @@ export function SortableTodoListSidebarItem({
   onSelect,
 }: SortableTodoListSidebarItemProps) {
   const { openModal } = useModal();
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const deleteList = useMutation(todoApi.mutations.todoLists.remove);
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
@@ -40,7 +41,7 @@ export function SortableTodoListSidebarItem({
   const { ref, isDragging } = useSortable({
     id: list._id,
     index,
-    disabled: !isReorderEnabled,
+    disabled: !isOnline || !isReorderEnabled,
   });
   const isActive = list._id === activeListId;
 
@@ -76,7 +77,7 @@ export function SortableTodoListSidebarItem({
       ref={ref}
       data-slot="sidebar-menu-item"
       data-sidebar="menu-item"
-      tabIndex={isReorderEnabled ? 0 : undefined}
+      tabIndex={isOnline && isReorderEnabled ? 0 : undefined}
       onClick={() => {
         setActiveListId(list._id);
         clearErrorMessage();
@@ -99,14 +100,14 @@ export function SortableTodoListSidebarItem({
         <span className="block min-w-0 flex-1 truncate">{list.title}</span>
       </span>
       {list.members.length > 0 && (
-        <TodoListMembersHoverCard members={list.members} />
+        <TodoListMembersPopover members={list.members} />
       )}
       <Button
         variant="ghost"
         aria-label={`Delete ${list.title}`}
         className="cursor-pointer"
-        size="icon-sm"
-        disabled={isDeletingList}
+        size="icon-mobile-sm"
+        disabled={!isOnline || isDeletingList}
         onClick={(event) => {
           event.stopPropagation();
           handleDeleteList();

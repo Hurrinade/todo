@@ -4,10 +4,12 @@ import { useState } from "react";
 import { TodoListEmojiPicker } from "@/components/todo/TodoListEmojiPicker";
 import { Input } from "@/components/ui/input";
 import { todoApi } from "@/config/convex-api";
-import { useTodoErrorStore } from "@/stores/todo/todo-error-store";
+import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type { TodoListWithStats } from "@/types";
+import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
+  const isOnline = useNetworkStore((state) => state.isOnline);
   const [listTitleDraft, setListTitleDraft] = useState<{
     listId: TodoListWithStats["_id"];
     title: string;
@@ -24,12 +26,19 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
   );
+  const setErrorMessage = useTodoErrorStore((state) => state.setErrorMessage);
   const setUnknownErrorMessage = useTodoErrorStore(
     (state) => state.setUnknownErrorMessage,
   );
 
   const handleRenameList = async () => {
     if (isLoading) {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setListTitleDraft(null);
       return;
     }
 
@@ -58,6 +67,12 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
 
   const handleUpdateListEmoji = async (emoji: string) => {
     if (isLoading) {
+      return;
+    }
+
+    if (!isOnline) {
+      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setListEmojiDraft(null);
       return;
     }
 
@@ -108,8 +123,8 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
         onEmojiChange={(emoji) => {
           void handleUpdateListEmoji(emoji);
         }}
-        disabled={isLoading}
-        className="size-10 border-none bg-card/80 shadow-none"
+        disabled={!isOnline || isLoading}
+        className="border-none bg-card/80 shadow-none pointer-fine:size-10"
       />
 
       <form
@@ -122,13 +137,13 @@ export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
         <Input
           aria-label="Todo list title"
           value={visibleListTitle}
-          disabled={isLoading}
+          disabled={!isOnline || isLoading}
           onBlur={handleRenameList}
           onChange={(event) => {
             const title = event.target.value;
             setListTitleDraft({ listId: list._id, title });
           }}
-          className="min-w-0 border-none bg-transparent! p-0! text-[18px]! font-semibold outline-none focus-visible:ring-0"
+          className="h-11 min-w-0 border-none bg-transparent! p-0! text-[18px]! font-semibold outline-none pointer-fine:h-8 focus-visible:ring-0"
         />
       </form>
     </div>

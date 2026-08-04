@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <title>RiTodo list-to-check mark</title>
+  <defs>
+    <linearGradient
+      id="ritodo-blue"
+      x1="0"
+      y1="220"
+      x2="0"
+      y2="820"
+      gradientUnits="userSpaceOnUse"
+    >
+      <stop offset="0" stop-color="#73d5ff" />
+      <stop offset="0.5" stop-color="#2ca2ff" />
+      <stop offset="1" stop-color="#1746a2" />
+    </linearGradient>
+  </defs>
+  <rect width="1024" height="1024" fill="#040609" />
+  <g fill="url(#ritodo-blue)">
+    <rect x="210" y="240" width="320" height="96" rx="48" />
+    <rect x="210" y="400" width="480" height="96" rx="48" />
+  </g>
+  <path
+    d="M258 638h242l140 142 202-270"
+    fill="none"
+    stroke="url(#ritodo-blue)"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+    stroke-width="96"
+  />
+</svg>

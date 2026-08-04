@@ -1,10 +1,12 @@
 import { v } from "convex/values";
 
-import { mutation } from "../_generated/server";
-import type { Id } from "../_generated/dataModel";
+import { internalMutation, mutation } from "../_generated/server";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
 import {
+  createTodoNoteContent,
+  createTodoTitleContent,
   normalizeTodoDescription,
   normalizeTodoTitleContent,
   todoNoteContentValidator,
@@ -18,39 +20,28 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireListAccess(ctx, args.listId, userId);
-    const list = await ctx.db.get(args.listId);
 
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    const now = Date.now();
-    const defaultSectionId =
-      list.kind === "sectioned"
-        ? await getDefaultSectionId(ctx, args.listId)
-        : undefined;
-    const nextOrder = await getNextCreateOrder(
-      ctx,
-      args.listId,
-      defaultSectionId,
-      false,
-    );
-    const todoId = await ctx.db.insert("todos", {
-      listId: args.listId,
-      sectionId: defaultSectionId,
-      title: normalizeTodoTitleContent(args.title),
-      isCompleted: false,
-      order: nextOrder,
-      updatedAt: now,
-    });
-
-    await ctx.db.patch(args.listId, {
-      updatedAt: now,
-    });
-
-    return todoId;
+    return createTodoForUser(ctx, userId, args);
   },
+});
+
+export const createForUser = internalMutation({
+  args: {
+    userId: v.string(),
+    listId: v.id("todoLists"),
+    sectionId: v.optional(v.id("todoSections")),
+    title: v.string(),
+    description: v.optional(v.string()),
+  },
+  handler: (ctx, args) =>
+    createTodoForUser(ctx, args.userId, {
+      listId: args.listId,
+      sectionId: args.sectionId,
+      title: createTodoTitleContent(args.title),
+      description: args.description
+        ? createTodoNoteContent(args.description)
+        : undefined,
+    }),
 });
 
 export const toggle = mutation({
@@ -65,32 +56,26 @@ export const toggle = mutation({
       throw new Error("Todo was not found.");
     }
 
-    await requireListAccess(ctx, todo.listId, userId);
-    const list = await ctx.db.get(todo.listId);
+    await setTodoCompletedForUser(ctx, userId, todo, !todo.isCompleted);
+  },
+});
 
-    if (!list) {
-      throw new Error("Todo list was not found.");
+export const setCompletedForUser = internalMutation({
+  args: {
+    userId: v.string(),
+    todoId: v.id("todos"),
+    completed: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const todo = await ctx.db.get(args.todoId);
+
+    if (!todo) {
+      throw new Error("Todo was not found.");
     }
 
-    const now = Date.now();
-    const nextIsCompleted = !todo.isCompleted;
-    const nextOrder = await getNextOrderForTodoState(
-      ctx,
-      list,
-      todo.sectionId,
-      nextIsCompleted,
-      todo._id,
-    );
+    await setTodoCompletedForUser(ctx, args.userId, todo, args.completed);
 
-    await ctx.db.patch(args.todoId, {
-      isCompleted: nextIsCompleted,
-      completedAt: nextIsCompleted ? now : undefined,
-      order: nextOrder,
-      updatedAt: now,
-    });
-    await ctx.db.patch(todo.listId, {
-      updatedAt: now,
-    });
+    return { todoId: todo._id, completed: args.completed };
   },
 });
 
@@ -149,25 +134,66 @@ export const updateDescription = mutation({
   },
 });
 
-export const remove = mutation({
+export const updateForUser = internalMutation({
   args: {
+    userId: v.string(),
     todoId: v.id("todos"),
+    title: v.optional(v.string()),
+    description: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
       throw new Error("Todo was not found.");
     }
 
-    await requireListAccess(ctx, todo.listId, userId);
+    await requireListAccess(ctx, todo.listId, args.userId);
 
-    await ctx.db.delete(args.todoId);
-    await ctx.db.patch(todo.listId, {
-      updatedAt: Date.now(),
+    if (args.title === undefined && args.description === undefined) {
+      throw new Error("Provide a title or description to update.");
+    }
+
+    const now = Date.now();
+    const title =
+      args.title === undefined
+        ? todo.title
+        : createTodoTitleContent(args.title);
+    const description =
+      args.description === undefined
+        ? todo.description
+        : args.description === null
+          ? undefined
+          : createTodoNoteContent(args.description);
+
+    await ctx.db.patch(args.todoId, {
+      title,
+      description,
+      updatedAt: now,
     });
+    await ctx.db.patch(todo.listId, { updatedAt: now });
+
+    return args.todoId;
   },
+});
+
+export const remove = mutation({
+  args: {
+    todoId: v.id("todos"),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+
+    await removeTodoForUser(ctx, userId, args.todoId);
+  },
+});
+
+export const removeForUser = internalMutation({
+  args: {
+    userId: v.string(),
+    todoId: v.id("todos"),
+  },
+  handler: (ctx, args) => removeTodoForUser(ctx, args.userId, args.todoId),
 });
 
 export const reorder = mutation({
@@ -220,82 +246,31 @@ export const move = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    const todo = await ctx.db.get(args.todoId);
 
-    if (!todo) {
-      throw new Error("Todo was not found.");
-    }
-
-    await requireListAccess(ctx, todo.listId, userId);
-
-    const [list, targetSection] = await Promise.all([
-      ctx.db.get(todo.listId),
-      ctx.db.get(args.targetSectionId),
-    ]);
-
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    if (list.kind !== "sectioned") {
-      throw new Error("Todo moves are only available in sectioned lists.");
-    }
-
-    if (!todo.sectionId) {
-      throw new Error("Todo is missing its section.");
-    }
-
-    if (!targetSection || targetSection.listId !== todo.listId) {
-      throw new Error("Target section was not found.");
-    }
-
-    const now = Date.now();
-    const sourceSectionId = todo.sectionId;
-    const [sourceTodos, targetTodos] = await Promise.all([
-      getOrderedSectionTodosByState(
-        ctx,
-        sourceSectionId,
-        todo.isCompleted,
-        todo._id,
-      ),
-      getOrderedSectionTodosByState(
-        ctx,
-        args.targetSectionId,
-        todo.isCompleted,
-        sourceSectionId === args.targetSectionId ? todo._id : undefined,
-      ),
-    ]);
-
-    const nextTargetTodos = [...targetTodos];
-    const clampedIndex = Math.max(
-      0,
-      Math.min(args.targetIndex, nextTargetTodos.length),
+    await moveTodoForUser(
+      ctx,
+      userId,
+      args.todoId,
+      args.targetSectionId,
+      args.targetIndex,
     );
-
-    nextTargetTodos.splice(clampedIndex, 0, todo);
-
-    if (sourceSectionId === args.targetSectionId) {
-      await patchTodoOrders(ctx, nextTargetTodos, sourceSectionId, now);
-    } else {
-      await Promise.all([
-        patchTodoOrders(ctx, sourceTodos, sourceSectionId, now),
-        patchTodoOrders(
-          ctx,
-          nextTargetTodos.map((targetTodo) =>
-            targetTodo._id === todo._id
-              ? { ...targetTodo, sectionId: args.targetSectionId }
-              : targetTodo,
-          ),
-          args.targetSectionId,
-          now,
-        ),
-      ]);
-    }
-
-    await ctx.db.patch(todo.listId, {
-      updatedAt: now,
-    });
   },
+});
+
+export const moveToSectionEndForUser = internalMutation({
+  args: {
+    userId: v.string(),
+    todoId: v.id("todos"),
+    targetSectionId: v.id("todoSections"),
+  },
+  handler: (ctx, args) =>
+    moveTodoForUser(
+      ctx,
+      args.userId,
+      args.todoId,
+      args.targetSectionId,
+      Number.MAX_SAFE_INTEGER,
+    ),
 });
 
 export const clearCompleted = mutation({
@@ -408,6 +383,200 @@ export const uncheckCompleted = mutation({
     });
   },
 });
+
+async function createTodoForUser(
+  ctx: MutationCtx,
+  userId: string,
+  args: {
+    listId: Id<"todoLists">;
+    sectionId?: Id<"todoSections">;
+    title: Doc<"todos">["title"];
+    description?: Doc<"todos">["description"];
+  },
+) {
+  await requireListAccess(ctx, args.listId, userId);
+  const list = await ctx.db.get(args.listId);
+
+  if (!list) {
+    throw new Error("Todo list was not found.");
+  }
+
+  let sectionId = args.sectionId;
+
+  if (list.kind === "regular") {
+    if (sectionId) {
+      throw new Error("Regular lists cannot contain sections.");
+    }
+  } else if (sectionId) {
+    const section = await ctx.db.get(sectionId);
+
+    if (!section || section.listId !== args.listId) {
+      throw new Error("Target section was not found.");
+    }
+  } else {
+    sectionId = await getDefaultSectionId(ctx, args.listId);
+  }
+
+  const now = Date.now();
+  const nextOrder = await getNextCreateOrder(
+    ctx,
+    args.listId,
+    sectionId,
+    false,
+  );
+  const todoId = await ctx.db.insert("todos", {
+    listId: args.listId,
+    sectionId,
+    title: normalizeTodoTitleContent(args.title),
+    description: normalizeTodoDescription(args.description),
+    isCompleted: false,
+    order: nextOrder,
+    updatedAt: now,
+  });
+
+  await ctx.db.patch(args.listId, { updatedAt: now });
+
+  return todoId;
+}
+
+async function setTodoCompletedForUser(
+  ctx: MutationCtx,
+  userId: string,
+  todo: Doc<"todos">,
+  completed: boolean,
+) {
+  await requireListAccess(ctx, todo.listId, userId);
+
+  if (todo.isCompleted === completed) {
+    return;
+  }
+
+  const list = await ctx.db.get(todo.listId);
+
+  if (!list) {
+    throw new Error("Todo list was not found.");
+  }
+
+  const now = Date.now();
+  const nextOrder = await getNextOrderForTodoState(
+    ctx,
+    list,
+    todo.sectionId,
+    completed,
+    todo._id,
+  );
+
+  await ctx.db.patch(todo._id, {
+    isCompleted: completed,
+    completedAt: completed ? now : undefined,
+    order: nextOrder,
+    updatedAt: now,
+  });
+  await ctx.db.patch(todo.listId, { updatedAt: now });
+}
+
+async function removeTodoForUser(
+  ctx: MutationCtx,
+  userId: string,
+  todoId: Id<"todos">,
+) {
+  const todo = await ctx.db.get(todoId);
+
+  if (!todo) {
+    throw new Error("Todo was not found.");
+  }
+
+  await requireListAccess(ctx, todo.listId, userId);
+
+  await ctx.db.delete(todoId);
+  await ctx.db.patch(todo.listId, { updatedAt: Date.now() });
+
+  return todoId;
+}
+
+async function moveTodoForUser(
+  ctx: MutationCtx,
+  userId: string,
+  todoId: Id<"todos">,
+  targetSectionId: Id<"todoSections">,
+  targetIndex: number,
+) {
+  const todo = await ctx.db.get(todoId);
+
+  if (!todo) {
+    throw new Error("Todo was not found.");
+  }
+
+  await requireListAccess(ctx, todo.listId, userId);
+
+  const [list, targetSection] = await Promise.all([
+    ctx.db.get(todo.listId),
+    ctx.db.get(targetSectionId),
+  ]);
+
+  if (!list) {
+    throw new Error("Todo list was not found.");
+  }
+
+  if (list.kind !== "sectioned") {
+    throw new Error("Todo moves are only available in sectioned lists.");
+  }
+
+  if (!todo.sectionId) {
+    throw new Error("Todo is missing its section.");
+  }
+
+  if (!targetSection || targetSection.listId !== todo.listId) {
+    throw new Error("Target section was not found.");
+  }
+
+  const now = Date.now();
+  const sourceSectionId = todo.sectionId;
+  const [sourceTodos, targetTodos] = await Promise.all([
+    getOrderedSectionTodosByState(
+      ctx,
+      sourceSectionId,
+      todo.isCompleted,
+      todo._id,
+    ),
+    getOrderedSectionTodosByState(
+      ctx,
+      targetSectionId,
+      todo.isCompleted,
+      sourceSectionId === targetSectionId ? todo._id : undefined,
+    ),
+  ]);
+
+  const nextTargetTodos = [...targetTodos];
+  const clampedIndex = Math.max(
+    0,
+    Math.min(targetIndex, nextTargetTodos.length),
+  );
+
+  nextTargetTodos.splice(clampedIndex, 0, todo);
+
+  if (sourceSectionId === targetSectionId) {
+    await patchTodoOrders(ctx, nextTargetTodos, sourceSectionId, now);
+  } else {
+    await Promise.all([
+      patchTodoOrders(ctx, sourceTodos, sourceSectionId, now),
+      patchTodoOrders(
+        ctx,
+        nextTargetTodos.map((targetTodo) =>
+          targetTodo._id === todo._id
+            ? { ...targetTodo, sectionId: targetSectionId }
+            : targetTodo,
+        ),
+        targetSectionId,
+        now,
+      ),
+    ]);
+  }
+
+  await ctx.db.patch(todo.listId, { updatedAt: now });
+
+  return todoId;
+}
 
 async function getNextOrderForTodoState(
   ctx: MutationCtx,
