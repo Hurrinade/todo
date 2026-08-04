@@ -4,23 +4,15 @@ import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
 import type { TodoDetailViewProps } from "@/types";
-import { useTodoStore } from "@/stores/todo/todo-store";
-import { todoApi } from "@/config/convex-api";
-import { useQuery } from "convex/react";
 
 export function TodoDetailView({
-  todo,
+  detail,
   errorMessage,
   onBack,
   onRenameTodo,
   onUpdateDescription,
 }: TodoDetailViewProps) {
-  const listsResult = useQuery(todoApi.queries.todoLists.list);
-  const storeLists = useTodoStore((state) => state.lists);
-
-  const lists = listsResult ?? storeLists;
-
-  const list = lists.find((l) => l._id === todo.listId);
+  const { todo, list } = detail;
 
   return (
     <main className="h-full w-full overflow-y-auto bg-background text-foreground">
@@ -35,19 +27,17 @@ export function TodoDetailView({
             className="flex items-center gap-2 w-fit px-2"
           >
             <ArrowLeft className="size-5" />
-            {list && (
-              <span className="flex items-center gap-2 text-sm font-semibold">
-                {list.emoji ? (
-                  <span
-                    aria-hidden="true"
-                    className="shrink-0 text-base leading-none"
-                  >
-                    {list.emoji}
-                  </span>
-                ) : null}
-                <span className="block truncate">{list.title}</span>
-              </span>
-            )}
+            <span className="flex items-center gap-2 text-sm font-semibold">
+              {list.emoji ? (
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 text-base leading-none"
+                >
+                  {list.emoji}
+                </span>
+              ) : null}
+              <span className="block truncate">{list.title}</span>
+            </span>
           </Button>
         </header>
 

@@ -72,6 +72,13 @@ bun test
 
 `bun run check` is non-mutating. It runs linting and typechecking.
 
+## Convex list counters
+
+Todo lists keep denormalized open-todo, completed-todo, and member counts so
+the browser and MCP list endpoints do not collect every related todo. New
+lists initialize these counters automatically, and shared mutation helpers
+maintain them for web and MCP writes.
+
 ## RiTodo MCP Server
 
 The Convex deployment exposes a stateless Streamable HTTP MCP server at

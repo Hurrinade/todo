@@ -4,6 +4,7 @@ import { internalMutation, mutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { requireClerkUserId, requireListAccess } from "../shared/auth";
+import { updateTodoListStats } from "../shared/todoListStats";
 import {
   createTodoNoteContent,
   createTodoTitleContent,
@@ -293,7 +294,8 @@ export const clearCompleted = mutation({
     }
 
     await Promise.all(completedTodos.map((todo) => ctx.db.delete(todo._id)));
-    await ctx.db.patch(args.listId, {
+    await updateTodoListStats(ctx, args.listId, {
+      completedTodoCount: 0,
       updatedAt: Date.now(),
     });
   },
@@ -378,7 +380,9 @@ export const uncheckCompleted = mutation({
       );
     }
 
-    await ctx.db.patch(args.listId, {
+    await updateTodoListStats(ctx, args.listId, {
+      openTodoDelta: completedTodos.length,
+      completedTodoCount: 0,
       updatedAt: now,
     });
   },
@@ -434,7 +438,10 @@ async function createTodoForUser(
     updatedAt: now,
   });
 
-  await ctx.db.patch(args.listId, { updatedAt: now });
+  await updateTodoListStats(ctx, args.listId, {
+    openTodoDelta: 1,
+    updatedAt: now,
+  });
 
   return todoId;
 }
@@ -472,7 +479,11 @@ async function setTodoCompletedForUser(
     order: nextOrder,
     updatedAt: now,
   });
-  await ctx.db.patch(todo.listId, { updatedAt: now });
+  await updateTodoListStats(ctx, todo.listId, {
+    openTodoDelta: completed ? -1 : 1,
+    completedTodoDelta: completed ? 1 : -1,
+    updatedAt: now,
+  });
 }
 
 async function removeTodoForUser(
@@ -489,7 +500,11 @@ async function removeTodoForUser(
   await requireListAccess(ctx, todo.listId, userId);
 
   await ctx.db.delete(todoId);
-  await ctx.db.patch(todo.listId, { updatedAt: Date.now() });
+  await updateTodoListStats(ctx, todo.listId, {
+    openTodoDelta: todo.isCompleted ? 0 : -1,
+    completedTodoDelta: todo.isCompleted ? -1 : 0,
+    updatedAt: Date.now(),
+  });
 
   return todoId;
 }

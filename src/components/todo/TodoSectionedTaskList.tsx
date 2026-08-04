@@ -10,30 +10,30 @@ import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useNetworkStore } from "@/stores";
-import type { TodoItem, TodoSection } from "@/types";
+import type { TodoListItem, TodoSection } from "@/types";
 
 type TodoSectionedTaskListProps = {
   sections: TodoSection[];
-  todos: TodoItem[];
+  todos: TodoListItem[];
   onCreateSection: (title: string) => Promise<void>;
   onRenameSection: (
     sectionId: TodoSection["_id"],
     title: string,
   ) => Promise<void>;
   onReorderSections: (sectionIds: TodoSection["_id"][]) => Promise<void>;
-  onToggleTodo: (todoId: TodoItem["_id"]) => void;
+  onToggleTodo: (todoId: TodoListItem["_id"]) => void;
   onMoveTodo: (
-    todoId: TodoItem["_id"],
+    todoId: TodoListItem["_id"],
     targetSectionId: TodoSection["_id"],
     targetIndex: number,
   ) => Promise<void>;
-  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
+  onDeleteTodo: (todoId: TodoListItem["_id"]) => void;
 };
 
 type TodoDragData = {
   type: "todo";
-  todoId: TodoItem["_id"];
-  sectionId?: TodoItem["sectionId"];
+  todoId: TodoListItem["_id"];
+  sectionId?: TodoListItem["sectionId"];
   isCompleted: boolean;
 };
 
@@ -67,7 +67,7 @@ export function TodoSectionedTaskList({
   const [closedSectionIds, setClosedSectionIds] = useState<string[]>([]);
   const isDraggingRef = useRef(false);
   const todoDragRef = useRef<{
-    todoId: TodoItem["_id"];
+    todoId: TodoListItem["_id"];
     sectionId: TodoSection["_id"];
     bucketIndex: number;
   } | null>(null);
@@ -344,8 +344,8 @@ export function TodoSectionedTaskList({
   );
 }
 
-function buildSectionTodoMap(sections: TodoSection[], todos: TodoItem[]) {
-  const nextMap: Record<string, TodoItem[]> = {};
+function buildSectionTodoMap(sections: TodoSection[], todos: TodoListItem[]) {
+  const nextMap: Record<string, TodoListItem[]> = {};
 
   for (const section of sections) {
     nextMap[section._id] = [];
@@ -368,7 +368,7 @@ function buildSectionTodoMap(sections: TodoSection[], todos: TodoItem[]) {
   return nextMap;
 }
 
-function compareSectionTodos(firstTodo: TodoItem, secondTodo: TodoItem) {
+function compareSectionTodos(firstTodo: TodoListItem, secondTodo: TodoListItem) {
   if (firstTodo.isCompleted !== secondTodo.isCompleted) {
     return Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted);
   }
@@ -397,8 +397,8 @@ function getSortableData(entity: { data?: unknown } | null | undefined) {
 }
 
 function findTodoById(
-  sectionTodoMap: Record<string, TodoItem[]>,
-  todoId: TodoItem["_id"],
+  sectionTodoMap: Record<string, TodoListItem[]>,
+  todoId: TodoListItem["_id"],
 ) {
   for (const todos of Object.values(sectionTodoMap)) {
     const todo = todos.find((item) => item._id === todoId);
@@ -412,8 +412,8 @@ function findTodoById(
 }
 
 function findSectionIdForTodo(
-  sectionTodoMap: Record<string, TodoItem[]>,
-  todoId: TodoItem["_id"],
+  sectionTodoMap: Record<string, TodoListItem[]>,
+  todoId: TodoListItem["_id"],
 ) {
   for (const [sectionId, todos] of Object.entries(sectionTodoMap)) {
     if (todos.some((todo) => todo._id === todoId)) {
@@ -425,8 +425,8 @@ function findSectionIdForTodo(
 }
 
 function getTodoBucketIndex(
-  sectionTodoMap: Record<string, TodoItem[]>,
-  todoId: TodoItem["_id"],
+  sectionTodoMap: Record<string, TodoListItem[]>,
+  todoId: TodoListItem["_id"],
 ) {
   const todo = findTodoById(sectionTodoMap, todoId);
 
@@ -454,10 +454,10 @@ function getTodoBucketIndex(
 }
 
 function getTargetLocation(
-  sectionTodoMap: Record<string, TodoItem[]>,
+  sectionTodoMap: Record<string, TodoListItem[]>,
   target: { data?: unknown },
-  activeTodo: TodoItem,
-  activeTodoId: TodoItem["_id"],
+  activeTodo: TodoListItem,
+  activeTodoId: TodoListItem["_id"],
 ) {
   const targetData = getSortableData(target);
 
@@ -518,8 +518,8 @@ function getTargetLocation(
 }
 
 function moveTodoInSectionMap(
-  sectionTodoMap: Record<string, TodoItem[]>,
-  todoId: TodoItem["_id"],
+  sectionTodoMap: Record<string, TodoListItem[]>,
+  todoId: TodoListItem["_id"],
   sourceSectionId: TodoSection["_id"],
   targetSectionId: TodoSection["_id"],
   targetBucketIndex: number,
@@ -529,7 +529,7 @@ function moveTodoInSectionMap(
       sectionId,
       [...todos],
     ]),
-  ) as Record<string, TodoItem[]>;
+  ) as Record<string, TodoListItem[]>;
   const sourceTodos = nextMap[sourceSectionId] ?? [];
   const todoIndex = sourceTodos.findIndex((todo) => todo._id === todoId);
 

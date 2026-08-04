@@ -14,14 +14,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { useNetworkStore } from "@/stores";
-import type { TodoItem, TodoSection } from "@/types";
+import type { TodoListItem, TodoSection } from "@/types";
 
 type SortableTodoSectionProps = {
   section: TodoSection;
   index: number;
-  todos: TodoItem[];
-  onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
+  todos: TodoListItem[];
+  onToggleTodo: (todoId: TodoListItem["_id"]) => void;
+  onDeleteTodo: (todoId: TodoListItem["_id"]) => void;
   onRenameSection: (
     sectionId: TodoSection["_id"],
     title: string,

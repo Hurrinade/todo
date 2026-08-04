@@ -24,6 +24,7 @@ import type * as queries_todoSections from "../queries/todoSections.js";
 import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_todo from "../shared/todo.js";
+import type * as shared_todoListStats from "../shared/todoListStats.js";
 import type * as system_users from "../system/users.js";
 import type * as triggers_todolistFunctions from "../triggers/todolistFunctions.js";
 
@@ -50,6 +51,7 @@ declare const fullApi: ApiFromModules<{
   "queries/todos": typeof queries_todos;
   "shared/auth": typeof shared_auth;
   "shared/todo": typeof shared_todo;
+  "shared/todoListStats": typeof shared_todoListStats;
   "system/users": typeof system_users;
   "triggers/todolistFunctions": typeof triggers_todolistFunctions;
 }>;

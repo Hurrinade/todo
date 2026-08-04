@@ -1,13 +1,13 @@
 import { motion, type HTMLMotionProps, type Transition } from "motion/react";
 
 import { cn } from "@/lib/utils";
-import type { TodoItem } from "@/types";
+import type { TodoListItem } from "@/types";
 
 type TodoTaskMotionItemProps = Omit<
   HTMLMotionProps<"li">,
   "layout" | "layoutId" | "transition"
 > & {
-  todoId: TodoItem["_id"];
+  todoId: TodoListItem["_id"];
 };
 
 const todoTaskLayoutTransition = {

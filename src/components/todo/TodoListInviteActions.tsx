@@ -1,9 +1,9 @@
+import { api } from "@convex/_generated/api";
 import { Link2 } from "lucide-react";
-import type { TodoListWithStats } from "@/types";
+import type { TodoListSummary } from "@/types";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 
-import { todoApi } from "@/config/convex-api";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -12,11 +12,11 @@ import {
 } from "@/components/ui/tooltip";
 import { useNetworkStore } from "@/stores";
 
-export function TodoListInviteActions({ list }: { list: TodoListWithStats }) {
+export function TodoListInviteActions({ list }: { list: TodoListSummary }) {
   const isOnline = useNetworkStore((state) => state.isOnline);
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
-  const createInvite = useMutation(todoApi.mutations.todoInvites.create);
+  const createInvite = useMutation(api.mutations.todoInvites.create);
 
   const handleGenerateInvite = async () => {
     setIsGeneratingInvite(true);

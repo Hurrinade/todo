@@ -1,3 +1,4 @@
+import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useMutation, useQuery } from "convex/react";
 import { useState } from "react";
@@ -6,8 +7,7 @@ import { useNavigate, useParams } from "react-router";
 import { TodoDetailView } from "@/components/todo/TodoDetailView";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { todoApi } from "@/config/convex-api";
-import { useNetworkStore, useTodoStore } from "@/stores";
+import { useNetworkStore } from "@/stores";
 import type {
   TodoDetailUnavailableProps,
   TodoWorkspaceLocationState,
@@ -18,16 +18,13 @@ export default function TodoDetail() {
   const { todoId } = useParams<{ todoId: string }>();
   const navigate = useNavigate();
   const isOnline = useNetworkStore((state) => state.isOnline);
-  const todo = useQuery(
-    todoApi.queries.todos.get,
+  const detail = useQuery(
+    api.queries.todos.get,
     todoId ? { todoId: todoId as Id<"todos"> } : "skip",
   );
-  const storedTodo = useTodoStore((state) =>
-    todoId ? state.getTodoById(todoId as Id<"todos">) : null,
-  );
-  const renameTodo = useMutation(todoApi.mutations.todos.rename);
+  const renameTodo = useMutation(api.mutations.todos.rename);
   const updateDescription = useMutation(
-    todoApi.mutations.todos.updateDescription,
+    api.mutations.todos.updateDescription,
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -50,13 +47,11 @@ export default function TodoDetail() {
     );
   }
 
-  const displayTodo = todo ?? storedTodo;
-
-  if (todo === undefined && !displayTodo) {
+  if (detail === undefined) {
     return <TodoDetailLoading />;
   }
 
-  if (!displayTodo || (todo !== undefined && todo == null)) {
+  if (detail == null) {
     return (
       <TodoDetailUnavailable
         message="Todo was not found."
@@ -69,10 +64,10 @@ export default function TodoDetail() {
 
   return (
     <TodoDetailView
-      todo={displayTodo}
+      detail={detail}
       errorMessage={errorMessage}
       onBack={() => {
-        handleBack(displayTodo.listId);
+        handleBack(detail.todo.listId);
       }}
       onRenameTodo={async (title) => {
         setErrorMessage(null);
@@ -83,7 +78,7 @@ export default function TodoDetail() {
         }
 
         try {
-          await renameTodo({ todoId: displayTodo._id, title });
+          await renameTodo({ todoId: detail.todo._id, title });
         } catch (error) {
           setErrorMessage(getErrorMessage(error));
           throw error;
@@ -98,7 +93,7 @@ export default function TodoDetail() {
         }
 
         try {
-          await updateDescription({ todoId: displayTodo._id, description });
+          await updateDescription({ todoId: detail.todo._id, description });
         } catch (error) {
           setErrorMessage(getErrorMessage(error));
           throw error;

@@ -1,3 +1,4 @@
+import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,29 +16,28 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { todoApi } from "@/config/convex-api";
 import { cn } from "@/lib/utils";
 import { useNetworkStore, useTodoErrorStore, useTodoStore } from "@/stores";
-import type { TodoItem, TodoListWithStats, TodoSection } from "@/types";
+import type { TodoListItem, TodoListSummary, TodoSection } from "@/types";
 import { createTodoTitleContent, OFFLINE_ACTION_MESSAGE } from "@/utils";
 import { TodoListSmallHeader } from "./TodoListSmallHeader";
 
 export function TodoWorkspace({
   initialActiveListId,
 }: {
-  initialActiveListId: TodoListWithStats["_id"] | null;
+  initialActiveListId: TodoListSummary["_id"] | null;
 }) {
-  const listsResult = useQuery(todoApi.queries.todoLists.list);
+  const listsResult = useQuery(api.queries.todoLists.list);
 
-  const createSection = useMutation(todoApi.mutations.todoSections.create);
-  const renameSection = useMutation(todoApi.mutations.todoSections.rename);
-  const reorderSections = useMutation(todoApi.mutations.todoSections.reorder);
-  const createTodo = useMutation(todoApi.mutations.todos.create);
+  const createSection = useMutation(api.mutations.todoSections.create);
+  const renameSection = useMutation(api.mutations.todoSections.rename);
+  const reorderSections = useMutation(api.mutations.todoSections.reorder);
+  const createTodo = useMutation(api.mutations.todos.create);
 
-  const toggleTodo = useMutation(todoApi.mutations.todos.toggle);
-  const deleteTodo = useMutation(todoApi.mutations.todos.remove);
-  const reorderTodos = useMutation(todoApi.mutations.todos.reorder);
-  const moveTodo = useMutation(todoApi.mutations.todos.move);
+  const toggleTodo = useMutation(api.mutations.todos.toggle);
+  const deleteTodo = useMutation(api.mutations.todos.remove);
+  const reorderTodos = useMutation(api.mutations.todos.reorder);
+  const moveTodo = useMutation(api.mutations.todos.move);
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
@@ -45,7 +45,7 @@ export function TodoWorkspace({
 
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
   const [activeListId, setActiveListId] = useState<
-    TodoListWithStats["_id"] | null
+    TodoListSummary["_id"] | null
   >(initialActiveListId);
 
   const storeLists = useTodoStore((state) => state.lists);
@@ -53,10 +53,6 @@ export function TodoWorkspace({
   // Use query results but initially cached fallback
   const lists = listsResult ?? storeLists;
   const activeList = getActiveList(lists, activeListId);
-
-  const setCurrentListTodos = useTodoStore(
-    (state) => state.setCurrentListTodos,
-  );
 
   const errorMessage = useTodoErrorStore((state) => state.errorMessage);
   const clearErrorMessage = useTodoErrorStore(
@@ -68,11 +64,11 @@ export function TodoWorkspace({
   );
 
   const activeTodoResult = useQuery(
-    todoApi.queries.todos.list,
+    api.queries.todos.list,
     activeList ? { listId: activeList._id } : "skip",
   );
   const sectionResult = useQuery(
-    todoApi.queries.todoSections.list,
+    api.queries.todoSections.list,
     activeList?.kind === "sectioned" ? { listId: activeList._id } : "skip",
   );
   const todos = useMemo(() => activeTodoResult ?? [], [activeTodoResult]);
@@ -94,14 +90,6 @@ export function TodoWorkspace({
 
     setLists(listsResult);
   }, [listsResult, setLists]);
-
-  useEffect(() => {
-    if (activeTodoResult === undefined) {
-      return;
-    }
-
-    setCurrentListTodos(activeTodoResult);
-  }, [activeTodoResult, setCurrentListTodos]);
 
   const handleCreateTodo = async (event: React.SubmitEvent) => {
     event.preventDefault();
@@ -133,7 +121,7 @@ export function TodoWorkspace({
     }
   };
 
-  const handleToggleTodo = async (todoId: TodoItem["_id"]) => {
+  const handleToggleTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
       setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
@@ -148,7 +136,7 @@ export function TodoWorkspace({
     }
   };
 
-  const handleDeleteTodo = async (todoId: TodoItem["_id"]) => {
+  const handleDeleteTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
       setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
@@ -223,7 +211,7 @@ export function TodoWorkspace({
   };
 
   const handleMoveTodo = async (
-    todoId: TodoItem["_id"],
+    todoId: TodoListItem["_id"],
     targetSectionId: TodoSection["_id"],
     targetIndex: number,
   ) => {
@@ -242,7 +230,7 @@ export function TodoWorkspace({
     }
   };
 
-  const handleReorderTodos = async (todoIds: TodoItem["_id"][]) => {
+  const handleReorderTodos = async (todoIds: TodoListItem["_id"][]) => {
     if (!activeList) {
       return;
     }
@@ -304,18 +292,18 @@ export function TodoWorkspace({
 }
 
 type TodoWorkspaceContentProps = {
-  activeList: TodoListWithStats | null;
-  activeTodoResult: TodoItem[] | undefined;
-  completedTodos: TodoItem[];
+  activeList: TodoListSummary | null;
+  activeTodoResult: TodoListItem[] | undefined;
+  completedTodos: TodoListItem[];
   errorMessage: string | null;
   isCreatingTodo: boolean;
   isOnline: boolean;
   newTodoTitle: string;
   onCreateSection: (title: string) => Promise<void>;
   onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
-  onDeleteTodo: (todoId: TodoItem["_id"]) => Promise<void>;
+  onDeleteTodo: (todoId: TodoListItem["_id"]) => Promise<void>;
   onMoveTodo: (
-    todoId: TodoItem["_id"],
+    todoId: TodoListItem["_id"],
     targetSectionId: TodoSection["_id"],
     targetIndex: number,
   ) => Promise<void>;
@@ -324,13 +312,13 @@ type TodoWorkspaceContentProps = {
     title: string,
   ) => Promise<void>;
   onReorderSections: (sectionIds: TodoSection["_id"][]) => Promise<void>;
-  onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
+  onReorderTodos: (todoIds: TodoListItem["_id"][]) => Promise<void>;
   onTodoTitleChange: (title: string) => void;
-  onToggleTodo: (todoId: TodoItem["_id"]) => Promise<void>;
-  openTodos: TodoItem[];
+  onToggleTodo: (todoId: TodoListItem["_id"]) => Promise<void>;
+  openTodos: TodoListItem[];
   sectionResult: TodoSection[] | undefined;
   sections: TodoSection[];
-  todos: TodoItem[];
+  todos: TodoListItem[];
 };
 
 function TodoWorkspaceContent({
@@ -448,8 +436,8 @@ function TodoWorkspaceContent({
 }
 
 function getActiveList(
-  lists: TodoListWithStats[] | undefined,
-  activeListId: TodoListWithStats["_id"] | null,
+  lists: TodoListSummary[] | undefined,
+  activeListId: TodoListSummary["_id"] | null,
 ) {
   if (!lists) {
     return null;
