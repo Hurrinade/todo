@@ -1,8 +1,9 @@
+import { UNSAFE_PortalProvider as ClerkPortalProvider } from "@clerk/react";
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { useMutation } from "convex/react";
 import { ListChecks, Plus, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AccountMenu from "@/components/common/AccountMenu";
 import BackgroundColorPicker from "@/components/common/BackgroundColorPicker";
@@ -41,6 +42,11 @@ export function TodoListSidebar({
   const { openModal } = useModal();
   const { isMobile, setOpenMobile } = useSidebar();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const accountMenuPortalRef = useRef<HTMLDivElement>(null);
+  const getAccountMenuPortalContainer = useCallback(
+    () => (isMobile ? accountMenuPortalRef.current : null),
+    [isMobile],
+  );
 
   // Store lists
 
@@ -259,13 +265,18 @@ export function TodoListSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <SidebarFooter
+        ref={accountMenuPortalRef}
+        className="gap-2 border-t border-sidebar-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+      >
         <div className="flex w-full items-center gap-2">
           <ThemeToggle />
           <BackgroundColorPicker />
         </div>
 
-        <AccountMenu />
+        <ClerkPortalProvider getContainer={getAccountMenuPortalContainer}>
+          <AccountMenu />
+        </ClerkPortalProvider>
       </SidebarFooter>
     </Sidebar>
   );
