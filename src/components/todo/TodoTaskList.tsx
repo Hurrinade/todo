@@ -14,14 +14,14 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import type { TodoItem } from "@/types";
+import type { TodoListItem } from "@/types";
 
 type TodoTaskListProps = {
-  completedTodos: TodoItem[];
-  openTodos: TodoItem[];
-  onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
-  onReorderTodos: (todoIds: TodoItem["_id"][]) => Promise<void>;
+  completedTodos: TodoListItem[];
+  openTodos: TodoListItem[];
+  onToggleTodo: (todoId: TodoListItem["_id"]) => void;
+  onDeleteTodo: (todoId: TodoListItem["_id"]) => void;
+  onReorderTodos: (todoIds: TodoListItem["_id"][]) => Promise<void>;
 };
 
 export function TodoTaskList({

@@ -21,6 +21,9 @@ export default defineSchema({
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
     userId: v.string(),
     order: v.optional(v.number()),
+    openTodoCount: v.number(),
+    completedTodoCount: v.number(),
+    memberCount: v.number(),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
   todoSections: defineTable({

@@ -1,5 +1,6 @@
 import type {
   TodoItem,
+  TodoDetail,
   TodoNoteContent,
   TodoTitleContent,
 } from "@/types/todo/todo.types";
@@ -10,7 +11,7 @@ export type TodoDetailTitleProps = {
 };
 
 export type TodoDetailViewProps = {
-  todo: TodoItem;
+  detail: TodoDetail;
   errorMessage: string | null;
   onBack: () => void;
   onRenameTodo: (title: TodoTitleContent) => Promise<void>;

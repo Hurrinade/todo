@@ -16,8 +16,20 @@ export const get = query({
     }
 
     await requireListAccess(ctx, todo.listId, userId);
+    const list = await ctx.db.get(todo.listId);
 
-    return todo;
+    if (!list) {
+      return null;
+    }
+
+    return {
+      todo,
+      list: {
+        _id: list._id,
+        title: list.title,
+        emoji: list.emoji,
+      },
+    };
   },
 });
 
@@ -34,7 +46,17 @@ export const list = query({
       .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
       .collect();
 
-    return todos.sort(compareTodos);
+    return todos.sort(compareTodos).map((todo) => ({
+      _id: todo._id,
+      _creationTime: todo._creationTime,
+      listId: todo.listId,
+      sectionId: todo.sectionId,
+      title: todo.title,
+      isCompleted: todo.isCompleted,
+      completedAt: todo.completedAt,
+      order: todo.order,
+      updatedAt: todo.updatedAt,
+    }));
   },
 });
 

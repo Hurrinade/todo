@@ -1,4 +1,5 @@
 import { SignInButton } from "@clerk/react";
+import { api } from "@convex/_generated/api";
 import {
   AuthLoading,
   useConvexAuth,
@@ -10,7 +11,6 @@ import { CheckCircle2, Link2, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router";
 
-import { todoApi } from "@/config/convex-api";
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
 import { useNetworkStore } from "@/stores";
@@ -21,9 +21,9 @@ export default function Invite() {
   const params = useParams<{ token: string }>();
   const { isAuthenticated, isLoading } = useConvexAuth();
   const isOnline = useNetworkStore((state) => state.isOnline);
-  const acceptInvite = useMutation(todoApi.mutations.todoInvites.accept);
+  const acceptInvite = useMutation(api.mutations.todoInvites.accept);
   const inviteResult = useQuery(
-    todoApi.queries.todoInvites.getByToken,
+    api.queries.todoInvites.getByToken,
     params.token ? { token: params.token } : "skip",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);

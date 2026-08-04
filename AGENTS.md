@@ -241,3 +241,10 @@ Examples
 - Use shadcn Sonner for toasts it is a component built on sonner package (https://ui.shadcn.com/docs/components/radix/sonner)
 - Use Zustand for shared or cross-component state instead of centralizing application logic in a large parent component. Prefer small, focused, connected components that consume state directly from the store. Keep state colocated when possible, and promote it to the store only when it must be shared across routes, features, or distant components.
 - Never commit or push unless explicitly instructed.
+- Don't add test permanently, just do them for yourself and remove them after
+- Import the generated Convex `api` directly from `@convex/_generated/api` in
+  frontend code. Derive shared frontend API data types from generated function
+  arguments and return types; do not add a manually cast API facade.
+- `todoLists.openTodoCount`, `completedTodoCount`, and `memberCount` are
+  required denormalized counters. Maintain them through the shared stats helper
+  in every web and MCP write path, and never collect todos only to count them.

@@ -4,13 +4,13 @@ import { useNavigate } from "react-router";
 import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
 import { useNetworkStore } from "@/stores";
-import type { TodoItem } from "@/types";
+import type { TodoListItem } from "@/types";
 import { getTodoTitleText } from "@/utils";
 
 export type TodoTaskItemProps = {
-  todo: TodoItem;
-  onToggleTodo: (todoId: TodoItem["_id"]) => void;
-  onDeleteTodo: (todoId: TodoItem["_id"]) => void;
+  todo: TodoListItem;
+  onToggleTodo: (todoId: TodoListItem["_id"]) => void;
+  onDeleteTodo: (todoId: TodoListItem["_id"]) => void;
   dragHandleRef?: (element: Element | null) => void;
   isReorderEnabled?: boolean;
 };

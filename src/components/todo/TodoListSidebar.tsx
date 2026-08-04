@@ -1,8 +1,10 @@
+import { UNSAFE_PortalProvider as ClerkPortalProvider } from "@clerk/react";
+import { api } from "@convex/_generated/api";
 import { DragDropProvider } from "@dnd-kit/react";
 import { isSortable } from "@dnd-kit/react/sortable";
 import { useMutation } from "convex/react";
 import { ListChecks, Plus, Search } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import AccountMenu from "@/components/common/AccountMenu";
 import BackgroundColorPicker from "@/components/common/BackgroundColorPicker";
@@ -21,16 +23,15 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
-import type { CreateTodoListModalValues, TodoListWithStats } from "@/types";
+import type { CreateTodoListModalValues, TodoListSummary } from "@/types";
 import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 type TodoListSidebarProps = {
-  lists: TodoListWithStats[];
-  activeListId: TodoListWithStats["_id"] | null;
-  setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
+  lists: TodoListSummary[];
+  activeListId: TodoListSummary["_id"] | null;
+  setActiveListId: (listId: TodoListSummary["_id"] | null) => void;
 };
 
 export function TodoListSidebar({
@@ -41,11 +42,16 @@ export function TodoListSidebar({
   const { openModal } = useModal();
   const { isMobile, setOpenMobile } = useSidebar();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const accountMenuPortalRef = useRef<HTMLDivElement>(null);
+  const getAccountMenuPortalContainer = useCallback(
+    () => (isMobile ? accountMenuPortalRef.current : null),
+    [isMobile],
+  );
 
   // Store lists
 
-  const createList = useMutation(todoApi.mutations.todoLists.create);
-  const reorderLists = useMutation(todoApi.mutations.todoLists.reorder);
+  const createList = useMutation(api.mutations.todoLists.create);
+  const reorderLists = useMutation(api.mutations.todoLists.reorder);
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
   );
@@ -116,7 +122,7 @@ export function TodoListSidebar({
     }
   };
 
-  const handleReorderLists = async (listIds: TodoListWithStats["_id"][]) => {
+  const handleReorderLists = async (listIds: TodoListSummary["_id"][]) => {
     if (!isOnline) {
       setErrorMessage(OFFLINE_ACTION_MESSAGE);
       return;
@@ -259,13 +265,18 @@ export function TodoListSidebar({
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="gap-2 border-t border-sidebar-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <SidebarFooter
+        ref={accountMenuPortalRef}
+        className="gap-2 border-t border-sidebar-border p-4 pb-[calc(1rem+env(safe-area-inset-bottom))]"
+      >
         <div className="flex w-full items-center gap-2">
           <ThemeToggle />
           <BackgroundColorPicker />
         </div>
 
-        <AccountMenu />
+        <ClerkPortalProvider getContainer={getAccountMenuPortalContainer}>
+          <AccountMenu />
+        </ClerkPortalProvider>
       </SidebarFooter>
     </Sidebar>
   );

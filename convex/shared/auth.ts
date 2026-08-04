@@ -49,18 +49,11 @@ export async function requireOwnerListAccess(
   userId?: string,
 ) {
   const clerkUserId = userId ?? (await requireClerkUserId(ctx));
-  const userLists = await ctx.db
-    .query("todoLists")
-    .withIndex("by_user_id", (q) => q.eq("userId", clerkUserId))
-    .collect();
+  const list = await ctx.db.get(listId);
 
-  if (!userLists.length) {
-    throw new Error("User has no active lists.");
-  }
-
-  if (!userLists.some((list) => list._id === listId)) {
+  if (!list || list.userId !== clerkUserId) {
     throw new Error("User does not have access to this list as owner.");
   }
 
-  return userLists.find((list) => list._id === listId)!;
+  return list;
 }
