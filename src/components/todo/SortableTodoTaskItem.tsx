@@ -11,12 +11,14 @@ type SortableTodoTaskItemProps = TodoTaskItemProps & {
   index: number;
   group?: string;
   isReorderEnabled: boolean;
+  useMotionWrapper?: boolean;
 };
 
 export function SortableTodoTaskItem({
   index,
   group,
   isReorderEnabled,
+  useMotionWrapper = true,
   todo,
   onToggleTodo,
   onDeleteTodo,
@@ -37,19 +39,36 @@ export function SortableTodoTaskItem({
     disabled: !canReorder,
   });
 
+  const taskItem = (
+    <TodoTaskItem
+      todo={todo}
+      onToggleTodo={onToggleTodo}
+      onDeleteTodo={onDeleteTodo}
+      dragHandleRef={handleRef}
+      isReorderEnabled={canReorder}
+    />
+  );
+
+  if (!useMotionWrapper) {
+    return (
+      <div
+        ref={ref}
+        role="listitem"
+        tabIndex={canReorder ? 0 : undefined}
+        className="relative z-50 rounded-lg"
+      >
+        {taskItem}
+      </div>
+    );
+  }
+
   return (
     <TodoTaskMotionItem
       ref={ref}
       todoId={todo._id}
       tabIndex={canReorder ? 0 : undefined}
     >
-      <TodoTaskItem
-        todo={todo}
-        onToggleTodo={onToggleTodo}
-        onDeleteTodo={onDeleteTodo}
-        dragHandleRef={handleRef}
-        isReorderEnabled={canReorder}
-      />
+      {taskItem}
     </TodoTaskMotionItem>
   );
 }

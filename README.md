@@ -1,14 +1,14 @@
 # Todo Workspace
 
 This project is an authenticated todo list workspace built with React, Vite,
-Clerk, Convex, TanStack Query, Tailwind CSS 4, and shadcn UI.
+Clerk, Convex, TanStack Virtual, Tailwind CSS 4, and shadcn UI.
 
 ## What is included
 
 - React 19 + Vite 8 + TypeScript 6
 - Clerk authentication
 - Convex client wiring and todo schema/functions
-- TanStack Query provider setup
+- TanStack Virtual for bounded regular-list DOM rendering
 - Vite-native PWA baseline via `vite-plugin-pwa`
 - Global modal host with a confirmation modal example
 - Warm light and dark semantic theme tokens in `src/index.css`
@@ -78,6 +78,19 @@ Todo lists keep denormalized open-todo, completed-todo, and member counts so
 the browser and MCP list endpoints do not collect every related todo. New
 lists initialize these counters automatically, and shared mutation helpers
 maintain them for web and MCP writes.
+
+## Regular-list scaling
+
+Regular lists subscribe to all open todos in ordered form so drag-and-drop has
+the complete order. Completed todos do not load until the Completed section is
+opened; they then load newest-first in cursor pages of 40. The combined regular
+list is dynamically measured and virtualized, with eight rows of overscan.
+
+Regular drag-and-drop sends one moved todo, one anchor todo, and a before/after
+placement. Convex normally updates only that todo by assigning a sparse numeric
+rank. If adjacent ranks run out of floating-point space, the open bucket is
+rebalanced to multiples of 1024 in the same transaction. Sectioned-list
+ordering remains on its existing separate path.
 
 ## RiTodo MCP Server
 

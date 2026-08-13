@@ -53,10 +53,11 @@ bun test             # Run Bun unit, MCP protocol and Convex operation tests
 | UI Components    | shadcn (radix-nova)    | 4       |
 | Icons            | Lucide React           | 1.8     |
 | Auth             | Clerk (`@clerk/react`) | 6       |
-| Database         | Convex                 | 1.36    |
+| Database         | Convex                 | 1.37    |
+| List rendering   | TanStack Virtual       | 3.14    |
 | MCP              | MCP TypeScript SDK     | 1.29    |
 | State Management | Zustand                | 5       |
-| Data Fetching    | TanStack React Query   | 5       |
+| Data Fetching    | Convex React           | 1.37    |
 | Date Handling    | dayjs                  | 1.11    |
 | Linting          | ESLint                 | 9       |
 | Formatting       | Prettier               | 3.8     |
@@ -248,3 +249,14 @@ Examples
 - `todoLists.openTodoCount`, `completedTodoCount`, and `memberCount` are
   required denormalized counters. Maintain them through the shared stats helper
   in every web and MCP write path, and never collect todos only to count them.
+- `todos.order` is required. Audit production for missing or duplicate orders
+  before deploying schema or ordering changes.
+- Regular lists keep every open todo in one ordered reactive query, but load
+  completed todos newest-first in cursor pages of 40 only while Completed is
+  open. Sectioned lists retain their separate full-list query and ordering path.
+- Regular-list drag-and-drop uses sparse ranks with gaps of 1024 through
+  `todos.reposition`; do not restore whole-list ID reorder payloads. Rebalance
+  the open bucket only when numeric precision is exhausted.
+- Regular-list rows use TanStack Virtual with the ScrollArea viewport. Inline
+  `height` and `transform` styles are allowed only on virtualizer spacer and row
+  wrappers; keep application styling in Tailwind classes.
