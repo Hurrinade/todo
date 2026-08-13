@@ -91,7 +91,10 @@ export function TodoNoteEditor({
   }, [editor, isOnline]);
 
   return (
-    <div aria-disabled={!isOnline}>
+    <div
+      aria-disabled={!isOnline}
+      className="cursor-text rounded-lg border border-input bg-card/40 transition-colors hover:border-foreground/30 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/40 aria-disabled:cursor-default aria-disabled:opacity-50 aria-disabled:hover:border-input dark:bg-card/30"
+    >
       <EditorContent editor={editor} />
     </div>
   );
