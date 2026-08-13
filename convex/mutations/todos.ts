@@ -14,6 +14,8 @@ import {
   todoTitleContentValidator,
 } from "../shared/todo";
 
+const ORDER_STEP = 1024;
+
 export const create = mutation({
   args: {
     listId: v.id("todoLists"),
@@ -197,45 +199,72 @@ export const removeForUser = internalMutation({
   handler: (ctx, args) => removeTodoForUser(ctx, args.userId, args.todoId),
 });
 
-export const reorder = mutation({
+export const reposition = mutation({
   args: {
-    listId: v.id("todoLists"),
-    todoIds: v.array(v.id("todos")),
+    todoId: v.id("todos"),
+    anchorTodoId: v.id("todos"),
+    placement: v.union(v.literal("before"), v.literal("after")),
   },
   handler: async (ctx, args) => {
     const userId = await requireClerkUserId(ctx);
-    await requireListAccess(ctx, args.listId, userId);
+    const [todo, anchorTodo] = await Promise.all([
+      ctx.db.get(args.todoId),
+      ctx.db.get(args.anchorTodoId),
+    ]);
 
-    const todos = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
-      .collect();
-
-    if (todos.length !== args.todoIds.length) {
-      throw new Error("Todo order is out of date.");
+    if (!todo || !anchorTodo) {
+      throw new Error("Todo was not found.");
     }
 
-    const todoIds = new Set(todos.map((todo) => todo._id));
+    await requireListAccess(ctx, todo.listId, userId);
 
-    for (const todoId of args.todoIds) {
-      if (!todoIds.has(todoId)) {
-        throw new Error("Todo order contains an invalid item.");
-      }
+    if (todo._id === anchorTodo._id) {
+      throw new Error("A todo cannot be positioned relative to itself.");
     }
 
+    if (todo.listId !== anchorTodo.listId) {
+      throw new Error("Todos must belong to the same list.");
+    }
+
+    const list = await ctx.db.get(todo.listId);
+
+    if (!list || list.kind !== "regular") {
+      throw new Error(
+        "Sparse repositioning is only available in regular lists.",
+      );
+    }
+
+    if (todo.isCompleted || anchorTodo.isCompleted) {
+      throw new Error("Only open todos can be repositioned.");
+    }
+
+    const adjacentTodo = await getAdjacentOpenTodo(
+      ctx,
+      todo.listId,
+      anchorTodo,
+      todo._id,
+      args.placement,
+    );
+    const lowerOrder =
+      args.placement === "before" ? adjacentTodo?.order : anchorTodo.order;
+    const upperOrder =
+      args.placement === "before" ? anchorTodo.order : adjacentTodo?.order;
+    const nextOrder = getOrderBetween(lowerOrder, upperOrder);
     const now = Date.now();
 
-    await Promise.all(
-      args.todoIds.map((todoId, index) =>
-        ctx.db.patch(todoId, {
-          order: index,
-          updatedAt: now,
-        }),
-      ),
-    );
-    await ctx.db.patch(args.listId, {
-      updatedAt: now,
-    });
+    if (nextOrder === null) {
+      await rebalanceRegularOpenTodos(
+        ctx,
+        todo,
+        anchorTodo,
+        args.placement,
+        now,
+      );
+    } else {
+      await ctx.db.patch(todo._id, { order: nextOrder, updatedAt: now });
+    }
+
+    await ctx.db.patch(todo.listId, { updatedAt: now });
   },
 });
 
@@ -600,20 +629,31 @@ async function getNextOrderForTodoState(
   isCompleted: boolean,
   excludedTodoId: Id<"todos">,
 ) {
-  const todos =
-    list.kind === "sectioned" && sectionId
-      ? await getOrderedSectionTodosByState(
-          ctx,
-          sectionId,
-          isCompleted,
-          excludedTodoId,
-        )
-      : await getOrderedListTodosByState(
-          ctx,
-          list._id,
-          isCompleted,
-          excludedTodoId,
-        );
+  if (list.kind === "regular") {
+    const lastTodo = await ctx.db
+      .query("todos")
+      .withIndex("by_list_id_completed_and_order", (q) =>
+        q.eq("listId", list._id).eq("isCompleted", isCompleted),
+      )
+      .order("desc")
+      .first();
+
+    return lastTodo ? lastTodo.order + ORDER_STEP : 0;
+  }
+
+  const todos = sectionId
+    ? await getOrderedSectionTodosByState(
+        ctx,
+        sectionId,
+        isCompleted,
+        excludedTodoId,
+      )
+    : await getOrderedListTodosByState(
+        ctx,
+        list._id,
+        isCompleted,
+        excludedTodoId,
+      );
 
   return getMaxTodoOrder(todos) + 1;
 }
@@ -630,22 +670,103 @@ async function getNextCreateOrder(
       sectionId,
       isCompleted,
     );
-    const orderedTodos = todos.filter((todo) => todo.order !== undefined);
 
-    return orderedTodos.length > 0
-      ? Math.min(...orderedTodos.map((todo) => todo.order!)) - 1
+    return todos.length > 0
+      ? Math.min(...todos.map((todo) => todo.order)) - 1
       : 0;
   }
 
-  const todos = await ctx.db
+  const firstTodo = await ctx.db
     .query("todos")
-    .withIndex("by_list_id", (q) => q.eq("listId", listId))
-    .collect();
-  const orderedTodos = todos.filter((todo) => todo.order !== undefined);
+    .withIndex("by_list_id_completed_and_order", (q) =>
+      q.eq("listId", listId).eq("isCompleted", isCompleted),
+    )
+    .first();
 
-  return orderedTodos.length > 0
-    ? Math.min(...orderedTodos.map((todo) => todo.order!)) - 1
-    : 0;
+  return firstTodo ? firstTodo.order - ORDER_STEP : 0;
+}
+
+async function getAdjacentOpenTodo(
+  ctx: MutationCtx,
+  listId: Id<"todoLists">,
+  anchorTodo: Doc<"todos">,
+  movedTodoId: Id<"todos">,
+  placement: "before" | "after",
+) {
+  const candidates = await ctx.db
+    .query("todos")
+    .withIndex("by_list_id_completed_and_order", (q) => {
+      const openTodos = q.eq("listId", listId).eq("isCompleted", false);
+
+      return placement === "before"
+        ? openTodos.lt("order", anchorTodo.order)
+        : openTodos.gt("order", anchorTodo.order);
+    })
+    .order(placement === "before" ? "desc" : "asc")
+    .take(2);
+
+  return candidates.find((candidate) => candidate._id !== movedTodoId);
+}
+
+function getOrderBetween(lowerOrder?: number, upperOrder?: number) {
+  if (lowerOrder === undefined && upperOrder === undefined) {
+    return 0;
+  }
+
+  const nextOrder =
+    lowerOrder === undefined
+      ? upperOrder! - ORDER_STEP
+      : upperOrder === undefined
+        ? lowerOrder + ORDER_STEP
+        : lowerOrder + (upperOrder - lowerOrder) / 2;
+
+  if (
+    !Number.isFinite(nextOrder) ||
+    (lowerOrder !== undefined && nextOrder <= lowerOrder) ||
+    (upperOrder !== undefined && nextOrder >= upperOrder)
+  ) {
+    return null;
+  }
+
+  return nextOrder;
+}
+
+async function rebalanceRegularOpenTodos(
+  ctx: MutationCtx,
+  movedTodo: Doc<"todos">,
+  anchorTodo: Doc<"todos">,
+  placement: "before" | "after",
+  now: number,
+) {
+  const openTodos = await ctx.db
+    .query("todos")
+    .withIndex("by_list_id_completed_and_order", (q) =>
+      q.eq("listId", movedTodo.listId).eq("isCompleted", false),
+    )
+    .collect();
+  const nextTodos = openTodos.filter((todo) => todo._id !== movedTodo._id);
+  const anchorIndex = nextTodos.findIndex(
+    (todo) => todo._id === anchorTodo._id,
+  );
+
+  if (anchorIndex === -1) {
+    throw new Error("Todo order is out of date.");
+  }
+
+  nextTodos.splice(
+    placement === "before" ? anchorIndex : anchorIndex + 1,
+    0,
+    movedTodo,
+  );
+
+  await Promise.all(
+    nextTodos.map((todo, index) =>
+      ctx.db.patch(todo._id, {
+        order: index * ORDER_STEP,
+        updatedAt: now,
+      }),
+    ),
+  );
 }
 
 async function getDefaultSectionId(ctx: MutationCtx, listId: Id<"todoLists">) {
@@ -722,7 +843,7 @@ async function patchTodoOrders(
 function getMaxTodoOrder(
   todos: Array<{
     _creationTime: number;
-    order?: number;
+    order: number;
   }>,
 ) {
   if (todos.length === 0) {
@@ -730,32 +851,20 @@ function getMaxTodoOrder(
   }
 
   const sortedTodos = [...todos].sort(compareTodosByOrder);
-  return sortedTodos.reduce((maxOrder, todo, index) => {
-    return Math.max(maxOrder, todo.order ?? index);
+  return sortedTodos.reduce((maxOrder, todo) => {
+    return Math.max(maxOrder, todo.order);
   }, -1);
 }
 
 function compareTodosByOrder(
   firstTodo: {
     _creationTime: number;
-    order?: number;
+    order: number;
   },
   secondTodo: {
     _creationTime: number;
-    order?: number;
+    order: number;
   },
 ) {
-  if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
-    return firstTodo.order - secondTodo.order;
-  }
-
-  if (firstTodo.order !== undefined) {
-    return -1;
-  }
-
-  if (secondTodo.order !== undefined) {
-    return 1;
-  }
-
-  return secondTodo._creationTime - firstTodo._creationTime;
+  return firstTodo.order - secondTodo.order;
 }

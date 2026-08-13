@@ -53,10 +53,11 @@ bun test             # Run Bun unit, MCP protocol and Convex operation tests
 | UI Components    | shadcn (radix-nova)    | 4       |
 | Icons            | Lucide React           | 1.8     |
 | Auth             | Clerk (`@clerk/react`) | 6       |
-| Database         | Convex                 | 1.36    |
+| Database         | Convex                 | 1.37    |
+| List rendering   | TanStack Virtual       | 3.14    |
 | MCP              | MCP TypeScript SDK     | 1.29    |
 | State Management | Zustand                | 5       |
-| Data Fetching    | TanStack React Query   | 5       |
+| Data Fetching    | Convex React           | 1.37    |
 | Date Handling    | dayjs                  | 1.11    |
 | Linting          | ESLint                 | 9       |
 | Formatting       | Prettier               | 3.8     |
@@ -245,6 +246,3 @@ Examples
 - Import the generated Convex `api` directly from `@convex/_generated/api` in
   frontend code. Derive shared frontend API data types from generated function
   arguments and return types; do not add a manually cast API facade.
-- `todoLists.openTodoCount`, `completedTodoCount`, and `memberCount` are
-  required denormalized counters. Maintain them through the shared stats helper
-  in every web and MCP write path, and never collect todos only to count them.
