@@ -21,7 +21,7 @@ export function TodoDetailView({
           <Button
             type="button"
             variant="ghost"
-            size="icon-mobile-lg"
+            size="mobile-lg"
             onClick={onBack}
             aria-label="Back to todo workspace"
             className="flex items-center gap-2 w-fit px-2"
