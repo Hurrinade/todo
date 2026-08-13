@@ -246,17 +246,3 @@ Examples
 - Import the generated Convex `api` directly from `@convex/_generated/api` in
   frontend code. Derive shared frontend API data types from generated function
   arguments and return types; do not add a manually cast API facade.
-- `todoLists.openTodoCount`, `completedTodoCount`, and `memberCount` are
-  required denormalized counters. Maintain them through the shared stats helper
-  in every web and MCP write path, and never collect todos only to count them.
-- `todos.order` is required. Audit production for missing or duplicate orders
-  before deploying schema or ordering changes.
-- Regular lists keep every open todo in one ordered reactive query, but load
-  completed todos newest-first in cursor pages of 40 only while Completed is
-  open. Sectioned lists retain their separate full-list query and ordering path.
-- Regular-list drag-and-drop uses sparse ranks with gaps of 1024 through
-  `todos.reposition`; do not restore whole-list ID reorder payloads. Rebalance
-  the open bucket only when numeric precision is exhausted.
-- Regular-list rows use TanStack Virtual with the ScrollArea viewport. Inline
-  `height` and `transform` styles are allowed only on virtualizer spacer and row
-  wrappers; keep application styling in Tailwind classes.
