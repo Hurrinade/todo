@@ -118,14 +118,9 @@ function TodoDetailLoading() {
             <Skeleton className="h-8 w-3/4 max-w-xl" />
           </div>
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3">
-            <Skeleton className="h-4 w-24" />
-            <div className="space-y-3 px-4 py-2">
-              <Skeleton className="h-5 w-full" />
-              <Skeleton className="h-5 w-11/12" />
-              <Skeleton className="h-5 w-4/5" />
-              <Skeleton className="h-5 w-2/3" />
-            </div>
+          <div className="flex min-w-0 flex-col gap-2.5 border-t pt-5">
+            <Skeleton className="h-4 w-12" />
+            <Skeleton className="h-40 w-full rounded-lg sm:h-48" />
           </div>
         </section>
       </div>

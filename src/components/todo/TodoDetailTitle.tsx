@@ -209,6 +209,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
       aria-label={isEditing ? undefined : "Edit todo title"}
       aria-disabled={!isOnline}
       aria-busy={isSaving}
+      data-editing={isEditing}
       onClick={(event) => {
         if (event.target instanceof HTMLElement && event.target.closest("a")) {
           return;
@@ -218,7 +219,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
       }}
       onKeyDown={handleKeyDown}
       className={cn(
-        "min-h-12 w-full rounded-md text-left outline-none focus-within:ring-3 focus-within:ring-ring/40 focus-visible:ring-3 focus-visible:ring-ring/40",
+        "min-h-12 w-full rounded-lg text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40 data-[editing=true]:focus-within:bg-card/40 data-[editing=true]:focus-within:px-4 data-[editing=true]:focus-within:py-3 data-[editing=true]:focus-within:ring-2 data-[editing=true]:focus-within:ring-ring/30 dark:data-[editing=true]:focus-within:bg-card/30",
         isOnline ? "cursor-text" : "cursor-default",
         todo.isCompleted
           ? "text-muted-foreground line-through"
