@@ -54,10 +54,10 @@ export function TodoDetailView({
             onRenameTodo={onRenameTodo}
           />
 
-          <div className="flex min-w-0 flex-1 flex-col gap-3 border-t pt-4">
+          <div className="flex min-w-0 flex-col gap-2.5 border-t pt-5">
             <label
               htmlFor="todo-description"
-              className="text-md font-medium text-muted-foreground"
+              className="text-sm font-medium text-muted-foreground"
             >
               Note
             </label>
