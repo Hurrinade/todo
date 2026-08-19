@@ -1,7 +1,13 @@
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -11,6 +17,7 @@ import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
 import { TodoSectionedTaskList } from "@/components/todo/TodoSectionedTaskList";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
+import { TodoWorkspaceSplitView } from "@/components/todo/TodoWorkspaceSplitView";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   SidebarInset,
@@ -24,14 +31,15 @@ import type {
   TodoListSummary,
   TodoRepositionArgs,
   TodoSection,
+  TodoWorkspaceProps,
 } from "@/types";
 import { createTodoTitleContent, OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export function TodoWorkspace({
-  initialActiveListId,
-}: {
-  initialActiveListId: TodoListSummary["_id"] | null;
-}) {
+  activeListId,
+  detailPanel,
+  onActiveListIdChange,
+}: TodoWorkspaceProps) {
   const listsResult = useQuery(api.queries.todoLists.list);
 
   const createSection = useMutation(api.mutations.todoSections.create);
@@ -49,10 +57,6 @@ export function TodoWorkspace({
   const [newTodoTitle, setNewTodoTitle] = useState("");
 
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
-  const [activeListId, setActiveListId] = useState<
-    TodoListSummary["_id"] | null
-  >(initialActiveListId);
-
   const storeLists = useTodoStore((state) => state.lists);
 
   // Use query results but initially cached fallback
@@ -260,13 +264,14 @@ export function TodoWorkspace({
         <TodoListSidebar
           lists={lists}
           activeListId={activeList?._id ?? null}
-          setActiveListId={setActiveListId}
+          setActiveListId={onActiveListIdChange}
         />
 
         <SidebarInset className="min-h-0 overflow-hidden">
           <TodoWorkspaceContent
             activeList={activeList}
             activeTodoResult={activeTodoResult}
+            detailPanel={detailPanel}
             errorMessage={errorMessage}
             isCreatingTodo={isCreatingTodo}
             isOnline={isOnline}
@@ -294,6 +299,7 @@ export function TodoWorkspace({
 type TodoWorkspaceContentProps = {
   activeList: TodoListSummary | null;
   activeTodoResult: TodoListItem[] | undefined;
+  detailPanel?: ReactNode;
   errorMessage: string | null;
   isCreatingTodo: boolean;
   isOnline: boolean;
@@ -327,6 +333,7 @@ type TodoWorkspaceContentProps = {
 function TodoWorkspaceContent({
   activeList,
   activeTodoResult,
+  detailPanel,
   errorMessage,
   isCreatingTodo,
   isOnline,
@@ -357,7 +364,7 @@ function TodoWorkspaceContent({
         </div>
       )}
 
-      <div className="relative min-h-0 flex-1 overflow-hidden">
+      <TodoWorkspaceSplitView detailPanel={detailPanel}>
         {activeList ? (
           <div className={cn("flex h-full min-h-0 flex-col")}>
             <TodoListHeader list={activeList} />
@@ -435,7 +442,7 @@ function TodoWorkspaceContent({
             </div>
           </div>
         )}
-      </div>
+      </TodoWorkspaceSplitView>
     </>
   );
 }

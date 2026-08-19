@@ -86,7 +86,9 @@ export function TodoTaskItem({
           <button
             type="button"
             onClick={() => {
-              navigate(`/home/todos/${todo._id}`);
+              navigate(`/home/todos/${todo._id}`, {
+                state: { selectedListId: todo.listId },
+              });
             }}
             className="min-w-0 max-w-full flex-1 overflow-hidden rounded-md bg-transparent p-0 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
             aria-label="Open todo"
