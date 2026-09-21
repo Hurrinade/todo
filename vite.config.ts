@@ -42,7 +42,7 @@ export default defineConfig({
         name: "RiTodo",
         short_name: "RiTodo",
         description:
-          "A simple, fast, and intuitive to-do list app built with React, Vite, and Convex.",
+          "A quiet todo workspace with regular and sectioned lists, notes on every task, and lists you can share through an invite link.",
         theme_color: "#f6f1e8",
         background_color: "#f6f1e8",
         display: "standalone",
