@@ -1,5 +1,7 @@
 import type { TodoTitleContent } from "@/types";
 
+export const MAX_TODO_TITLE_LENGTH = 240;
+
 export function createTodoTitleContent(title: string): TodoTitleContent {
   return {
     type: "doc",
