@@ -1,13 +1,7 @@
 import { api } from "@convex/_generated/api";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
-import {
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type ReactNode,
-} from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -33,7 +27,11 @@ import type {
   TodoSection,
   TodoWorkspaceProps,
 } from "@/types";
-import { createTodoTitleContent, OFFLINE_ACTION_MESSAGE } from "@/utils";
+import {
+  createTodoTitleContent,
+  MAX_TODO_TITLE_LENGTH,
+  OFFLINE_ACTION_MESSAGE,
+} from "@/utils";
 
 export function TodoWorkspace({
   activeListId,
@@ -55,6 +53,8 @@ export function TodoWorkspace({
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const [newTodoTitle, setNewTodoTitle] = useState("");
+  const [createTodoError, setCreateTodoError] = useState<string | null>(null);
+  const titleEditVersion = useRef(0);
 
   const [isCreatingTodo, setIsCreatingTodo] = useState(false);
   const storeLists = useTodoStore((state) => state.lists);
@@ -102,7 +102,14 @@ export function TodoWorkspace({
   const handleCreateTodo = async (event: React.SubmitEvent) => {
     event.preventDefault();
 
-    if (!activeList || !newTodoTitle.trim()) {
+    const submittedTitle = newTodoTitle.trim();
+
+    if (
+      !activeList ||
+      !submittedTitle ||
+      isCreatingTodo ||
+      submittedTitle.length > MAX_TODO_TITLE_LENGTH
+    ) {
       return false;
     }
 
@@ -112,21 +119,34 @@ export function TodoWorkspace({
     }
 
     setIsCreatingTodo(true);
+    setCreateTodoError(null);
     clearErrorMessage();
+    const submittedEditVersion = titleEditVersion.current;
 
     try {
       await createTodo({
         listId: activeList._id,
-        title: createTodoTitleContent(newTodoTitle),
+        title: createTodoTitleContent(submittedTitle),
       });
-      setNewTodoTitle("");
+      if (titleEditVersion.current === submittedEditVersion) {
+        setNewTodoTitle("");
+      }
       return true;
-    } catch (error) {
-      setUnknownErrorMessage(error);
+    } catch {
+      if (titleEditVersion.current === submittedEditVersion) {
+        setCreateTodoError("Couldn't add todo. Try again.");
+      }
       return false;
     } finally {
       setIsCreatingTodo(false);
     }
+  };
+
+  const handleNewTodoTitleChange = (title: string) => {
+    titleEditVersion.current += 1;
+    setNewTodoTitle(title);
+    setCreateTodoError(null);
+    clearErrorMessage();
   };
 
   const handleToggleTodo = async (todoId: TodoListItem["_id"]) => {
@@ -273,6 +293,7 @@ export function TodoWorkspace({
             activeTodoResult={activeTodoResult}
             detailPanel={detailPanel}
             errorMessage={errorMessage}
+            createTodoError={createTodoError}
             isCreatingTodo={isCreatingTodo}
             isOnline={isOnline}
             newTodoTitle={newTodoTitle}
@@ -283,7 +304,7 @@ export function TodoWorkspace({
             onRenameSection={handleRenameSection}
             onReorderSections={handleReorderSections}
             onRepositionTodo={handleRepositionTodo}
-            onTodoTitleChange={setNewTodoTitle}
+            onTodoTitleChange={handleNewTodoTitleChange}
             onToggleTodo={handleToggleTodo}
             openTodos={openTodos}
             sectionResult={sectionResult}
@@ -301,6 +322,7 @@ type TodoWorkspaceContentProps = {
   activeTodoResult: TodoListItem[] | undefined;
   detailPanel?: ReactNode;
   errorMessage: string | null;
+  createTodoError: string | null;
   isCreatingTodo: boolean;
   isOnline: boolean;
   newTodoTitle: string;
@@ -335,6 +357,7 @@ function TodoWorkspaceContent({
   activeTodoResult,
   detailPanel,
   errorMessage,
+  createTodoError,
   isCreatingTodo,
   isOnline,
   newTodoTitle,
@@ -415,6 +438,7 @@ function TodoWorkspaceContent({
             <div className="sticky bottom-0 left-0 right-0 z-20 min-w-0 px-2 pt-2 pb-[calc(0.5rem+env(safe-area-inset-bottom))]">
               <TodoComposer
                 title={newTodoTitle}
+                createError={createTodoError}
                 isCreatingTodo={isCreatingTodo}
                 isOnline={isOnline}
                 onTitleChange={onTodoTitleChange}
