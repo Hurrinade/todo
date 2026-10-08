@@ -6,6 +6,7 @@ import {
 } from "@/components/todo/TodoTaskItem";
 import { TodoTaskMotionItem } from "@/components/todo/TodoTaskMotionItem";
 import { useNetworkStore } from "@/stores";
+import { isOptimisticTodo } from "@/utils";
 
 type SortableTodoTaskItemProps = TodoTaskItemProps & {
   index: number;
@@ -24,7 +25,7 @@ export function SortableTodoTaskItem({
   onDeleteTodo,
 }: SortableTodoTaskItemProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
-  const canReorder = isOnline && isReorderEnabled;
+  const canReorder = isOnline && isReorderEnabled && !isOptimisticTodo(todo);
   const { ref, handleRef } = useSortable({
     id: todo._id,
     index,

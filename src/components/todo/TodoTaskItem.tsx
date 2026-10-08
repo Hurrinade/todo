@@ -5,7 +5,7 @@ import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
 import { useNetworkStore } from "@/stores";
 import type { TodoListItem } from "@/types";
-import { getTodoTitleText } from "@/utils";
+import { getTodoTitleText, isOptimisticTodo } from "@/utils";
 
 export type TodoTaskItemProps = {
   todo: TodoListItem;
@@ -24,6 +24,8 @@ export function TodoTaskItem({
 }: TodoTaskItemProps) {
   const navigate = useNavigate();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  // An unconfirmed todo has no server id yet, so it can't be opened or changed.
+  const isPending = isOptimisticTodo(todo);
 
   return (
     <SwipeAction
@@ -32,7 +34,7 @@ export function TodoTaskItem({
           type="button"
           size="icon"
           variant="ghost"
-          disabled={!isOnline}
+          disabled={!isOnline || isPending}
           onClick={() => {
             onDeleteTodo(todo._id);
           }}
@@ -67,7 +69,7 @@ export function TodoTaskItem({
           type="button"
           variant="ghost"
           size="icon-mobile-sm"
-          disabled={!isOnline}
+          disabled={!isOnline || isPending}
           onClick={(e) => {
             e.stopPropagation();
             onToggleTodo(todo._id);
@@ -85,6 +87,7 @@ export function TodoTaskItem({
         <div className="flex min-w-0 max-w-full flex-1 items-start gap-1.5 overflow-hidden">
           <button
             type="button"
+            disabled={isPending}
             onClick={() => {
               navigate(`/home/todos/${todo._id}`, {
                 state: { selectedListId: todo.listId },

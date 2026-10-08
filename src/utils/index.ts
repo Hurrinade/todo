@@ -2,3 +2,4 @@
 export * from "@/utils/network/network-utils";
 export * from "@/utils/theme/theme-utils";
 export * from "@/utils/todo/todo-title-utils";
+export * from "@/utils/todo/todo-optimistic-updates";
