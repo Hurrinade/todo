@@ -9,21 +9,20 @@ import { MAX_TODO_TITLE_LENGTH } from "@/utils";
 type TodoComposerProps = {
   title: string;
   createError: string | null;
-  isCreatingTodo: boolean;
   isOnline: boolean;
   onTitleChange: (title: string) => void;
-  onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
-  onCreateSuccess?: () => void;
+  /** Returns whether the todo was submitted. */
+  onCreateTodo: (event: React.SubmitEvent) => boolean;
+  onSubmitted?: () => void;
 };
 
 export function TodoComposer({
   title,
   createError,
-  isCreatingTodo,
   isOnline,
   onTitleChange,
   onCreateTodo,
-  onCreateSuccess,
+  onSubmitted,
 }: TodoComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const titleLength = title.trim().length;
@@ -35,12 +34,10 @@ export function TodoComposer({
   return (
     <form
       className="flex flex-col gap-1 p-2"
-      onSubmit={async (event) => {
-        const wasCreated = await onCreateTodo(event);
-
-        if (wasCreated) {
+      onSubmit={(event) => {
+        if (onCreateTodo(event)) {
           requestAnimationFrame(() => {
-            onCreateSuccess?.();
+            onSubmitted?.();
             inputRef.current?.focus();
           });
         }
@@ -66,9 +63,7 @@ export function TodoComposer({
         <Button
           type="submit"
           size="icon-mobile"
-          disabled={
-            !isOnline || isCreatingTodo || !title.trim() || isTitleTooLong
-          }
+          disabled={!isOnline || !title.trim() || isTitleTooLong}
           className="rounded-full bg-card text-muted-foreground"
           aria-label={isOnline ? "Add todo" : "Reconnect to add todo"}
         >

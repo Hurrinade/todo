@@ -2,12 +2,7 @@ import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
 import { useQuery } from "convex/react";
 import { Suspense, useState } from "react";
-import {
-  Outlet,
-  useLocation,
-  useMatch,
-  useNavigate,
-} from "react-router";
+import { Outlet, useLocation, useMatch, useNavigate } from "react-router";
 
 import { TodoWorkspace } from "@/components/todo/TodoWorkspace";
 import { Spinner } from "@/components/ui/spinner";
@@ -75,16 +70,24 @@ export default function Home() {
     </Suspense>
   ) : null;
 
-  if (isMobile && detailRoute) {
-    return detailRoute;
-  }
+  // On mobile the detail page covers the workspace instead of replacing it,
+  // so going back doesn't remount the list or lose its scroll position.
+  const detailPage = isMobile ? detailRoute : null;
 
   return (
-    <TodoWorkspace
-      activeListId={workspaceActiveListId}
-      detailPanel={detailRoute}
-      onActiveListIdChange={handleActiveListIdChange}
-    />
+    <div className="relative h-full w-full">
+      <div className="h-full w-full" inert={Boolean(detailPage)}>
+        <TodoWorkspace
+          activeListId={workspaceActiveListId}
+          detailPanel={isMobile ? null : detailRoute}
+          onActiveListIdChange={handleActiveListIdChange}
+        />
+      </div>
+
+      {detailPage ? (
+        <div className="absolute inset-0 z-40 bg-background">{detailPage}</div>
+      ) : null}
+    </div>
   );
 }
 

@@ -28,9 +28,14 @@ import type {
   TodoWorkspaceProps,
 } from "@/types";
 import {
+  createTodoOptimistically,
   createTodoTitleContent,
   MAX_TODO_TITLE_LENGTH,
+  moveTodoOptimistically,
   OFFLINE_ACTION_MESSAGE,
+  removeTodoOptimistically,
+  repositionTodoOptimistically,
+  toggleTodoOptimistically,
 } from "@/utils";
 
 export function TodoWorkspace({
@@ -43,12 +48,22 @@ export function TodoWorkspace({
   const createSection = useMutation(api.mutations.todoSections.create);
   const renameSection = useMutation(api.mutations.todoSections.rename);
   const reorderSections = useMutation(api.mutations.todoSections.reorder);
-  const createTodo = useMutation(api.mutations.todos.create);
+  const createTodo = useMutation(
+    api.mutations.todos.create,
+  ).withOptimisticUpdate(createTodoOptimistically);
 
-  const toggleTodo = useMutation(api.mutations.todos.toggle);
-  const deleteTodo = useMutation(api.mutations.todos.remove);
-  const repositionTodo = useMutation(api.mutations.todos.reposition);
-  const moveTodo = useMutation(api.mutations.todos.move);
+  const toggleTodo = useMutation(
+    api.mutations.todos.toggle,
+  ).withOptimisticUpdate(toggleTodoOptimistically);
+  const deleteTodo = useMutation(
+    api.mutations.todos.remove,
+  ).withOptimisticUpdate(removeTodoOptimistically);
+  const repositionTodo = useMutation(
+    api.mutations.todos.reposition,
+  ).withOptimisticUpdate(repositionTodoOptimistically);
+  const moveTodo = useMutation(api.mutations.todos.move).withOptimisticUpdate(
+    moveTodoOptimistically,
+  );
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
@@ -56,7 +71,6 @@ export function TodoWorkspace({
   const [createTodoError, setCreateTodoError] = useState<string | null>(null);
   const titleEditVersion = useRef(0);
 
-  const [isCreatingTodo, setIsCreatingTodo] = useState(false);
   const storeLists = useTodoStore((state) => state.lists);
 
   // Use query results but initially cached fallback
@@ -99,7 +113,9 @@ export function TodoWorkspace({
     setLists(listsResult);
   }, [listsResult, setLists]);
 
-  const handleCreateTodo = async (event: React.SubmitEvent) => {
+  // Clears the composer right away; the optimistic update shows the todo
+  // instantly. On failure the title is restored unless the user typed again.
+  const handleCreateTodo = (event: React.SubmitEvent) => {
     event.preventDefault();
 
     const submittedTitle = newTodoTitle.trim();
@@ -107,7 +123,6 @@ export function TodoWorkspace({
     if (
       !activeList ||
       !submittedTitle ||
-      isCreatingTodo ||
       submittedTitle.length > MAX_TODO_TITLE_LENGTH
     ) {
       return false;
@@ -118,28 +133,23 @@ export function TodoWorkspace({
       return false;
     }
 
-    setIsCreatingTodo(true);
     setCreateTodoError(null);
     clearErrorMessage();
+    titleEditVersion.current += 1;
     const submittedEditVersion = titleEditVersion.current;
+    setNewTodoTitle("");
 
-    try {
-      await createTodo({
-        listId: activeList._id,
-        title: createTodoTitleContent(submittedTitle),
-      });
+    createTodo({
+      listId: activeList._id,
+      title: createTodoTitleContent(submittedTitle),
+    }).catch(() => {
       if (titleEditVersion.current === submittedEditVersion) {
-        setNewTodoTitle("");
-      }
-      return true;
-    } catch {
-      if (titleEditVersion.current === submittedEditVersion) {
+        setNewTodoTitle(submittedTitle);
         setCreateTodoError("Couldn't add todo. Try again.");
       }
-      return false;
-    } finally {
-      setIsCreatingTodo(false);
-    }
+    });
+
+    return true;
   };
 
   const handleNewTodoTitleChange = (title: string) => {
@@ -294,7 +304,6 @@ export function TodoWorkspace({
             detailPanel={detailPanel}
             errorMessage={errorMessage}
             createTodoError={createTodoError}
-            isCreatingTodo={isCreatingTodo}
             isOnline={isOnline}
             newTodoTitle={newTodoTitle}
             onCreateSection={handleCreateSection}
@@ -323,11 +332,10 @@ type TodoWorkspaceContentProps = {
   detailPanel?: ReactNode;
   errorMessage: string | null;
   createTodoError: string | null;
-  isCreatingTodo: boolean;
   isOnline: boolean;
   newTodoTitle: string;
   onCreateSection: (title: string) => Promise<void>;
-  onCreateTodo: (event: React.SubmitEvent) => Promise<boolean>;
+  onCreateTodo: (event: React.SubmitEvent) => boolean;
   onDeleteTodo: (todoId: TodoListItem["_id"]) => Promise<void>;
   onMoveTodo: (
     todoId: TodoListItem["_id"],
@@ -358,7 +366,6 @@ function TodoWorkspaceContent({
   detailPanel,
   errorMessage,
   createTodoError,
-  isCreatingTodo,
   isOnline,
   newTodoTitle,
   onCreateSection,
@@ -439,11 +446,10 @@ function TodoWorkspaceContent({
               <TodoComposer
                 title={newTodoTitle}
                 createError={createTodoError}
-                isCreatingTodo={isCreatingTodo}
                 isOnline={isOnline}
                 onTitleChange={onTodoTitleChange}
                 onCreateTodo={onCreateTodo}
-                onCreateSuccess={() => {
+                onSubmitted={() => {
                   todoListViewportRef.current?.scrollTo({ top: 0 });
                 }}
               />
