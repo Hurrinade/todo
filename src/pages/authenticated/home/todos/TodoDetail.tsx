@@ -13,16 +13,16 @@ import type {
   TodoDetailRouteContext,
   TodoDetailUnavailableProps,
 } from "@/types";
-import { OFFLINE_ACTION_MESSAGE } from "@/utils";
+import { OFFLINE_ACTION_MESSAGE, renameTodoOptimistically } from "@/utils";
 
 export default function TodoDetail() {
   const { detail, onClose, presentation } =
     useOutletContext<TodoDetailRouteContext>();
   const isOnline = useNetworkStore((state) => state.isOnline);
-  const renameTodo = useMutation(api.mutations.todos.rename);
-  const updateDescription = useMutation(
-    api.mutations.todos.updateDescription,
-  );
+  const renameTodo = useMutation(
+    api.mutations.todos.rename,
+  ).withOptimisticUpdate(renameTodoOptimistically);
+  const updateDescription = useMutation(api.mutations.todos.updateDescription);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   if (detail === undefined) {
