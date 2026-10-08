@@ -1,3 +1,4 @@
+import { api } from "@convex/_generated/api";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { useMutation } from "convex/react";
 import { Trash2 } from "lucide-react";
@@ -5,18 +6,17 @@ import { useState } from "react";
 
 import { TodoListMembersPopover } from "@/components/todo/TodoListMembersPopover";
 import { Button } from "@/components/ui/button";
-import { todoApi } from "@/config/convex-api";
 import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
-import type { TodoListWithStats } from "@/types";
+import type { TodoListSummary } from "@/types";
 
 type SortableTodoListSidebarItemProps = {
   index: number;
   isReorderEnabled: boolean;
-  list: TodoListWithStats;
-  activeListId: TodoListWithStats["_id"] | null;
-  setActiveListId: (listId: TodoListWithStats["_id"] | null) => void;
+  list: TodoListSummary;
+  activeListId: TodoListSummary["_id"] | null;
+  setActiveListId: (listId: TodoListSummary["_id"] | null) => void;
   onSelect: () => void;
 };
 
@@ -30,7 +30,7 @@ export function SortableTodoListSidebarItem({
 }: SortableTodoListSidebarItemProps) {
   const { openModal } = useModal();
   const isOnline = useNetworkStore((state) => state.isOnline);
-  const deleteList = useMutation(todoApi.mutations.todoLists.remove);
+  const deleteList = useMutation(api.mutations.todoLists.remove);
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
   );
@@ -99,8 +99,11 @@ export function SortableTodoListSidebarItem({
         ) : null}
         <span className="block min-w-0 flex-1 truncate">{list.title}</span>
       </span>
-      {list.members.length > 0 && (
-        <TodoListMembersPopover members={list.members} />
+      {list.memberCount > 0 && (
+        <TodoListMembersPopover
+          listId={list._id}
+          memberCount={list.memberCount}
+        />
       )}
       <Button
         variant="ghost"

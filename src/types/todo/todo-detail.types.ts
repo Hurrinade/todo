@@ -1,8 +1,20 @@
+import type { ReactNode } from "react";
+
 import type {
+  TodoDetail,
   TodoItem,
+  TodoListSummary,
   TodoNoteContent,
   TodoTitleContent,
 } from "@/types/todo/todo.types";
+
+export type TodoDetailPresentation = "page" | "panel";
+
+export type TodoDetailRouteContext = {
+  detail: TodoDetail | null | undefined;
+  onClose: () => void;
+  presentation: TodoDetailPresentation;
+};
 
 export type TodoDetailTitleProps = {
   todo: TodoItem;
@@ -10,11 +22,12 @@ export type TodoDetailTitleProps = {
 };
 
 export type TodoDetailViewProps = {
-  todo: TodoItem;
+  detail: TodoDetail;
   errorMessage: string | null;
-  onBack: () => void;
+  onClose: () => void;
   onRenameTodo: (title: TodoTitleContent) => Promise<void>;
   onUpdateDescription: (description?: TodoNoteContent) => Promise<void>;
+  presentation: TodoDetailPresentation;
 };
 
 export type TodoNoteEditorProps = {
@@ -24,5 +37,17 @@ export type TodoNoteEditorProps = {
 
 export type TodoDetailUnavailableProps = {
   message: string;
-  onBack: () => void;
+  onClose: () => void;
+  presentation: TodoDetailPresentation;
+};
+
+export type TodoWorkspaceProps = {
+  activeListId: TodoListSummary["_id"] | null;
+  detailPanel?: ReactNode;
+  onActiveListIdChange: (listId: TodoListSummary["_id"] | null) => void;
+};
+
+export type TodoWorkspaceSplitViewProps = {
+  children: ReactNode;
+  detailPanel?: ReactNode;
 };

@@ -37,8 +37,9 @@ function App() {
             <Route path="/invite/:token" element={<Invite />} />
 
             <Route element={<ProtectedRoutes />}>
-              <Route path="/home" element={<Home />} />
-              <Route path="/home/todos/:todoId" element={<TodoDetail />} />
+              <Route path="/home" element={<Home />}>
+                <Route path="todos/:todoId" element={<TodoDetail />} />
+              </Route>
             </Route>
           </Routes>
         </Suspense>

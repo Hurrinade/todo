@@ -151,6 +151,9 @@ async function createTodoList(
     kind: args.kind,
     userId,
     order: nextOrder,
+    openTodoCount: 0,
+    completedTodoCount: 0,
+    memberCount: 1,
     updatedAt: now,
   });
 

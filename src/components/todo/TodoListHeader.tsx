@@ -1,3 +1,4 @@
+import { api } from "@convex/_generated/api";
 import { RotateCcw, Trash2 } from "lucide-react";
 
 import { useMutation } from "convex/react";
@@ -9,14 +10,13 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import type { TodoListWithStats } from "@/types";
+import type { TodoListSummary } from "@/types";
 import { useState } from "react";
-import { todoApi } from "@/config/convex-api";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import { useModal } from "@/hooks/modals/use-modal";
 
 type TodoListHeaderProps = {
-  list: TodoListWithStats;
+  list: TodoListSummary;
 };
 
 export function TodoListHeader({ list }: TodoListHeaderProps) {
@@ -24,10 +24,10 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
 
   const uncheckCompletedTodos = useMutation(
-    todoApi.mutations.todos.uncheckCompleted,
+    api.mutations.todos.uncheckCompleted,
   );
   const clearCompletedTodos = useMutation(
-    todoApi.mutations.todos.clearCompleted,
+    api.mutations.todos.clearCompleted,
   );
 
   const [isLoading, setIsLoading] = useState(false);

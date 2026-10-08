@@ -3,6 +3,7 @@ import { SignInButton, SignUpButton } from "@clerk/react";
 import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
+import { legalConfig } from "@/config/legal";
 import { useNetworkStore } from "@/stores";
 
 const landingHighlights = [
@@ -94,6 +95,19 @@ export default function Root() {
             </p>
           ))}
         </section>
+
+        <footer className="border-t border-border/70 pt-6 text-sm text-muted-foreground">
+          <p>
+            {legalConfig.appName} &mdash; built by{" "}
+            <a
+              className="transition-colors hover:text-foreground"
+              href={legalConfig.companyWebsite}
+            >
+              {legalConfig.companyName}
+            </a>
+            , Zagreb
+          </p>
+        </footer>
       </div>
     </main>
   );

@@ -13,30 +13,16 @@ export const listTodoLists = internalQuery({
 
     return Promise.all(
       lists.map(async (list) => {
-        const [openTodos, completedTodos, sections] = await Promise.all([
-          ctx.db
-            .query("todos")
-            .withIndex("by_list_id_and_completed", (q) =>
-              q.eq("listId", list._id).eq("isCompleted", false),
-            )
-            .collect(),
-          ctx.db
-            .query("todos")
-            .withIndex("by_list_id_and_completed", (q) =>
-              q.eq("listId", list._id).eq("isCompleted", true),
-            )
-            .collect(),
-          ctx.db
-            .query("todoSections")
-            .withIndex("by_list_id", (q) => q.eq("listId", list._id))
-            .collect(),
-        ]);
+        const sections = await ctx.db
+          .query("todoSections")
+          .withIndex("by_list_id", (q) => q.eq("listId", list._id))
+          .collect();
 
         return {
           list,
           sections: sections.sort(compareSections),
-          openTodoCount: openTodos.length,
-          completedTodoCount: completedTodos.length,
+          openTodoCount: list.openTodoCount,
+          completedTodoCount: list.completedTodoCount,
         };
       }),
     );

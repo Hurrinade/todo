@@ -21,6 +21,9 @@ export default defineSchema({
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
     userId: v.string(),
     order: v.optional(v.number()),
+    openTodoCount: v.number(),
+    completedTodoCount: v.number(),
+    memberCount: v.number(),
     updatedAt: v.number(),
   }).index("by_user_id", ["userId"]),
   todoSections: defineTable({
@@ -54,11 +57,17 @@ export default defineSchema({
     description: v.optional(todoNoteContentValidator),
     isCompleted: v.boolean(),
     completedAt: v.optional(v.number()),
-    order: v.optional(v.number()),
+    order: v.number(),
     updatedAt: v.number(),
   })
     .index("by_list_id", ["listId"])
     .index("by_list_id_and_completed", ["listId", "isCompleted"])
+    .index("by_list_id_completed_and_order", ["listId", "isCompleted", "order"])
+    .index("by_list_id_completed_and_completed_at", [
+      "listId",
+      "isCompleted",
+      "completedAt",
+    ])
     .index("by_section_id", ["sectionId"])
     .index("by_section_id_and_completed", ["sectionId", "isCompleted"]),
 });

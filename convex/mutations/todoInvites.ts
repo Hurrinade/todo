@@ -3,6 +3,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
 import { requireClerkUserId, requireOwnerListAccess } from "../shared/auth";
+import { updateTodoListStats } from "../shared/todoListStats";
 
 const INVITE_EXPIRATION_MS = 30 * 60 * 1000;
 
@@ -89,6 +90,7 @@ export const accept = mutation({
         listId: list._id,
         userId,
       });
+      await updateTodoListStats(ctx, list._id, { memberDelta: 1 });
     }
 
     return {

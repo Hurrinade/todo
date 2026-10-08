@@ -1,4 +1,8 @@
+import { api } from "@convex/_generated/api";
+import type { Id } from "@convex/_generated/dataModel";
 import { Users } from "lucide-react";
+import { useQuery } from "convex/react";
+import { useState } from "react";
 
 import {
   Popover,
@@ -8,22 +12,30 @@ import {
 import type { TodoListMember } from "@/types";
 
 type TodoListMembersPopoverProps = {
-  members: TodoListMember[];
+  listId: Id<"todoLists">;
+  memberCount: number;
 };
 
 export function TodoListMembersPopover({
-  members,
+  listId,
+  memberCount,
 }: TodoListMembersPopoverProps) {
+  const [open, setOpen] = useState(false);
+  const members = useQuery(
+    api.queries.todoLists.members,
+    open ? { listId } : "skip",
+  );
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <button
           type="button"
           className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 text-xs font-medium text-foreground shadow-sm transition-colors pointer-fine:h-6 pointer-fine:px-2.5 hover:bg-accent/60"
-          aria-label={`Show ${members.length} list members`}
+          aria-label={`Show ${memberCount} list members`}
         >
           <Users className="size-4 text-primary" />
-          <span>{members.length}</span>
+          <span>{memberCount}</span>
         </button>
       </PopoverTrigger>
 
@@ -32,7 +44,11 @@ export function TodoListMembersPopover({
         sideOffset={10}
         className="w-72 rounded-md border border-border/80 bg-card/98 p-0 text-card-foreground shadow-[0_18px_50px_rgba(31,26,23,0.16)]"
       >
-        {members.length === 0 ? (
+        {members === undefined ? (
+          <div className="px-4 py-4 text-sm text-muted-foreground">
+            Loading members
+          </div>
+        ) : members.length === 0 ? (
           <div className="px-4 py-4 text-sm text-muted-foreground">
             No members found
           </div>

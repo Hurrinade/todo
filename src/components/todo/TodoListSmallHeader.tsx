@@ -1,27 +1,27 @@
+import { api } from "@convex/_generated/api";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 
 import { TodoListEmojiPicker } from "@/components/todo/TodoListEmojiPicker";
 import { Input } from "@/components/ui/input";
-import { todoApi } from "@/config/convex-api";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
-import type { TodoListWithStats } from "@/types";
+import type { TodoListSummary } from "@/types";
 import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
-export function TodoListSmallHeader({ list }: { list: TodoListWithStats }) {
+export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
   const isOnline = useNetworkStore((state) => state.isOnline);
   const [listTitleDraft, setListTitleDraft] = useState<{
-    listId: TodoListWithStats["_id"];
+    listId: TodoListSummary["_id"];
     title: string;
   } | null>(null);
   const [listEmojiDraft, setListEmojiDraft] = useState<{
-    listId: TodoListWithStats["_id"];
+    listId: TodoListSummary["_id"];
     emoji: string;
   } | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const renameList = useMutation(todoApi.mutations.todoLists.rename);
-  const updateListEmoji = useMutation(todoApi.mutations.todoLists.updateEmoji);
+  const renameList = useMutation(api.mutations.todoLists.rename);
+  const updateListEmoji = useMutation(api.mutations.todoLists.updateEmoji);
 
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,

@@ -1,17 +1,15 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ClerkProvider } from "@clerk/react";
 import { envConfig } from "@/config/env";
 import ConvexClerkProvider from "@/context/convex/ConvexClerkProvider";
 import { ModalProvider } from "@/context/modal/ModalProvider";
-import { TooltipProvider } from "./components/ui/tooltip";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import App from "@/App.tsx";
 import "@/index.css";
 
 const root = createRoot(document.getElementById("root")!);
-const queryClient = new QueryClient();
 
 async function startApp() {
   root.render(
@@ -32,15 +30,13 @@ async function startApp() {
         }}
       >
         <ConvexClerkProvider>
-          <QueryClientProvider client={queryClient}>
-            <BrowserRouter>
-              <TooltipProvider>
-                <ModalProvider>
-                  <App />
-                </ModalProvider>
-              </TooltipProvider>
-            </BrowserRouter>
-          </QueryClientProvider>
+          <BrowserRouter>
+            <TooltipProvider>
+              <ModalProvider>
+                <App />
+              </ModalProvider>
+            </TooltipProvider>
+          </BrowserRouter>
         </ConvexClerkProvider>
       </ClerkProvider>
     </StrictMode>,
