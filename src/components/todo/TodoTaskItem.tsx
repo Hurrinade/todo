@@ -57,7 +57,7 @@ export function TodoTaskItem({
             size="icon-mobile-sm"
             aria-label="Reorder todo"
             data-swipe-ignore
-            className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
+            className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
             ref={(element) => {
               dragHandleRef?.(element);
             }}

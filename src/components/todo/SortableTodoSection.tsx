@@ -1,7 +1,7 @@
+import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { GripVertical } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
@@ -47,6 +47,8 @@ export function SortableTodoSection({
     index,
     group: "sections",
     type: "section",
+    // Sections wrap their todos, so todo targets must win collisions.
+    collisionPriority: CollisionPriority.Low,
     disabled: !isOnline,
     data: {
       type: "section",
@@ -57,6 +59,7 @@ export function SortableTodoSection({
     id: `section-drop-${section._id}`,
     type: "section-drop",
     accept: "todo",
+    collisionPriority: CollisionPriority.Low,
     data: {
       type: "section-drop",
       sectionId: section._id,
@@ -94,7 +97,7 @@ export function SortableTodoSection({
             size="icon-mobile-sm"
             disabled={!isOnline}
             aria-label="Reorder section"
-            className="mt-0.5 shrink-0 cursor-grab text-muted-foreground hover:text-foreground"
+            className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground"
             ref={(element) => {
               sectionHandleRef(element);
             }}
@@ -128,19 +131,20 @@ export function SortableTodoSection({
                 No todos in this section yet.
               </div>
             ) : (
-              <motion.ul layout className="flex flex-col gap-1">
+              <div role="list" className="flex flex-col gap-1">
                 {todos.map((todo, todoIndex) => (
                   <SortableTodoTaskItem
                     key={todo._id}
                     index={todoIndex}
                     group={section._id}
                     isReorderEnabled={!todo.isCompleted}
+                    animateIdleReorder
                     todo={todo}
                     onToggleTodo={onToggleTodo}
                     onDeleteTodo={onDeleteTodo}
                   />
                 ))}
-              </motion.ul>
+              </div>
             )}
           </div>
         </AccordionContent>

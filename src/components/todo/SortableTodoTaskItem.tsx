@@ -4,7 +4,6 @@ import {
   TodoTaskItem,
   type TodoTaskItemProps,
 } from "@/components/todo/TodoTaskItem";
-import { TodoTaskMotionItem } from "@/components/todo/TodoTaskMotionItem";
 import { useNetworkStore } from "@/stores";
 import { isOptimisticTodo } from "@/utils";
 
@@ -12,14 +11,19 @@ type SortableTodoTaskItemProps = TodoTaskItemProps & {
   index: number;
   group?: string;
   isReorderEnabled: boolean;
-  useMotionWrapper?: boolean;
+  /** Also slide the row when its index changes outside a drag (toggle, add, delete). */
+  animateIdleReorder?: boolean;
 };
+
+// Matches the previous Motion layout tween (200ms easeOut). dnd-kit animates
+// the `translate` property, so it never fights other transforms on the row.
+const todoReorderTransition = { duration: 200, easing: "ease-out" };
 
 export function SortableTodoTaskItem({
   index,
   group,
   isReorderEnabled,
-  useMotionWrapper = true,
+  animateIdleReorder = false,
   todo,
   onToggleTodo,
   onDeleteTodo,
@@ -31,6 +35,8 @@ export function SortableTodoTaskItem({
     index,
     group,
     type: "todo",
+    accept: "todo",
+    transition: { ...todoReorderTransition, idle: animateIdleReorder },
     data: {
       type: "todo",
       todoId: todo._id,
@@ -40,36 +46,20 @@ export function SortableTodoTaskItem({
     disabled: !canReorder,
   });
 
-  const taskItem = (
-    <TodoTaskItem
-      todo={todo}
-      onToggleTodo={onToggleTodo}
-      onDeleteTodo={onDeleteTodo}
-      dragHandleRef={handleRef}
-      isReorderEnabled={canReorder}
-    />
-  );
-
-  if (!useMotionWrapper) {
-    return (
-      <div
-        ref={ref}
-        role="listitem"
-        tabIndex={canReorder ? 0 : undefined}
-        className="relative z-50 rounded-lg"
-      >
-        {taskItem}
-      </div>
-    );
-  }
-
   return (
-    <TodoTaskMotionItem
+    <div
       ref={ref}
-      todoId={todo._id}
+      role="listitem"
       tabIndex={canReorder ? 0 : undefined}
+      className="relative z-50 rounded-lg"
     >
-      {taskItem}
-    </TodoTaskMotionItem>
+      <TodoTaskItem
+        todo={todo}
+        onToggleTodo={onToggleTodo}
+        onDeleteTodo={onDeleteTodo}
+        dragHandleRef={handleRef}
+        isReorderEnabled={canReorder}
+      />
+    </div>
   );
 }
