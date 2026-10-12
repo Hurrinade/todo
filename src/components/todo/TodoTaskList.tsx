@@ -1,6 +1,5 @@
 import { api } from "@convex/_generated/api";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
-import { isSortable } from "@dnd-kit/react/sortable";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { usePaginatedQuery } from "convex/react";
 import { ChevronDown, ChevronUp, ClipboardList, RotateCcw } from "lucide-react";
@@ -17,6 +16,7 @@ import type {
   TodoTaskListProps,
   TodoVirtualRow,
 } from "@/types";
+import { todoDragSensors } from "@/utils";
 
 const COMPLETED_PAGE_SIZE = 40;
 const LOAD_MORE_THRESHOLD = 8;
@@ -149,6 +149,7 @@ function TodoVirtualTaskRows({
 
   return (
     <DragDropProvider
+      sensors={todoDragSensors}
       onDragStart={(event) => {
         isDraggingRef.current = true;
         const sourceId = event.operation.source?.id;
@@ -157,46 +158,59 @@ function TodoVirtualTaskRows({
           orderedOpenTodos.find((todo) => todo._id === sourceId) ?? null,
         );
       }}
+      onDragOver={(event) => {
+        // Rows are absolutely positioned by the virtualizer, so dnd-kit's
+        // optimistic DOM sorting can't reorder them. React state does it.
+        event.preventDefault();
+
+        const { source, target } = event.operation;
+
+        if (!source || !target || source.id === target.id) {
+          return;
+        }
+
+        setOrderedOpenTodos((todos) => {
+          const fromIndex = todos.findIndex((todo) => todo._id === source.id);
+          const toIndex = todos.findIndex((todo) => todo._id === target.id);
+
+          if (fromIndex < 0 || toIndex < 0) {
+            return todos;
+          }
+
+          const nextTodos = [...todos];
+          const [movedTodo] = nextTodos.splice(fromIndex, 1);
+
+          if (movedTodo) {
+            nextTodos.splice(toIndex, 0, movedTodo);
+          }
+
+          return nextTodos;
+        });
+      }}
       onDragEnd={(event) => {
         isDraggingRef.current = false;
         setDraggedTodo(null);
 
-        if (event.canceled) {
+        const sourceId = event.operation.source?.id;
+        const index = orderedOpenTodos.findIndex(
+          (todo) => todo._id === sourceId,
+        );
+        const movedTodo = orderedOpenTodos[index];
+        const anchorTodo =
+          index > 0 ? orderedOpenTodos[index - 1] : orderedOpenTodos[1];
+        const initialIndex = openTodos.findIndex(
+          (todo) => todo._id === sourceId,
+        );
+
+        if (
+          event.canceled ||
+          !movedTodo ||
+          !anchorTodo ||
+          index === initialIndex
+        ) {
           setOrderedOpenTodos(openTodos);
           return;
         }
-
-        const { source } = event.operation;
-
-        if (!isSortable(source)) {
-          setOrderedOpenTodos(openTodos);
-          return;
-        }
-
-        const { initialIndex, index } = source;
-
-        if (initialIndex === index) {
-          setOrderedOpenTodos(openTodos);
-          return;
-        }
-
-        const nextTodos = [...orderedOpenTodos];
-        const [movedTodo] = nextTodos.splice(initialIndex, 1);
-
-        if (!movedTodo) {
-          setOrderedOpenTodos(openTodos);
-          return;
-        }
-
-        nextTodos.splice(index, 0, movedTodo);
-        const anchorTodo = index > 0 ? nextTodos[index - 1] : nextTodos[1];
-
-        if (!anchorTodo) {
-          setOrderedOpenTodos(openTodos);
-          return;
-        }
-
-        setOrderedOpenTodos(nextTodos);
 
         void onRepositionTodo(
           movedTodo._id,
@@ -232,7 +246,6 @@ function TodoVirtualTaskRows({
                   index={virtualRow.index}
                   group="regular-list"
                   isReorderEnabled
-                  useMotionWrapper={false}
                   todo={row.todo}
                   onToggleTodo={onToggleTodo}
                   onDeleteTodo={onDeleteTodo}
