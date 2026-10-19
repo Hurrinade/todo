@@ -11,7 +11,7 @@ import "@/index.css";
 
 const root = createRoot(document.getElementById("root")!);
 
-async function startApp() {
+function startApp() {
   root.render(
     <StrictMode>
       <ClerkProvider

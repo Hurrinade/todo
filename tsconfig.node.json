@@ -21,6 +21,6 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["vite.config.ts", "eslint.config.ts", "./convex/**/*.ts"],
+  "include": ["vite.config.ts", "./convex/**/*.ts"],
   "exclude": ["./convex/_generated"]
 }

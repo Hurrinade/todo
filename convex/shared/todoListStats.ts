@@ -42,9 +42,7 @@ export async function updateTodoListStats(
 
   await ctx.db.patch(listId, {
     ...nextStats,
-    ...(update.updatedAt === undefined
-      ? {}
-      : { updatedAt: update.updatedAt }),
+    ...(update.updatedAt === undefined ? {} : { updatedAt: update.updatedAt }),
   });
 
   return nextStats;

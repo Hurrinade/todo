@@ -34,7 +34,7 @@ export default function Home() {
     const selectedListId = detailListId ?? activeListId;
 
     setActiveListId(selectedListId);
-    navigate("/home", {
+    void navigate("/home", {
       replace: true,
       state: selectedListId ? { selectedListId } : undefined,
     });
@@ -46,7 +46,7 @@ export default function Home() {
     setActiveListId(nextActiveListId);
 
     if (todoId) {
-      navigate("/home", {
+      void navigate("/home", {
         replace: true,
         state: nextActiveListId
           ? { selectedListId: nextActiveListId }
