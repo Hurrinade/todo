@@ -26,9 +26,7 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
   const uncheckCompletedTodos = useMutation(
     api.mutations.todos.uncheckCompleted,
   );
-  const clearCompletedTodos = useMutation(
-    api.mutations.todos.clearCompleted,
-  );
+  const clearCompletedTodos = useMutation(api.mutations.todos.clearCompleted);
 
   const [isLoading, setIsLoading] = useState(false);
   const clearErrorMessage = useTodoErrorStore(

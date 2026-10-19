@@ -130,7 +130,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
       <form
         onSubmit={(event) => {
           event.preventDefault();
-          handleRenameList();
+          void handleRenameList();
         }}
         className="min-w-0 flex-1"
       >

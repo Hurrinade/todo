@@ -46,7 +46,7 @@ export default function Invite() {
 
     try {
       const result = await acceptInvite({ token: params.token });
-      navigate("/home", {
+      void navigate("/home", {
         replace: true,
         state: {
           selectedListId: result.listId,
@@ -60,7 +60,7 @@ export default function Invite() {
   };
 
   const handleCancel = () => {
-    navigate(isAuthenticated ? "/home" : "/", { replace: true });
+    void navigate(isAuthenticated ? "/home" : "/", { replace: true });
   };
 
   if (!params.token) {
@@ -179,7 +179,7 @@ export default function Invite() {
                       disabled={!isOnline || isAcceptingInvite}
                       onClick={() => {
                         if (invite.isCurrentUserMember) {
-                          navigate("/home", {
+                          void navigate("/home", {
                             replace: true,
                             state: {
                               selectedListId: invite.listId,

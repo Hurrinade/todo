@@ -89,7 +89,7 @@ export function TodoTaskItem({
             type="button"
             disabled={isPending}
             onClick={() => {
-              navigate(`/home/todos/${todo._id}`, {
+              void navigate(`/home/todos/${todo._id}`, {
                 state: { selectedListId: todo.listId },
               });
             }}

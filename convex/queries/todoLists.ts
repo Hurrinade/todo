@@ -37,9 +37,7 @@ export const members = query({
       memberships.map((membership) =>
         ctx.db
           .query("users")
-          .withIndex("by_clerk_id", (q) =>
-            q.eq("clerkId", membership.userId),
-          )
+          .withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.userId))
           .unique(),
       ),
     );
@@ -107,10 +105,7 @@ function compareMembers(
   return firstMember.userId.localeCompare(secondMember.userId);
 }
 
-function getMemberSortValue(member: {
-  firstName?: string;
-  lastName?: string;
-}) {
+function getMemberSortValue(member: { firstName?: string; lastName?: string }) {
   return `${member.firstName ?? ""} ${member.lastName ?? ""}`
     .trim()
     .toLowerCase();
