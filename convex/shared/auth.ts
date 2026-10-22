@@ -1,37 +1,42 @@
+import { authComponent } from "../auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 
-type AuthContext = Pick<QueryCtx, "auth"> | Pick<MutationCtx, "auth">;
-type ListAccessContext =
-  | Pick<QueryCtx, "auth" | "db">
-  | Pick<MutationCtx, "auth" | "db">;
+type AuthContext = QueryCtx | MutationCtx;
 
-export async function getClerkUserId(ctx: AuthContext) {
-  const identity = await ctx.auth.getUserIdentity();
-
-  return identity?.subject ?? null;
-}
-
-export async function requireClerkUserId(ctx: AuthContext) {
-  const clerkUserId = await getClerkUserId(ctx);
-
-  if (!clerkUserId) {
-    throw new Error("You must be signed in.");
+// Keep persisted Clerk IDs for linked users. New identities cannot collide with them.
+export async function getAppUserId(ctx: AuthContext) {
+  const authUser = await authComponent.safeGetAuthUser(ctx);
+  if (!authUser) {
+    return null;
   }
 
-  return clerkUserId;
+  const user = await ctx.db
+    .query("users")
+    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", authUser._id))
+    .unique();
+
+  return user?.clerkId ?? `better-auth:${authUser._id}`;
+}
+
+export async function requireAppUserId(ctx: AuthContext) {
+  const userId = await getAppUserId(ctx);
+  if (!userId) {
+    throw new Error("You must be signed in.");
+  }
+  return userId;
 }
 
 export async function requireListAccess(
-  ctx: ListAccessContext,
+  ctx: AuthContext,
   listId: Id<"todoLists">,
   userId?: string,
 ) {
-  const clerkUserId = userId ?? (await requireClerkUserId(ctx));
+  const appUserId = userId ?? (await requireAppUserId(ctx));
   const membership = await ctx.db
     .query("todoListUsers")
     .withIndex("by_list_id_and_user_id", (q) =>
-      q.eq("listId", listId).eq("userId", clerkUserId),
+      q.eq("listId", listId).eq("userId", appUserId),
     )
     .unique();
 
@@ -44,14 +49,14 @@ export async function requireListAccess(
 
 // User must be owner
 export async function requireOwnerListAccess(
-  ctx: ListAccessContext,
+  ctx: AuthContext,
   listId: Id<"todoLists">,
   userId?: string,
 ) {
-  const clerkUserId = userId ?? (await requireClerkUserId(ctx));
+  const appUserId = userId ?? (await requireAppUserId(ctx));
   const list = await ctx.db.get(listId);
 
-  if (!list || list.userId !== clerkUserId) {
+  if (!list || list.userId !== appUserId) {
     throw new Error("User does not have access to this list as owner.");
   }
 

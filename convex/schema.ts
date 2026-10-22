@@ -8,13 +8,17 @@ import {
 
 export default defineSchema({
   users: defineTable({
-    clerkId: v.string(),
+    // Legacy ownership IDs stay unchanged. Linking requires a verified backfill.
+    clerkId: v.optional(v.string()),
+    betterAuthId: v.optional(v.string()),
     email: v.string(),
     imageUrl: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     updatedAt: v.number(),
-  }).index("by_clerk_id", ["clerkId"]),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_better_auth_id", ["betterAuthId"]),
   todoLists: defineTable({
     title: v.string(),
     emoji: v.optional(v.string()),

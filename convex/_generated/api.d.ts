@@ -9,6 +9,7 @@
  */
 
 import type * as http from "../http.js";
+import type * as auth from "../auth.js";
 import type * as mcp_auth from "../mcp/auth.js";
 import type * as mcp_format from "../mcp/format.js";
 import type * as mcp_http from "../mcp/http.js";
@@ -35,6 +36,7 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  auth: typeof auth;
   http: typeof http;
   "mcp/auth": typeof mcp_auth;
   "mcp/format": typeof mcp_format;
@@ -82,4 +84,6 @@ export declare const internal: FilterApi<
   FunctionReference<any, "internal">
 >;
 
-export declare const components: {};
+export declare const components: {
+  betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+};
