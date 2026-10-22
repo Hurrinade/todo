@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
-  requireClerkUserId,
+  requireAppUserId,
   requireListAccess,
   requireOwnerListAccess,
 } from "../shared/auth";
@@ -22,7 +22,7 @@ export const create = mutation({
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     return createTodoList(ctx, userId, args);
   },
@@ -43,7 +43,7 @@ export const remove = mutation({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireOwnerListAccess(ctx, args.listId, userId);
 
     await ctx.db.delete(args.listId);
@@ -56,7 +56,7 @@ export const rename = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     await renameTodoList(ctx, userId, args.listId, args.title);
   },
@@ -78,7 +78,7 @@ export const updateEmoji = mutation({
     emoji: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
     const emoji = normalizeTodoListEmoji(args.emoji);
@@ -95,7 +95,7 @@ export const reorder = mutation({
     listIds: v.array(v.id("todoLists")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todoListUsers = await ctx.db
       .query("todoListUsers")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))

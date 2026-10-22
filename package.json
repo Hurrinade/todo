@@ -16,7 +16,7 @@
   },
   "dependencies": {
     "@clerk/backend": "^3.25.0",
-    "@clerk/react": "^6.17.8",
+    "@convex-dev/better-auth": "^0.12.5",
     "@dnd-kit/abstract": "^0.5.1",
     "@dnd-kit/dom": "^0.5.1",
     "@dnd-kit/react": "^0.5.1",
@@ -30,6 +30,7 @@
     "@tiptap/pm": "^3.32.0",
     "@tiptap/react": "^3.32.0",
     "@tiptap/starter-kit": "^3.32.0",
+    "better-auth": "~1.6.33",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.47.0",
