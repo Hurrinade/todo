@@ -257,6 +257,14 @@ function AuthForm({
             disabled={pending || !isOnline}
             onClick={() => void signInWithGoogle()}
           >
+            <img
+              src="/google-g.svg"
+              alt=""
+              aria-hidden="true"
+              width={20}
+              height={20}
+              className="size-5 shrink-0"
+            />
             Continue with Google
           </Button>
         </TabsContent>

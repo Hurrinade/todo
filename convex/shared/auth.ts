@@ -11,12 +11,17 @@ export async function getAppUserId(ctx: AuthContext) {
     return null;
   }
 
+  return resolveAppUserId(ctx, authUser._id);
+}
+
+// Caller must first verify the session or API key and that its auth user exists.
+export async function resolveAppUserId(ctx: AuthContext, betterAuthId: string) {
   const user = await ctx.db
     .query("users")
-    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", authUser._id))
+    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", betterAuthId))
     .unique();
 
-  return user?.clerkId ?? `better-auth:${authUser._id}`;
+  return user?.clerkId ?? `better-auth:${betterAuthId}`;
 }
 
 export async function requireAppUserId(ctx: AuthContext) {

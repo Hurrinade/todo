@@ -19,6 +19,17 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_better_auth_id", ["betterAuthId"]),
+  identityLinks: defineTable({
+    clerkId: v.string(),
+    betterAuthId: v.string(),
+    legacyUserId: v.id("users"),
+    mergedProfileId: v.optional(v.string()),
+    reviewedBy: v.string(),
+    evidenceReference: v.string(),
+    linkedAt: v.number(),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_better_auth_id", ["betterAuthId"]),
   todoLists: defineTable({
     title: v.string(),
     emoji: v.optional(v.string()),
@@ -53,6 +64,7 @@ export default defineSchema({
     expiresAt: v.number(),
   })
     .index("by_token", ["token"])
+    .index("by_created_by_user_id", ["createdByUserId"])
     .index("by_list_id", ["listId"]),
   todos: defineTable({
     listId: v.id("todoLists"),

@@ -1,5 +1,21 @@
 import { v } from "convex/values";
-import { internalMutation, type MutationCtx } from "../_generated/server";
+import {
+  internalMutation,
+  internalQuery,
+  type MutationCtx,
+} from "../_generated/server";
+import { authComponent } from "../auth";
+import { resolveAppUserId } from "../shared/auth";
+
+// MCP keys are verified before this internal lookup. Deleted users cannot use keys.
+export const resolveMcpOwner = internalQuery({
+  args: { betterAuthId: v.string() },
+  returns: v.union(v.string(), v.null()),
+  handler: async (ctx, { betterAuthId }) => {
+    const user = await authComponent.getAnyUserById(ctx, betterAuthId);
+    return user ? resolveAppUserId(ctx, user._id) : null;
+  },
+});
 
 // Profile sync never claims a legacy user by email. See docs/better-auth-migration.md.
 export async function syncBetterAuthUser(
@@ -55,6 +71,10 @@ export const syncFromClerk = internalMutation({
         updatedAt: now,
       });
     }
+
+    // Once linked, Better Auth owns the profile. Delayed Clerk webhooks must not
+    // overwrite edits made in the new account settings.
+    if (user.betterAuthId) return user._id;
 
     await ctx.db.patch(user._id, {
       email: args.email,

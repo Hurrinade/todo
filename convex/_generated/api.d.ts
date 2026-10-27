@@ -8,8 +8,8 @@
  * @module
  */
 
-import type * as http from "../http.js";
 import type * as auth from "../auth.js";
+import type * as http from "../http.js";
 import type * as mcp_auth from "../mcp/auth.js";
 import type * as mcp_format from "../mcp/format.js";
 import type * as mcp_http from "../mcp/http.js";
@@ -26,6 +26,7 @@ import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
 import type * as shared_todo from "../shared/todo.js";
 import type * as shared_todoListStats from "../shared/todoListStats.js";
+import type * as system_identityLinks from "../system/identityLinks.js";
 import type * as system_users from "../system/users.js";
 import type * as triggers_todolistFunctions from "../triggers/todolistFunctions.js";
 
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   "shared/auth": typeof shared_auth;
   "shared/todo": typeof shared_todo;
   "shared/todoListStats": typeof shared_todoListStats;
+  "system/identityLinks": typeof system_identityLinks;
   "system/users": typeof system_users;
   "triggers/todolistFunctions": typeof triggers_todolistFunctions;
 }>;
@@ -85,5 +87,6 @@ export declare const internal: FilterApi<
 >;
 
 export declare const components: {
-  betterAuth: import("@convex-dev/better-auth/_generated/component.js").ComponentApi<"betterAuth">;
+  betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
+  resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
 };

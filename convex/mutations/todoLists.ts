@@ -6,6 +6,7 @@ import {
   requireAppUserId,
   requireListAccess,
   requireOwnerListAccess,
+  resolveAppUserId,
 } from "../shared/auth";
 import {
   DEFAULT_TODO_SECTION_TITLE,
@@ -137,6 +138,15 @@ async function createTodoList(
     kind: "regular" | "sectioned";
   },
 ) {
+  // An MCP request may authenticate before an approved identity link commits.
+  // Read the mapping in this transaction so that request cannot create hidden data.
+  if (
+    userId.startsWith("better-auth:") &&
+    (await resolveAppUserId(ctx, userId.slice("better-auth:".length))) !==
+      userId
+  ) {
+    throw new Error("Your account identity changed. Retry this request.");
+  }
   const existingLists = await ctx.db
     .query("todoLists")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))
