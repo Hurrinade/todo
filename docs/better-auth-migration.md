@@ -208,8 +208,8 @@ control of both accounts, reviewed by an operator. An email match is insufficien
 `system/identityLinks:apply` is an internal mutation. It requires:
 
 - `AUTH_IDENTITY_LINKING_ENABLED=true` on the separately approved target environment.
-  This variable has not been set by the agent. Development was confirmed disabled
-  on 2026-10-26. Keep it disabled during normal use.
+  It was temporarily enabled for the approved development link on 2026-10-27 and
+  removed immediately afterward. Keep it disabled during normal use.
 - The exact preview's `legacyUserId`, `newProfileId`, `legacyUpdatedAt` and
   `newProfileUpdatedAt`. Changed profiles require another preview and review.
 - `reviewedBy`, `evidenceReference`, and confirmation `LINK_VERIFIED_IDENTITIES`.
