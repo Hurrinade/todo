@@ -22,6 +22,15 @@ is still disabled; verified ownership evidence, backup, rehearsal and approval
 are required before applying any mapping. Private account IDs and evidence must
 stay outside this repository and the PR.
 
+A private development snapshot was exported with file storage on 2026-10-27.
+An isolated in-memory rehearsal using copied application records preserved all
+list, section, todo, membership and invite data, restored the candidate legacy
+access, removed only the unused duplicate profile and passed an idempotent retry.
+This rehearsal does not prove account ownership. No real link has been applied.
+The review also found legacy ownership without an app user profile. Those records
+require independent investigation; do not create a guessed profile or rewrite
+ownership to fit an email match.
+
 ## Implemented
 
 - Convex's `@convex-dev/better-auth` component, React provider and Vite cross-domain client.
