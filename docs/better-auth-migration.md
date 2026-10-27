@@ -4,7 +4,7 @@ Started from clean HEAD `4c8f47d` on the isolated `auth/better-auth-migration`
 worktree. The original checkout remains on `fix/smooth-drag-and-drop`.
 With Marko's explicit approval, the backend was uploaded to development deployment
 `exciting-gazelle-205` on 2026-10-22. Production was not changed.
-No identity backfill, email send or remote environment-variable change
+At that stage, no identity backfill, email send or remote environment-variable change
 was performed. No authentication dashboards, `.env.local` or `.env.production`
 files were inspected.
 
@@ -26,10 +26,21 @@ A private development snapshot was exported with file storage on 2026-10-27.
 An isolated in-memory rehearsal using copied application records preserved all
 list, section, todo, membership and invite data, restored the candidate legacy
 access, removed only the unused duplicate profile and passed an idempotent retry.
-This rehearsal does not prove account ownership. No real link has been applied.
+This rehearsal does not prove account ownership.
 The review also found legacy ownership without an app user profile. Those records
 require independent investigation; do not create a guessed profile or rewrite
 ownership to fit an email match.
+
+After Marko confirmed his exact legacy Clerk identity, the corresponding verified
+Google account was linked on development on 2026-10-27. A fresh private backup
+and copied-data rehearsal preceded the single transaction. The legacy profile
+and ownership IDs were retained, the unused duplicate app profile was removed,
+and an audit record was written. Before/after snapshots confirmed that all lists,
+sections, todos, memberships and invites, all other app profiles, and the Better
+Auth user records were unchanged. Canonical identity resolution and legacy list
+access were verified. The maintenance variable was temporarily enabled for that
+operation and then removed, restoring the original disabled state. Production
+and every other identity mapping remain untouched.
 
 ## Implemented
 
@@ -80,8 +91,9 @@ ownership to fit an email match.
    delivery are not yet verified. No sign-in code was requested by the agent.
 2. **Existing identities need a verified backfill.** Internal maintenance functions
    are implemented and tested against synthetic identities. Development safety
-   previews are read-only; no actual pair has been linked. The procedure below requires reviewed identity
-   evidence and explicit approval before touching real records.
+   previews are read-only. One owner-confirmed development pair has been linked
+   after backup and rehearsal. Other legacy identities and production still
+   require reviewed evidence and explicit approval before any mapping.
 3. Marko reports successful Google login on development. The agent has not
    authenticated as a real user. The Google client's authorized redirect URI is
    `https://exciting-gazelle-205.eu-west-1.convex.site/api/auth/callback/google`.
@@ -302,7 +314,8 @@ and removal of the one-time secret after closing. Screenshots were inspected at
 desktop and mobile widths. The dialog fits 375px and 320px viewports with no
 horizontal overflow, uses a true black background and produced no browser errors.
 These UI checks do not establish real inbox delivery or a real user's MCP-client
-configuration. Production and existing identity mappings remain unchanged.
+configuration. Production is unchanged. Development contains only the single
+owner-confirmed mapping described above; other identities still need review.
 
 ## Official references
 
