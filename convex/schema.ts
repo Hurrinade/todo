@@ -8,13 +8,28 @@ import {
 
 export default defineSchema({
   users: defineTable({
-    clerkId: v.string(),
+    // Legacy ownership IDs stay unchanged. Linking requires a verified backfill.
+    clerkId: v.optional(v.string()),
+    betterAuthId: v.optional(v.string()),
     email: v.string(),
     imageUrl: v.optional(v.string()),
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     updatedAt: v.number(),
-  }).index("by_clerk_id", ["clerkId"]),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_better_auth_id", ["betterAuthId"]),
+  identityLinks: defineTable({
+    clerkId: v.string(),
+    betterAuthId: v.string(),
+    legacyUserId: v.id("users"),
+    mergedProfileId: v.optional(v.string()),
+    reviewedBy: v.string(),
+    evidenceReference: v.string(),
+    linkedAt: v.number(),
+  })
+    .index("by_clerk_id", ["clerkId"])
+    .index("by_better_auth_id", ["betterAuthId"]),
   todoLists: defineTable({
     title: v.string(),
     emoji: v.optional(v.string()),
@@ -49,6 +64,7 @@ export default defineSchema({
     expiresAt: v.number(),
   })
     .index("by_token", ["token"])
+    .index("by_created_by_user_id", ["createdByUserId"])
     .index("by_list_id", ["listId"]),
   todos: defineTable({
     listId: v.id("todoLists"),

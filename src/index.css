@@ -161,6 +161,27 @@
   --font-heading: var(--font-sans);
 }
 
+/* Auth dialogs keep the approved black-and-white palette in every app theme. */
+.auth-theme {
+  color-scheme: dark;
+  --background: #000;
+  --foreground: #fff;
+  --card: #000;
+  --card-foreground: #fff;
+  --popover: #000;
+  --popover-foreground: #fff;
+  --primary: #fff;
+  --primary-foreground: #000;
+  --muted: #171b22;
+  --muted-foreground: #aaa;
+  --accent: #171b22;
+  --accent-foreground: #fff;
+  --border: #777;
+  --input: #777;
+  --ring: #fff;
+  --destructive: #ff8090;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

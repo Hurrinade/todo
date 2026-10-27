@@ -1,4 +1,4 @@
-import { SignInButton } from "@clerk/react";
+import AuthDialog from "@/components/auth/AuthDialog";
 import { api } from "@convex/_generated/api";
 import {
   AuthLoading,
@@ -209,7 +209,7 @@ export default function Invite() {
                   </>
                 ) : (
                   <>
-                    <SignInButton mode="modal">
+                    <AuthDialog>
                       <Button
                         type="button"
                         className="h-11 w-full"
@@ -217,7 +217,7 @@ export default function Invite() {
                       >
                         Sign in to join
                       </Button>
-                    </SignInButton>
+                    </AuthDialog>
                     <Button
                       type="button"
                       variant="outline"
