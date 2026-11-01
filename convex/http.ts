@@ -3,8 +3,14 @@ import { httpAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { handleMcpRequest } from "./mcp/http";
 import { Webhook } from "svix";
+import { authComponent, createAuth } from "./auth";
 
 const http = httpRouter();
+
+authComponent.registerRoutesLazy(http, createAuth, {
+  cors: true,
+  trustedOrigins: [process.env.SITE_URL!],
+});
 
 for (const method of ["GET", "POST", "DELETE"] as const) {
   http.route({

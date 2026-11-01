@@ -5,7 +5,7 @@ import { authenticateMcpRequest } from "./auth";
 import { createRiTodoMcpServer } from "./server";
 
 export const handleMcpRequest = httpAction(async (ctx, request) => {
-  const authentication = await authenticateMcpRequest(request);
+  const authentication = await authenticateMcpRequest(ctx, request);
 
   if (!authentication.authenticated) {
     return authentication.response;

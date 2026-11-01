@@ -3,9 +3,10 @@ import { v } from "convex/values";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import {
-  requireClerkUserId,
+  requireAppUserId,
   requireListAccess,
   requireOwnerListAccess,
+  resolveAppUserId,
 } from "../shared/auth";
 import {
   DEFAULT_TODO_SECTION_TITLE,
@@ -22,7 +23,7 @@ export const create = mutation({
     kind: v.union(v.literal("regular"), v.literal("sectioned")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     return createTodoList(ctx, userId, args);
   },
@@ -43,7 +44,7 @@ export const remove = mutation({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireOwnerListAccess(ctx, args.listId, userId);
 
     await ctx.db.delete(args.listId);
@@ -56,7 +57,7 @@ export const rename = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     await renameTodoList(ctx, userId, args.listId, args.title);
   },
@@ -78,7 +79,7 @@ export const updateEmoji = mutation({
     emoji: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
     const emoji = normalizeTodoListEmoji(args.emoji);
@@ -95,7 +96,7 @@ export const reorder = mutation({
     listIds: v.array(v.id("todoLists")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todoListUsers = await ctx.db
       .query("todoListUsers")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -137,6 +138,15 @@ async function createTodoList(
     kind: "regular" | "sectioned";
   },
 ) {
+  // An MCP request may authenticate before an approved identity link commits.
+  // Read the mapping in this transaction so that request cannot create hidden data.
+  if (
+    userId.startsWith("better-auth:") &&
+    (await resolveAppUserId(ctx, userId.slice("better-auth:".length))) !==
+      userId
+  ) {
+    throw new Error("Your account identity changed. Retry this request.");
+  }
   const existingLists = await ctx.db
     .query("todoLists")
     .withIndex("by_user_id", (q) => q.eq("userId", userId))

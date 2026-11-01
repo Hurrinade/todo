@@ -2,7 +2,7 @@ import { internal } from "../_generated/api";
 import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
-import { requireClerkUserId, requireOwnerListAccess } from "../shared/auth";
+import { requireAppUserId, requireOwnerListAccess } from "../shared/auth";
 import { updateTodoListStats } from "../shared/todoListStats";
 
 const INVITE_EXPIRATION_MS = 30 * 60 * 1000;
@@ -12,7 +12,7 @@ export const create = mutation({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireOwnerListAccess(ctx, args.listId, userId);
 
     const existingInvites = await ctx.db
@@ -56,7 +56,7 @@ export const accept = mutation({
     token: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const invite = await ctx.db
       .query("todoListInvites")
       .withIndex("by_token", (q) => q.eq("token", args.token))

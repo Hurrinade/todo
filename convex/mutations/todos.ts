@@ -3,7 +3,7 @@ import { v } from "convex/values";
 import { internalMutation, mutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
-import { requireClerkUserId, requireListAccess } from "../shared/auth";
+import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { updateTodoListStats } from "../shared/todoListStats";
 import {
   createTodoNoteContent,
@@ -22,7 +22,7 @@ export const create = mutation({
     title: todoTitleContentValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     return createTodoForUser(ctx, userId, args);
   },
@@ -52,7 +52,7 @@ export const toggle = mutation({
     todoId: v.id("todos"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
@@ -88,7 +88,7 @@ export const rename = mutation({
     title: todoTitleContentValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
@@ -115,7 +115,7 @@ export const updateDescription = mutation({
     description: v.optional(todoNoteContentValidator),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
@@ -185,7 +185,7 @@ export const remove = mutation({
     todoId: v.id("todos"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     await removeTodoForUser(ctx, userId, args.todoId);
   },
@@ -206,7 +206,7 @@ export const reposition = mutation({
     placement: v.union(v.literal("before"), v.literal("after")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const [todo, anchorTodo] = await Promise.all([
       ctx.db.get(args.todoId),
       ctx.db.get(args.anchorTodoId),
@@ -275,7 +275,7 @@ export const move = mutation({
     targetIndex: v.number(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     await moveTodoForUser(
       ctx,
@@ -308,7 +308,7 @@ export const clearCompleted = mutation({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
     const completedTodos = await ctx.db
@@ -335,7 +335,7 @@ export const uncheckCompleted = mutation({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
     const list = await ctx.db.get(args.listId);
 

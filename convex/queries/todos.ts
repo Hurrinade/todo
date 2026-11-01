@@ -3,14 +3,14 @@ import { v } from "convex/values";
 
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
-import { requireClerkUserId, requireListAccess } from "../shared/auth";
+import { requireAppUserId, requireListAccess } from "../shared/auth";
 
 export const get = query({
   args: {
     todoId: v.id("todos"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
@@ -40,7 +40,7 @@ export const listOpen = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
     const list = await ctx.db.get(args.listId);
 
@@ -67,7 +67,7 @@ export const listCompleted = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
     const list = await ctx.db.get(args.listId);
 
@@ -97,7 +97,7 @@ export const listSectioned = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
     const list = await ctx.db.get(args.listId);
 

@@ -1,5 +1,5 @@
 import { Unauthenticated, useConvexAuth } from "convex/react";
-import { SignInButton, SignUpButton } from "@clerk/react";
+import AuthDialog from "@/components/auth/AuthDialog";
 import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
@@ -30,14 +30,14 @@ export default function Root() {
         <nav className="flex items-center justify-between gap-4">
           <span className="font-semibold text-xl">RiTodo</span>
           <Unauthenticated>
-            <SignInButton mode="modal">
+            <AuthDialog>
               <button
                 className="-mr-2 inline-flex min-h-11 items-center px-2 text-muted-foreground transition-colors pointer-fine:min-h-6 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!isOnline}
               >
                 Sign in
               </button>
-            </SignInButton>
+            </AuthDialog>
           </Unauthenticated>
         </nav>
 
@@ -57,14 +57,14 @@ export default function Root() {
             <div className="flex flex-col gap-3 sm:flex-row">
               <Unauthenticated>
                 <>
-                  <SignUpButton mode="modal">
+                  <AuthDialog initialMode="sign-up">
                     <Button size="mobile-lg" disabled={!isOnline}>
                       <UserPlus />
                       Create account
                       <ArrowRight data-icon="inline-end" />
                     </Button>
-                  </SignUpButton>
-                  <SignInButton mode="modal">
+                  </AuthDialog>
+                  <AuthDialog>
                     <Button
                       variant="outline"
                       size="mobile-lg"
@@ -73,7 +73,7 @@ export default function Root() {
                       <LogIn />
                       Sign in
                     </Button>
-                  </SignInButton>
+                  </AuthDialog>
                 </>
               </Unauthenticated>
             </div>

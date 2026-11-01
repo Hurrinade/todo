@@ -1,4 +1,7 @@
 import { createClerkClient } from "@clerk/backend";
+import { createAuth } from "../auth";
+import { internal } from "../_generated/api";
+import type { ActionCtx } from "../_generated/server";
 
 export function getBearerToken(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -13,6 +16,7 @@ export function getBearerToken(request: Request) {
 }
 
 export async function authenticateMcpRequest(
+  ctx: ActionCtx,
   request: Request,
   verifyApiKey: (
     token: string,
@@ -24,7 +28,34 @@ export async function authenticateMcpRequest(
   if (!token) {
     return {
       authenticated: false as const,
-      response: createAuthResponse(401, "A Clerk API key is required."),
+      response: createAuthResponse(401, "A RiTodo MCP API key is required."),
+    };
+  }
+
+  // Never send a RiTodo key to Clerk, including when it is invalid or revoked.
+  if (token.startsWith("ritodo_")) {
+    try {
+      const result = await createAuth(ctx).api.verifyApiKey({
+        body: { key: token },
+      });
+      const userId =
+        result.valid && result.key
+          ? await ctx.runQuery(internal.system.users.resolveMcpOwner, {
+              betterAuthId: result.key.referenceId,
+            })
+          : null;
+      if (userId) {
+        return { authenticated: true as const, userId };
+      }
+    } catch {
+      // Fail closed without exposing key details or falling back to another provider.
+    }
+    return {
+      authenticated: false as const,
+      response: createAuthResponse(
+        401,
+        "The RiTodo MCP API key is invalid or unavailable.",
+      ),
     };
   }
 

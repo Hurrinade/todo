@@ -6,7 +6,7 @@ import {
   mutation,
   type MutationCtx,
 } from "../_generated/server";
-import { requireClerkUserId, requireListAccess } from "../shared/auth";
+import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { normalizeSectionTitle } from "../shared/todo";
 
 export const create = mutation({
@@ -15,7 +15,7 @@ export const create = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     return createTodoSection(ctx, userId, args.listId, args.title);
   },
@@ -37,7 +37,7 @@ export const rename = mutation({
     title: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
 
     await renameTodoSection(ctx, userId, args.sectionId, args.title);
   },
@@ -59,7 +59,7 @@ export const reorder = mutation({
     sectionIds: v.array(v.id("todoSections")),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
+    const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
     const sections = await ctx.db

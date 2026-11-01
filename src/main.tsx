@@ -1,9 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
-import { ClerkProvider } from "@clerk/react";
-import { envConfig } from "@/config/env";
-import ConvexClerkProvider from "@/context/convex/ConvexClerkProvider";
+import ConvexBetterAuthProvider from "@/context/convex/ConvexBetterAuthProvider";
 import { ModalProvider } from "@/context/modal/ModalProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import App from "@/App.tsx";
@@ -14,31 +12,15 @@ const root = createRoot(document.getElementById("root")!);
 function startApp() {
   root.render(
     <StrictMode>
-      <ClerkProvider
-        publishableKey={envConfig.clerkPublishableKey}
-        appearance={{
-          variables: {
-            colorPrimary: "var(--color-primary)",
-            colorBackground: "var(--color-background)",
-            colorForeground: "var(--color-foreground)",
-            colorPrimaryForeground: "var(--color-primary-foreground)",
-            colorMutedForeground: "var(--color-muted-foreground)",
-            colorInputForeground: "var(--color-foreground)",
-            colorDanger: "var(--color-destructive)",
-            colorNeutral: "var(--color-foreground)",
-          },
-        }}
-      >
-        <ConvexClerkProvider>
-          <BrowserRouter>
-            <TooltipProvider>
-              <ModalProvider>
-                <App />
-              </ModalProvider>
-            </TooltipProvider>
-          </BrowserRouter>
-        </ConvexClerkProvider>
-      </ClerkProvider>
+      <ConvexBetterAuthProvider>
+        <BrowserRouter>
+          <TooltipProvider>
+            <ModalProvider>
+              <App />
+            </ModalProvider>
+          </TooltipProvider>
+        </BrowserRouter>
+      </ConvexBetterAuthProvider>
     </StrictMode>,
   );
 }

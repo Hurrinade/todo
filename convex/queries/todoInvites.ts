@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { getClerkUserId } from "../shared/auth";
+import { getAppUserId } from "../shared/auth";
 
 export const getByToken = query({
   args: {
@@ -23,7 +23,7 @@ export const getByToken = query({
       return null;
     }
 
-    const currentUserId = await getClerkUserId(ctx);
+    const currentUserId = await getAppUserId(ctx);
     const existingMembership = currentUserId
       ? await ctx.db
           .query("todoListUsers")
