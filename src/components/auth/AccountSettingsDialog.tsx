@@ -18,6 +18,15 @@ type SettingsUser = Pick<
   "id" | "name" | "email"
 >;
 
+// Light backdrop so the app stays visible. McpKeySettings uses the same one.
+const overlayClassName = "bg-black/20 backdrop-blur-none";
+
+const tabs = [
+  ["profile", "Profile"],
+  ["mcp", "MCP keys"],
+] as const;
+
+/** Account settings. Centered dialog on desktop, full screen below the md breakpoint. */
 export default function AccountSettingsDialog({
   user,
   open,
@@ -32,17 +41,21 @@ export default function AccountSettingsDialog({
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="auth-theme dark max-w-2xl rounded-lg bg-background text-foreground"
-        overlayClassName="bg-black/20 backdrop-blur-none"
+        className="max-w-2xl content-start rounded-lg max-md:top-0 max-md:left-0 max-md:h-dvh max-md:max-h-none max-md:w-full max-md:max-w-none max-md:translate-x-0 max-md:translate-y-0 max-md:rounded-none max-md:border-0 max-md:px-4 max-md:pt-[calc(1rem+env(safe-area-inset-top))] max-md:pb-[calc(1rem+env(safe-area-inset-bottom))]"
+        overlayClassName={overlayClassName}
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           onReturnFocus();
         }}
       >
-        <DialogTitle>Settings</DialogTitle>
-        <DialogDescription className="sr-only">
-          Edit your profile and manage MCP keys.
-        </DialogDescription>
+        <div className="min-w-0 pr-10">
+          <DialogTitle className="truncate">
+            {user.name || user.email}
+          </DialogTitle>
+          <DialogDescription className="truncate">
+            {user.email}
+          </DialogDescription>
+        </div>
         <SettingsContent
           key={user.id}
           user={user}
@@ -79,20 +92,17 @@ function SettingsContent({
       <Tabs
         defaultValue="profile"
         orientation={isMobile ? "horizontal" : "vertical"}
-        className="gap-5 md:grid md:grid-cols-[8rem_minmax(0,1fr)] md:gap-6"
+        className="min-w-0 gap-5 md:grid md:grid-cols-[8rem_minmax(0,1fr)] md:gap-6"
       >
         <TabsList
           aria-label="Account settings"
-          className="h-auto w-full justify-start gap-5 rounded-none border-b bg-transparent p-0 md:flex-col md:items-stretch md:gap-1 md:self-start md:border-0"
+          className="h-auto w-full justify-start gap-5 rounded-none border-b border-border/50 bg-transparent p-0 md:flex-col md:items-stretch md:gap-0.5 md:self-start md:border-0"
         >
-          {[
-            ["profile", "Profile"],
-            ["mcp", "MCP keys"],
-          ].map(([value, label]) => (
+          {tabs.map(([value, label]) => (
             <TabsTrigger
               key={value}
               value={value}
-              className="min-h-11 flex-none justify-start rounded-none border-b-2 border-transparent px-0 py-2 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none md:border-b-0 md:border-l-2 md:px-3"
+              className="-mb-px min-h-11 flex-none justify-start rounded-none border-b-2 border-transparent px-0 py-2 font-normal data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none md:mb-0 md:min-h-9 md:border-b-0 md:border-l-2 md:px-3"
             >
               {label}
             </TabsTrigger>
