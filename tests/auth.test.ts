@@ -62,7 +62,7 @@ async function setup({ linked = true, expired = false, age = 0 } = {}) {
         data: {
           userId: authUser._id,
           token: "test-session",
-          expiresAt: expired ? now - 1 : now + 86400000 * 30 - age,
+          expiresAt: expired ? now - 1 : now + 86400000 * 90 - age,
           createdAt: now - age,
           updatedAt: now - age,
         },
@@ -596,7 +596,7 @@ describe("Better Auth ownership mapping", () => {
         .parse(await signedIn.json());
       expect(user.user.emailVerified).toBe(true);
       expect(signedIn.headers.get("set-better-auth-cookie")).toContain(
-        "Max-Age=2592000",
+        "Max-Age=7776000",
       );
       const session = await t.fetch("/api/auth/get-session", {
         headers: { Authorization: `Bearer ${user.token}` },
@@ -606,7 +606,7 @@ describe("Better Auth ownership mapping", () => {
         Math.abs(
           new Date(data.session.expiresAt).getTime() -
             Date.now() -
-            86400000 * 30,
+            86400000 * 90,
         ),
       ).toBeLessThan(5000);
       const replay = await t.fetch(
@@ -647,8 +647,8 @@ describe("Better Auth ownership mapping", () => {
     }
   });
 
-  test("HTTP session use renews to 30 days after the daily update age", async () => {
-    const { t } = await setup({ age: 86400000 * 2 });
+  test("HTTP session use after 45 days renews to 90 days with daily throttling", async () => {
+    const { t } = await setup({ age: 86400000 * 45 });
     const request = {
       headers: {
         Authorization: "Bearer test-session",
@@ -659,7 +659,7 @@ describe("Better Auth ownership mapping", () => {
     expect(response.status).toBe(200);
     const data = await response.json();
     const expiresAt = new Date(data.session.expiresAt).getTime();
-    expect(Math.abs(expiresAt - Date.now() - 86400000 * 30)).toBeLessThan(5000);
+    expect(Math.abs(expiresAt - Date.now() - 86400000 * 90)).toBeLessThan(5000);
     const next = await t.fetch("/api/auth/get-session", request);
     expect(next.status).toBe(200);
     expect((await next.json()).session.updatedAt).toBe(data.session.updatedAt);

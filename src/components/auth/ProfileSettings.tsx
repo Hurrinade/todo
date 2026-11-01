@@ -9,9 +9,11 @@ import { useNetworkStore } from "@/stores";
 export default function ProfileSettings({
   name,
   email,
+  onSaved,
 }: {
   name: string;
   email: string;
+  onSaved: () => void;
 }) {
   const id = useId();
   const [draftName, setDraftName] = useState(name);
@@ -23,6 +25,7 @@ export default function ProfileSettings({
         throw new Error(result.error.message ?? "Could not save your profile.");
       }
     },
+    onSuccess: onSaved,
   });
 
   function submit(event: FormEvent<HTMLFormElement>) {
@@ -66,7 +69,6 @@ export default function ProfileSettings({
           {save.error.message}
         </p>
       )}
-      {save.isSuccess && <p role="status">Profile saved.</p>}
       <Button
         type="submit"
         className="h-11"

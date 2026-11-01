@@ -33,6 +33,7 @@ export default function AccountSettingsDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="auth-theme dark max-w-2xl rounded-lg bg-background text-foreground"
+        overlayClassName="bg-black/20 backdrop-blur-none"
         onCloseAutoFocus={(event) => {
           event.preventDefault();
           onReturnFocus();
@@ -42,13 +43,25 @@ export default function AccountSettingsDialog({
         <DialogDescription className="sr-only">
           Edit your profile and manage MCP keys.
         </DialogDescription>
-        <SettingsContent key={user.id} user={user} />
+        <SettingsContent
+          key={user.id}
+          user={user}
+          onSaved={() => {
+            onOpenChange(false);
+          }}
+        />
       </DialogContent>
     </Dialog>
   );
 }
 
-function SettingsContent({ user }: { user: SettingsUser }) {
+function SettingsContent({
+  user,
+  onSaved,
+}: {
+  user: SettingsUser;
+  onSaved: () => void;
+}) {
   // The cache is scoped to the open dialog and discarded when it closes.
   const [queryClient] = useState(
     () =>
@@ -86,7 +99,11 @@ function SettingsContent({ user }: { user: SettingsUser }) {
           ))}
         </TabsList>
         <TabsContent value="profile" className="min-w-0">
-          <ProfileSettings name={user.name} email={user.email} />
+          <ProfileSettings
+            name={user.name}
+            email={user.email}
+            onSaved={onSaved}
+          />
         </TabsContent>
         <TabsContent value="mcp" className="min-w-0">
           <McpKeySettings userId={user.id} />

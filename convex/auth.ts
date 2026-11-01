@@ -72,7 +72,7 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
     database: authComponent.adapter(ctx),
     emailAndPassword: { enabled: false },
     session: {
-      expiresIn: 60 * 60 * 24 * 30,
+      expiresIn: 60 * 60 * 24 * 90,
       updateAge: 60 * 60 * 24,
     },
     socialProviders: {

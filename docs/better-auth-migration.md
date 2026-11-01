@@ -57,7 +57,9 @@ and every other identity mapping remain untouched.
   Its button uses the unmodified Google-hosted SVG saved in `public/google-g.svg`.
   The asset is served locally and was downloaded from
   `https://fonts.gstatic.com/s/i/productlogos/googleg/v6/24px.svg`.
-- Persistent sessions expire after 30 days and renew after one day of activity.
+- Persistent sessions expire after 90 days and renew on use after one day.
+  After deployment, new sessions and subsequent renewals use this duration.
+  Existing expiration timestamps are unchanged until renewal.
   Email OTP creates persistent sessions by default and has no `rememberMe` switch.
   The client does not opt out of persistence. The integration stores the session
   in browser local storage for cross-domain requests.
@@ -78,29 +80,59 @@ and every other identity mapping remain untouched.
   TanStack Query handles the key list and mutations without new effects. Its cache
   is scoped to the open dialog; key secrets are only held in component state and
   are discarded on tab changes or closing. Automatic mutation retries are disabled.
+  A successful profile save closes Settings. Its backdrop is 20% black without blur.
 
-## Blockers before this can be enabled
+## Validation and remaining release blockers
 
-1. **Real inbox delivery still needs testing.** On 2026-10-24, a read-only check
-   confirmed `SITE_URL=http://localhost:5174`, a present `BETTER_AUTH_SECRET`, a
-   present Resend key and sender `RiTodo <login@rinadely.com>`. No secret values
-   were exposed. The deployed auth health endpoint now returns HTTP 200, and
-   the signed-out session endpoint returns `null` with CORS allowing that origin.
-   The local frontend is running on port 5174 against the approved development
-   backend. Browser automation timed out, so the rendered dialog and real inbox
-   delivery are not yet verified. No sign-in code was requested by the agent.
-2. **Existing identities need a verified backfill.** Internal maintenance functions
-   are implemented and tested against synthetic identities. Development safety
-   previews are read-only. One owner-confirmed development pair has been linked
-   after backup and rehearsal. Other legacy identities and production still
-   require reviewed evidence and explicit approval before any mapping.
-3. Marko reports successful Google login on development. The agent has not
-   authenticated as a real user. The Google client's authorized redirect URI is
-   `https://exciting-gazelle-205.eu-west-1.convex.site/api/auth/callback/google`.
-4. Real inbox delivery, reload, renewal, profile editing, new MCP key creation and
-   revocation, and sign-out still need user testing against development. The agent
-   has performed deployment and signed-out health/access checks, without creating
-   remote accounts or keys, requesting OTPs, or executing any identity migration.
+Marko confirmed development Google login, email-code delivery and login, new-account
+creation, reload, sign-out and profile name editing. Renewal is covered by an
+in-memory HTTP test, including returning after 45 days and daily refresh throttling.
+Real MCP key creation, use and revocation still need a development check.
+
+One owner-confirmed development identity pair has been linked after backup and
+rehearsal. Production identities still require independent evidence and reviewed
+mappings. No login or signup links users by email alone.
+
+On 2026-11-01, Marko authorized production identity preparation and a private
+snapshot export from `expert-guineapig-443`, including file storage. A read-only
+check confirmed the expected deployment URLs, `SITE_URL=https://ritodo.rinadely.com`,
+present auth/Google/Resend credentials, the expected sender, and a disabled identity
+linking gate. These checks establish presence, not credential validity or Google's
+callback allowlist. No credential values were exposed or changed.
+
+The production snapshot has a legacy profile for every owner/member ID and no
+duplicate Clerk IDs. It contains no Better Auth component users or existing identity
+links. An isolated rehearsal copied all application records and linked synthetic
+replacement identities for every legacy profile. It preserved all lists, sections,
+todos, memberships and invites, retained legacy profiles and canonical web/MCP
+owners, removed only unused duplicate profiles, and passed idempotent retries.
+The rehearsal proves data compatibility, not ownership of any real replacement
+identity. The backup, inventory, hashes and evidence review stay outside Git.
+
+Production application data has not been changed. There are no verified production
+Better Auth IDs to apply yet. An approved cutover must create those identities and
+verify account control before linking. Do not copy development IDs, seed guessed
+auth accounts, or restore the development database into production.
+
+Before public cutover:
+
+1. Account for each legacy profile, including other people and abandoned/test
+   accounts. Record the reviewed disposition privately; do not delete unclaimed data.
+2. Establish an authenticated transition for each active user. For a supervised
+   cutover, authenticate with Better Auth in the separately approved release window,
+   verify control of the legacy identity independently, and link before allowing
+   new lists, memberships or invites. If active users cannot be migrated together,
+   prepare a staged authenticated linking flow before replacing public Clerk login.
+3. Take a fresh production backup, rehearse any changed data, review exact mapping
+   previews and apply only verified pairs. Disable the maintenance gate immediately
+   afterward. Check owned lists, shared memberships and MCP identity resolution.
+4. Coordinate backend/frontend release and rollback separately. Before enabling
+   writes, verify the same provider on both sides and test real login/access. A
+   rollback must restore matching backend/frontend versions. After new data is
+   written, review it before rollback; blindly restoring a snapshot would lose it.
+
+The 90-day session change and profile-modal fixes require the updated code to be
+deployed. No production deployment or merge was performed during this preparation.
 
 ## URLs and external configuration
 
@@ -116,7 +148,7 @@ is Convex's built-in `CONVEX_SITE_URL`, and `/api/auth` runs there with CORS ena
 Both client and server use the integration's cross-domain plugins. There is no
 Next.js proxy or SSR helper and no auth endpoint hosted by Vite.
 
-Once Marko identifies the target deployment, the exact Google redirect URI is:
+For any target deployment, the Google redirect URI is:
 
 ```text
 https://<deployment>.convex.site/api/auth/callback/google
@@ -124,6 +156,11 @@ https://<deployment>.convex.site/api/auth/callback/google
 
 The approved development HTTP/auth URL is
 `https://exciting-gazelle-205.eu-west-1.convex.site`.
+
+The production frontend is `https://ritodo.rinadely.com`. Its matching backend URLs
+are `https://expert-guineapig-443.eu-west-1.convex.cloud` and
+`https://expert-guineapig-443.eu-west-1.convex.site`. The production Google callback
+is `https://expert-guineapig-443.eu-west-1.convex.site/api/auth/callback/google`.
 
 For each separately approved environment, Marko must:
 
