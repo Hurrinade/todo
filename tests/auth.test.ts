@@ -1,6 +1,7 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
 import { Resend, type EmailId } from "@convex-dev/resend";
 import { convexTest } from "convex-test";
+import { Webhook } from "svix";
 import { z } from "zod";
 
 import { api, components, internal } from "../convex/_generated/api";
@@ -748,5 +749,62 @@ describe("Better Auth ownership mapping", () => {
         )
       )?.clerkId,
     ).toBeUndefined();
+  });
+});
+
+describe("Clerk webhook", () => {
+  test("syncs a signed user event and rejects a tampered body", async () => {
+    const { t } = await setup();
+    const secret = `whsec_${btoa("test-only-webhook-secret")}`;
+    process.env.CLERK_WEBHOOK_SECRET = secret;
+    try {
+      const body = JSON.stringify({
+        type: "user.created",
+        data: {
+          id: "user_webhook_new",
+          email_addresses: [
+            { id: "email_1", email_address: "new@example.test" },
+          ],
+          primary_email_address_id: "email_1",
+          first_name: "New",
+          last_name: null,
+          image_url: null,
+        },
+      });
+      const signed = (payload: string) => ({
+        method: "POST",
+        headers: {
+          "svix-id": "msg_test",
+          "svix-timestamp": String(Math.floor(Date.now() / 1000)),
+          "svix-signature": new Webhook(secret).sign(
+            "msg_test",
+            new Date(),
+            body,
+          ),
+        },
+        body: payload,
+      });
+
+      const tampered = await t.fetch(
+        "/clerk-webhook",
+        signed(body.replace("new@", "attacker@")),
+      );
+      expect(tampered.status).toBe(400);
+
+      const accepted = await t.fetch("/clerk-webhook", signed(body));
+      expect(accepted.status).toBe(200);
+      expect(
+        await t.run((ctx) =>
+          ctx.db
+            .query("users")
+            .withIndex("by_clerk_id", (q) =>
+              q.eq("clerkId", "user_webhook_new"),
+            )
+            .unique(),
+        ),
+      ).toMatchObject({ email: "new@example.test", firstName: "New" });
+    } finally {
+      delete process.env.CLERK_WEBHOOK_SECRET;
+    }
   });
 });
