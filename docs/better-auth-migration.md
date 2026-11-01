@@ -16,7 +16,9 @@ key listing and MCP returned 401. No remote key or identity record was created.
 PR #18 already exists for this branch and links an earlier Vercel preview.
 `vercel.json` disables automatic Vercel deployment specifically for
 `auth/better-auth-migration`, so publishing review commits does not deploy this
-migration branch. Other branch rules and the existing SPA rewrite are unchanged.
+migration branch. The UI follow-up branch `design/auth-account-ui` also disables
+automatic Vercel deployment so its review commits do not publish a preview. Other
+branch rules and the existing SPA rewrite are unchanged.
 Read-only development identity checks began on 2026-10-27. The maintenance gate
 is still disabled; verified ownership evidence, backup, rehearsal and approval
 are required before applying any mapping. Private account IDs and evidence must
@@ -45,9 +47,10 @@ and every other identity mapping remain untouched.
 ## Implemented
 
 - Convex's `@convex-dev/better-auth` component, React provider and Vite cross-domain client.
-- Compact shadcn dialog, approved option B. Email uses a six-digit sign-in code,
-  with a five-minute expiry and three verification attempts. Password auth is disabled.
-  A verified code also creates an account for a new email address.
+- Wider shadcn sign-in dialog with Google first and an email/send-code row.
+  Six code slots verify automatically on completion, with resend and change-email
+  controls. Codes expire after five minutes and allow three verification attempts.
+  Password auth is disabled. A verified code also creates an account for a new email.
 - The official Convex Resend component queues sign-in emails from the server.
   `RESEND_API_KEY` and `AUTH_EMAIL_FROM` supply its credentials and sender.
   The chosen sender is `RiTodo <login@rinadely.com>`. Neither codes nor keys are
@@ -72,11 +75,14 @@ and every other identity mapping remain untouched.
 - Internal identity-link preview and apply functions, with a disabled-by-default
   maintenance gate, conflict checks, optimistic review snapshots and an audit.
   These are not called by signup or exposed as public account-linking endpoints.
-- Responsive account settings use approved option B: desktop side navigation and
-  mobile tabs, built from shadcn components with the black-and-white auth palette.
+- Responsive account settings use desktop side navigation and full-screen mobile
+  tabs, with a name/email header. The auth dialogs and account menu follow the app
+  theme, including light, dark and alternate background colors, using existing tokens.
   The account menu opens Settings. Profile supports name editing and shows a
   read-only email. MCP keys supports paginated listing, creation, one-time secret
   copying, expiration details and confirmed revocation, plus the MCP endpoint.
+  New-key creation and one-time copying use a separate dialog with a light backdrop.
+  The copy step prevents accidental outside-click dismissal.
   TanStack Query handles the key list and mutations without new effects. Its cache
   is scoped to the open dialog; key secrets are only held in component state and
   are discarded on tab changes or closing. Automatic mutation retries are disabled.
@@ -349,10 +355,20 @@ confirmed revocation and cancellation, load-error retry, offline controls,
 pagination including deletion of the last item on a page, Escape/focus restoration,
 and removal of the one-time secret after closing. Screenshots were inspected at
 desktop and mobile widths. The dialog fits 375px and 320px viewports with no
-horizontal overflow, uses a true black background and produced no browser errors.
+horizontal overflow and produced no browser errors. That earlier check used the
+original black auth palette; the integrated design now follows the app theme.
+The integrated design was also checked with the real components, a sample auth
+client and all external requests blocked. Chrome checks passed six-digit automatic
+verification, invalid-code recovery, resend/change-email/offline controls, successful
+profile-save dismissal and focus restoration, failed-save retention, and key
+creation/copy/cancel/revocation. Dialog bounds passed at 1280px, 375px and 320px in
+light and dark themes with no browser errors. Screenshots were inspected. These
+checks did not start another server, change the existing port-5174 server, send
+email, or create real accounts or keys.
+
 These UI checks do not establish real inbox delivery or a real user's MCP-client
-configuration. Production is unchanged. Development contains only the single
-owner-confirmed mapping described above; other identities still need review.
+configuration. Development contains only the single owner-confirmed mapping
+described above; production identity links still need verified replacement accounts.
 
 ## Official references
 

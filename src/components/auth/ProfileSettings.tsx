@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
 import { useNetworkStore } from "@/stores";
 
+/** Name editing for account settings. `onSaved` runs only after a successful save. */
 export default function ProfileSettings({
   name,
   email,
@@ -39,8 +40,7 @@ export default function ProfileSettings({
   }
 
   return (
-    <form onSubmit={submit} className="space-y-5" aria-busy={save.isPending}>
-      <h2 className="font-semibold">Profile</h2>
+    <form onSubmit={submit} className="space-y-4" aria-busy={save.isPending}>
       <div className="space-y-2">
         <label htmlFor={`${id}-name`}>Name</label>
         <Input
@@ -54,16 +54,14 @@ export default function ProfileSettings({
             setDraftName(event.target.value);
             save.reset();
           }}
-          className="h-11 bg-background"
+          className="h-11"
         />
       </div>
       <div className="space-y-2">
-        <p className="text-sm">Email</p>
-        <p className="break-all">{email}</p>
+        <p>Email</p>
+        <p className="break-all text-muted-foreground">{email}</p>
       </div>
-      {!isOnline && (
-        <p role="status">Connect to the internet to save changes.</p>
-      )}
+      {!isOnline && <p role="status">You are offline.</p>}
       {save.isError && (
         <p role="alert" className="text-destructive">
           {save.error.message}
@@ -71,7 +69,7 @@ export default function ProfileSettings({
       )}
       <Button
         type="submit"
-        className="h-11"
+        className="h-11 w-full px-5 md:w-auto"
         disabled={
           !isOnline ||
           save.isPending ||
@@ -79,7 +77,7 @@ export default function ProfileSettings({
           draftName.trim() === name
         }
       >
-        {save.isPending ? "Saving..." : "Save changes"}
+        {save.isPending ? "Saving..." : "Save"}
       </Button>
     </form>
   );

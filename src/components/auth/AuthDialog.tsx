@@ -1,4 +1,5 @@
-import { useId, useState, type FormEvent, type ReactElement } from "react";
+import { useState, type FormEvent, type ReactElement } from "react";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,12 +10,22 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { authClient } from "@/lib/auth-client";
 import { useNetworkStore } from "@/stores";
 
 type AuthMode = "sign-in" | "sign-up";
+type PendingAction = "send" | "verify" | "google";
 
+const CODE_LENGTH = 6;
+const textLinkClassName =
+  "inline-flex min-h-11 items-center text-foreground underline underline-offset-3 pointer-fine:min-h-6 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:opacity-50";
+
+/** Wraps a trigger element and opens the Google or email-code sign-in dialog. */
 export default function AuthDialog({
   children,
   initialMode = "sign-in",
@@ -27,7 +38,7 @@ export default function AuthDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent className="auth-theme dark max-w-sm rounded-lg bg-background text-foreground">
+      <DialogContent className="max-w-md rounded-lg">
         <AuthForm
           initialMode={initialMode}
           onSignedIn={() => {
@@ -46,60 +57,95 @@ function AuthForm({
   initialMode: AuthMode;
   onSignedIn: () => void;
 }) {
-  const id = useId();
   const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [otp, setOtp] = useState("");
   const [codeSent, setCodeSent] = useState(false);
-  const [pending, setPending] = useState(false);
+  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
+    null,
+  );
   const [error, setError] = useState<string | null>(null);
+  const [resent, setResent] = useState(false);
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const pending = pendingAction != null;
+  const disabled = pending || !isOnline;
+
+  // Shared by the first send and "Send a new code". Returns true when sent.
+  async function sendCode() {
+    setPendingAction("send");
+    setError(null);
+    setResent(false);
+    try {
+      const result = await authClient.emailOtp.sendVerificationOtp({
+        email: email.trim(),
+        type: "sign-in",
+      });
+      if (result.error) {
+        setError(result.error.message ?? "The code could not be sent.");
+        return false;
+      }
+      return true;
+    } catch {
+      setError("Could not connect. Please try again.");
+      return false;
+    } finally {
+      setPendingAction(null);
+    }
+  }
 
   async function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (pending || !isOnline) {
+    if (disabled) {
       return;
     }
-    setPending(true);
-    setError(null);
+    if (await sendCode()) {
+      setCodeSent(true);
+    }
+  }
 
+  async function resendCode() {
+    if (disabled) {
+      return;
+    }
+    if (await sendCode()) {
+      setOtp("");
+      setResent(true);
+    }
+  }
+
+  async function verifyCode(code: string) {
+    if (disabled) {
+      return;
+    }
+    setPendingAction("verify");
+    setError(null);
+    setResent(false);
     try {
-      if (codeSent) {
-        // Email OTP creates a persistent session by default. It has no rememberMe toggle.
-        const result = await authClient.signIn.emailOtp({
-          email: email.trim(),
-          otp,
-          ...(mode === "sign-up" ? { name: name.trim() } : {}),
-        });
-        if (result.error) {
-          setError(result.error.message ?? "The code could not be verified.");
-          return;
-        }
-        onSignedIn();
-      } else {
-        const result = await authClient.emailOtp.sendVerificationOtp({
-          email: email.trim(),
-          type: "sign-in",
-        });
-        if (result.error) {
-          setError(result.error.message ?? "The code could not be sent.");
-          return;
-        }
-        setCodeSent(true);
+      // Email OTP creates a persistent session by default. It has no rememberMe toggle.
+      const result = await authClient.signIn.emailOtp({
+        email: email.trim(),
+        otp: code,
+        ...(mode === "sign-up" ? { name: name.trim() } : {}),
+      });
+      if (result.error) {
+        setError(result.error.message ?? "The code could not be verified.");
+        setOtp("");
+        return;
       }
+      onSignedIn();
     } catch {
       setError("Could not connect. Please try again.");
     } finally {
-      setPending(false);
+      setPendingAction(null);
     }
   }
 
   async function signInWithGoogle() {
-    if (pending || !isOnline) {
+    if (disabled) {
       return;
     }
-    setPending(true);
+    setPendingAction("google");
     setError(null);
     try {
       const result = await authClient.signIn.social({
@@ -113,162 +159,168 @@ function AuthForm({
     } catch {
       setError("Could not connect. Please try again.");
     } finally {
-      setPending(false);
+      setPendingAction(null);
     }
+  }
+
+  const feedback = (
+    <>
+      {error && (
+        <p role="alert" className="text-destructive">
+          {error}
+        </p>
+      )}
+      {!isOnline && <p role="status">You are offline.</p>}
+    </>
+  );
+
+  if (codeSent) {
+    return (
+      <>
+        <DialogTitle className="pr-8">Enter code</DialogTitle>
+        <DialogDescription className="text-foreground">
+          Sent to <span className="break-all">{email.trim()}</span>.{" "}
+          <button
+            type="button"
+            className={textLinkClassName}
+            disabled={pending}
+            onClick={() => {
+              setCodeSent(false);
+              setOtp("");
+              setError(null);
+              setResent(false);
+            }}
+          >
+            Change
+          </button>
+        </DialogDescription>
+        <InputOTP
+          aria-label="6-digit code"
+          autoFocus
+          maxLength={CODE_LENGTH}
+          pattern={REGEXP_ONLY_DIGITS}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          value={otp}
+          onChange={setOtp}
+          onComplete={(code: string) => void verifyCode(code)}
+          readOnly={pending}
+          aria-busy={pending}
+          containerClassName="w-full"
+        >
+          <InputOTPGroup className="w-full gap-2">
+            {Array.from({ length: CODE_LENGTH }, (_, index) => (
+              <InputOTPSlot
+                key={index}
+                index={index}
+                className="h-13 min-w-0 flex-1 rounded-md border font-mono text-xl first:rounded-md last:rounded-md bg-card dark:bg-card"
+              />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
+        {feedback}
+        {pendingAction === "verify" && <p role="status">Checking...</p>}
+        {resent && <p role="status">New code sent.</p>}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <button
+            type="button"
+            className={textLinkClassName}
+            disabled={disabled}
+            onClick={() => void resendCode()}
+          >
+            Send a new code
+          </button>
+          <span className="text-muted-foreground">Expires in 5 min</span>
+        </div>
+      </>
+    );
   }
 
   return (
     <>
-      <DialogTitle className="sr-only">
-        {mode === "sign-in" ? "Sign in to RiTodo" : "Create a RiTodo account"}
+      <DialogTitle className="pr-8">
+        {mode === "sign-in" ? "Sign in to RiTodo" : "Create account"}
       </DialogTitle>
       <DialogDescription className="sr-only">
-        Use a code sent to your email or continue with Google.
+        Continue with Google or get a code by email.
       </DialogDescription>
-      <Tabs
-        value={mode}
-        onValueChange={(value) => {
-          setMode(value === "sign-up" ? "sign-up" : "sign-in");
-          setError(null);
-        }}
+      <Button
+        type="button"
+        variant="outline"
+        className="h-11 w-full"
+        disabled={disabled}
+        onClick={() => void signInWithGoogle()}
       >
-        <TabsList className="h-auto w-full justify-start gap-5 rounded-none border-b bg-transparent p-0 pr-7">
-          <TabsTrigger
-            value="sign-in"
-            disabled={pending || codeSent}
-            className="rounded-none border-0 border-b-2 border-transparent px-0 pb-3 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-          >
-            Sign in
-          </TabsTrigger>
-          <TabsTrigger
-            value="sign-up"
-            disabled={pending || codeSent}
-            className="rounded-none border-0 border-b-2 border-transparent px-0 pb-3 data-[state=active]:border-foreground data-[state=active]:bg-transparent data-[state=active]:shadow-none"
-          >
-            Create account
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value={mode} className="space-y-5 pt-3">
-          <form
-            onSubmit={submitEmail}
-            className="space-y-4"
-            aria-busy={pending}
-          >
-            {mode === "sign-up" && !codeSent && (
-              <div className="space-y-2">
-                <label htmlFor={`${id}-name`}>Name</label>
-                <Input
-                  id={`${id}-name`}
-                  autoComplete="name"
-                  value={name}
-                  maxLength={100}
-                  onChange={(event) => {
-                    setName(event.target.value);
-                  }}
-                  disabled={pending}
-                  className="h-11 rounded-md bg-background"
-                />
-              </div>
-            )}
-            <div className="space-y-2">
-              <label htmlFor={`${id}-email`}>Email</label>
-              <Input
-                id={`${id}-email`}
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value);
-                }}
-                disabled={pending || codeSent}
-                className="h-11 rounded-md bg-background"
-              />
-            </div>
-            {codeSent && (
-              <div className="space-y-2">
-                <label htmlFor={`${id}-code`}>Email code</label>
-                <Input
-                  id={`${id}-code`}
-                  autoComplete="one-time-code"
-                  inputMode="numeric"
-                  pattern="[0-9]{6}"
-                  minLength={6}
-                  maxLength={6}
-                  required
-                  value={otp}
-                  onChange={(event) => {
-                    setOtp(event.target.value);
-                  }}
-                  disabled={pending}
-                  aria-describedby={`${id}-hint`}
-                  className="h-11 rounded-md bg-background font-mono tracking-widest"
-                />
-                <p id={`${id}-hint`} className="text-xs text-muted-foreground">
-                  Enter the 6-digit code from your email. It expires in 5
-                  minutes.
-                </p>
-              </div>
-            )}
-            {error && (
-              <p role="alert" className="text-sm text-destructive">
-                {error}
-              </p>
-            )}
-            {!isOnline && (
-              <p role="status">Connect to the internet to sign in.</p>
-            )}
-            <Button
-              type="submit"
-              disabled={pending || !isOnline}
-              className="h-11 w-full"
-            >
-              {pending
-                ? "Please wait..."
-                : codeSent
-                  ? "Verify and continue"
-                  : "Send email code"}
-            </Button>
-            {codeSent && (
-              <Button
-                type="button"
-                variant="ghost"
-                className="h-11 w-full"
-                disabled={pending}
-                onClick={() => {
-                  setCodeSent(false);
-                  setOtp("");
-                  setError(null);
-                }}
-              >
-                Change email or request a new code
-              </Button>
-            )}
-          </form>
-          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-            <span className="h-px flex-1 bg-border" />
-            or
-            <span className="h-px flex-1 bg-border" />
-          </div>
-          <Button
-            type="button"
-            variant="outline"
-            className="h-11 w-full bg-background dark:bg-background"
-            disabled={pending || !isOnline}
-            onClick={() => void signInWithGoogle()}
-          >
-            <img
-              src="/google-g.svg"
-              alt=""
-              aria-hidden="true"
-              width={20}
-              height={20}
-              className="size-5 shrink-0"
-            />
-            Continue with Google
+        <img
+          src="/google-g.svg"
+          alt=""
+          aria-hidden="true"
+          width={20}
+          height={20}
+          className="size-5 shrink-0"
+        />
+        {pendingAction === "google"
+          ? "Opening Google..."
+          : "Continue with Google"}
+      </Button>
+      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <span className="h-px flex-1 bg-border/50" />
+        or
+        <span className="h-px flex-1 bg-border/50" />
+      </div>
+      <form
+        onSubmit={(event) => void submitEmail(event)}
+        className="space-y-3"
+        aria-busy={pending}
+      >
+        {mode === "sign-up" && (
+          <Input
+            aria-label="Name"
+            placeholder="Your name"
+            autoComplete="name"
+            value={name}
+            maxLength={100}
+            onChange={(event) => {
+              setName(event.target.value);
+            }}
+            disabled={pending}
+            className="h-11 rounded-md"
+          />
+        )}
+        <div className="flex gap-2">
+          <Input
+            aria-label="Email"
+            type="email"
+            placeholder="you@example.com"
+            autoComplete="email"
+            required
+            value={email}
+            onChange={(event) => {
+              setEmail(event.target.value);
+            }}
+            disabled={pending}
+            className="h-11 min-w-0 flex-1 rounded-md"
+          />
+          <Button type="submit" disabled={disabled} className="h-11 px-4">
+            {pendingAction === "send" ? "Sending..." : "Send code"}
           </Button>
-        </TabsContent>
-      </Tabs>
+        </div>
+      </form>
+      {feedback}
+      <p className="text-xs text-muted-foreground">
+        {mode === "sign-in" ? "New here?" : "Have an account?"}{" "}
+        <button
+          type="button"
+          className={textLinkClassName}
+          disabled={pending}
+          onClick={() => {
+            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
+            setError(null);
+          }}
+        >
+          {mode === "sign-in" ? "Create an account" : "Sign in"}
+        </button>
+      </p>
     </>
   );
 }

@@ -10,6 +10,10 @@ import {
 } from "@/components/ui/popover";
 import { authClient } from "@/lib/auth-client";
 
+// Same padding and icon size on every row so icons and labels line up.
+const menuItemClassName =
+  "h-11 w-full justify-start gap-2.5 px-2.5 pointer-fine:h-9 [&_svg]:size-4";
+
 export default function AccountMenu() {
   const { data: session } = authClient.useSession();
   const [pending, setPending] = useState(false);
@@ -58,17 +62,27 @@ export default function AccountMenu() {
         </PopoverTrigger>
         <PopoverContent
           align="end"
-          className="auth-theme dark w-64 max-w-[calc(100vw-2rem)] space-y-3 rounded-lg"
+          className="w-64 max-w-[calc(100vw-2rem)] gap-0 rounded-lg p-1.5"
           onCloseAutoFocus={(event) => {
             if (settingsOpen) {
               event.preventDefault();
             }
           }}
         >
-          <p className="truncate text-sm">{session.user.email}</p>
+          <div className="min-w-0 px-2.5 py-2">
+            <p className="truncate">
+              {session.user.name || session.user.email}
+            </p>
+            {session.user.name && (
+              <p className="truncate text-xs text-muted-foreground">
+                {session.user.email}
+              </p>
+            )}
+          </div>
+          <div className="mx-1 mb-1 h-px bg-border/50" />
           <Button
             variant="ghost"
-            className="h-11 w-full justify-start"
+            className={menuItemClassName}
             disabled={pending}
             onClick={() => {
               setMenuOpen(false);
@@ -78,20 +92,20 @@ export default function AccountMenu() {
             <Settings />
             Settings
           </Button>
-          {error && (
-            <p role="alert" className="text-sm text-destructive">
-              {error}
-            </p>
-          )}
           <Button
             variant="ghost"
-            className="h-11 w-full justify-start"
+            className={menuItemClassName}
             disabled={pending}
             onClick={() => void signOut()}
           >
             <LogOut />
             {pending ? "Signing out..." : "Sign out"}
           </Button>
+          {error && (
+            <p role="alert" className="px-2.5 py-2 text-sm text-destructive">
+              {error}
+            </p>
+          )}
         </PopoverContent>
       </Popover>
       <AccountSettingsDialog
