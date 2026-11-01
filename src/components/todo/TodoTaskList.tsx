@@ -1,7 +1,7 @@
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
@@ -56,15 +56,11 @@ function TodoVirtualTaskRows({
     listId,
     shouldLoadCompleted,
   );
-  const [orderedOpenTodos, setOrderedOpenTodos] = useState(openTodos);
+  // Local order while a drag is in progress; server order the rest of the time.
+  // The reposition optimistic update takes over as soon as the drag ends.
+  const [dragOrder, setDragOrder] = useState<TodoListItem[] | null>(null);
   const [draggedTodo, setDraggedTodo] = useState<TodoListItem | null>(null);
-  const isDraggingRef = useRef(false);
-
-  useEffect(() => {
-    if (!isDraggingRef.current) {
-      setOrderedOpenTodos(openTodos);
-    }
-  }, [openTodos]);
+  const orderedOpenTodos = dragOrder ?? openTodos;
 
   const rows = useMemo<TodoVirtualRow[]>(() => {
     const nextRows: TodoVirtualRow[] = orderedOpenTodos.map((todo) => ({
@@ -106,6 +102,20 @@ function TodoVirtualTaskRows({
   // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: rows.length,
+    // Loads the next completed page when its end scrolls into view. Fires on
+    // scroll and whenever the visible range changes, e.g. after a page lands.
+    onChange: (instance) => {
+      const lastVisibleIndex = instance.getVirtualItems().at(-1)?.index ?? -1;
+
+      if (
+        shouldLoadCompleted &&
+        status === "CanLoadMore" &&
+        lastVisibleIndex >=
+          orderedOpenTodos.length + results.length - LOAD_MORE_THRESHOLD
+      ) {
+        loadMore();
+      }
+    },
     getScrollElement: () => scrollElementRef.current,
     estimateSize: () => 64,
     getItemKey: (index) => rows[index]?.key ?? index,
@@ -113,32 +123,14 @@ function TodoVirtualTaskRows({
     overscan: 8,
   });
   const virtualRows = virtualizer.getVirtualItems();
-  const lastVirtualIndex = virtualRows.at(-1)?.index ?? -1;
-  const loadedCompletedEndIndex = orderedOpenTodos.length + results.length;
-
-  useEffect(() => {
-    if (
-      shouldLoadCompleted &&
-      status === "CanLoadMore" &&
-      lastVirtualIndex >= loadedCompletedEndIndex - LOAD_MORE_THRESHOLD
-    ) {
-      loadMore();
-    }
-  }, [
-    lastVirtualIndex,
-    loadMore,
-    loadedCompletedEndIndex,
-    shouldLoadCompleted,
-    status,
-  ]);
 
   return (
     <DragDropProvider
       sensors={todoDragSensors}
       onDragStart={(event) => {
-        isDraggingRef.current = true;
         const sourceId = event.operation.source?.id;
 
+        setDragOrder(openTodos);
         setDraggedTodo(
           orderedOpenTodos.find((todo) => todo._id === sourceId) ?? null,
         );
@@ -154,7 +146,11 @@ function TodoVirtualTaskRows({
           return;
         }
 
-        setOrderedOpenTodos((todos) => {
+        setDragOrder((todos) => {
+          if (!todos) {
+            return todos;
+          }
+
           const fromIndex = todos.findIndex((todo) => todo._id === source.id);
           const toIndex = todos.findIndex((todo) => todo._id === target.id);
 
@@ -173,7 +169,7 @@ function TodoVirtualTaskRows({
         });
       }}
       onDragEnd={(event) => {
-        isDraggingRef.current = false;
+        setDragOrder(null);
         setDraggedTodo(null);
 
         const sourceId = event.operation.source?.id;
@@ -193,17 +189,16 @@ function TodoVirtualTaskRows({
           !anchorTodo ||
           index === initialIndex
         ) {
-          setOrderedOpenTodos(openTodos);
           return;
         }
 
+        // A failed reposition rolls back its optimistic update and shows the
+        // error through the workspace, so nothing is left to restore here.
         void onRepositionTodo(
           movedTodo._id,
           anchorTodo._id,
           index > 0 ? "after" : "before",
-        ).catch(() => {
-          setOrderedOpenTodos(openTodos);
-        });
+        ).catch(() => undefined);
       }}
     >
       <div

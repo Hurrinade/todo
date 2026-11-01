@@ -87,5 +87,7 @@ export default defineSchema({
       "sectionId",
       "isCompleted",
       "order",
-    ]),
+    ])
+    // Finds expired completed todos across all lists for the retention cron.
+    .index("by_completed_and_completed_at", ["isCompleted", "completedAt"]),
 });

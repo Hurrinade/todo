@@ -4,6 +4,7 @@ import {
 } from "../_generated/server";
 import type { DataModel } from "../_generated/dataModel";
 import { Triggers } from "convex-helpers/server/triggers";
+import { deleteListTodos } from "../system/todoBatches";
 import {
   customCtx,
   customMutation,
@@ -25,17 +26,9 @@ triggers.register("todoLists", async (ctx, change) => {
   if (change.operation === "delete") {
     const oldList = change.oldDoc;
 
-    // Delete all related todos.
-    const todos = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id_completed_and_order", (q) =>
-        q.eq("listId", oldList._id),
-      )
-      .collect();
-
-    for (const todo of todos) {
-      await ctx.db.delete(todo._id);
-    }
+    // Todos can outgrow one mutation, so they are deleted in batches. The
+    // memberships go below, which already makes the todos unreachable.
+    await deleteListTodos(ctx, oldList._id);
 
     // Delete all related todo list users
     const todoListUsers = await ctx.db
