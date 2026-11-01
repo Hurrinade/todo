@@ -79,18 +79,20 @@ the browser and MCP list endpoints do not collect every related todo. New
 lists initialize these counters automatically, and shared mutation helpers
 maintain them for web and MCP writes.
 
-## Regular-list scaling
+## List scaling
 
-Regular lists subscribe to all open todos in ordered form so drag-and-drop has
-the complete order. Completed todos do not load until the Completed section is
-opened; they then load newest-first in cursor pages of 40. The combined regular
-list is dynamically measured and virtualized, with eight rows of overscan.
+Both list kinds subscribe to all open todos in ordered form so drag-and-drop
+has the complete order. Completed todos load newest-first in cursor pages of 40. Regular lists load them once the Completed section is opened and virtualize
+the combined list, with eight rows of overscan. Sectioned lists show the first
+page under each todo's section and load more on request.
 
-Regular drag-and-drop sends one moved todo, one anchor todo, and a before/after
-placement. Convex normally updates only that todo by assigning a sparse numeric
-rank. If adjacent ranks run out of floating-point space, the open bucket is
-rebalanced to multiples of 1024 in the same transaction. Sectioned-list
-ordering remains on its existing separate path.
+Todos are ordered inside a bucket: the open or completed todos of one regular
+list or one section. Regular drag-and-drop sends an anchor todo and a
+before/after placement; sectioned drag-and-drop sends a target section and
+index. Convex normally updates only the moved todo by assigning a sparse
+numeric rank between its neighbours. If adjacent ranks run out of
+floating-point space, the bucket is rebalanced to multiples of 1024 in the same
+transaction, changing only `order` on the other todos.
 
 ## RiTodo MCP Server
 

@@ -6,6 +6,14 @@ import type { MutationCtx } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { updateTodoListStats } from "../shared/todoListStats";
 import {
+  getFirstOrder,
+  getLastOrder,
+  getNeighboursAtIndex,
+  getNeighboursOfAnchor,
+  ORDER_STEP,
+  placeTodo,
+} from "../shared/todoOrder";
+import {
   createTodoNoteContent,
   createTodoTitleContent,
   normalizeTodoDescription,
@@ -13,8 +21,6 @@ import {
   todoNoteContentValidator,
   todoTitleContentValidator,
 } from "../shared/todo";
-
-const ORDER_STEP = 1024;
 
 export const create = mutation({
   args: {
@@ -97,14 +103,9 @@ export const rename = mutation({
 
     await requireListAccess(ctx, todo.listId, userId);
 
-    const now = Date.now();
-
     await ctx.db.patch(args.todoId, {
       title: normalizeTodoTitleContent(args.title),
-      updatedAt: now,
-    });
-    await ctx.db.patch(todo.listId, {
-      updatedAt: now,
+      updatedAt: Date.now(),
     });
   },
 });
@@ -124,15 +125,9 @@ export const updateDescription = mutation({
 
     await requireListAccess(ctx, todo.listId, userId);
 
-    const now = Date.now();
-    const description = normalizeTodoDescription(args.description);
-
     await ctx.db.patch(args.todoId, {
-      description,
-      updatedAt: now,
-    });
-    await ctx.db.patch(todo.listId, {
-      updatedAt: now,
+      description: normalizeTodoDescription(args.description),
+      updatedAt: Date.now(),
     });
   },
 });
@@ -157,7 +152,6 @@ export const updateForUser = internalMutation({
       throw new Error("Provide a title or description to update.");
     }
 
-    const now = Date.now();
     const title =
       args.title === undefined
         ? todo.title
@@ -172,9 +166,8 @@ export const updateForUser = internalMutation({
     await ctx.db.patch(args.todoId, {
       title,
       description,
-      updatedAt: now,
+      updatedAt: Date.now(),
     });
-    await ctx.db.patch(todo.listId, { updatedAt: now });
 
     return args.todoId;
   },
@@ -229,42 +222,21 @@ export const reposition = mutation({
     const list = await ctx.db.get(todo.listId);
 
     if (!list || list.kind !== "regular") {
-      throw new Error(
-        "Sparse repositioning is only available in regular lists.",
-      );
+      throw new Error("Repositioning is only available in regular lists.");
     }
 
     if (todo.isCompleted || anchorTodo.isCompleted) {
       throw new Error("Only open todos can be repositioned.");
     }
 
-    const adjacentTodo = await getAdjacentOpenTodo(
+    const neighbours = await getNeighboursOfAnchor(
       ctx,
-      todo.listId,
       anchorTodo,
       todo._id,
       args.placement,
     );
-    const lowerOrder =
-      args.placement === "before" ? adjacentTodo?.order : anchorTodo.order;
-    const upperOrder =
-      args.placement === "before" ? anchorTodo.order : adjacentTodo?.order;
-    const nextOrder = getOrderBetween(lowerOrder, upperOrder);
-    const now = Date.now();
 
-    if (nextOrder === null) {
-      await rebalanceRegularOpenTodos(
-        ctx,
-        todo,
-        anchorTodo,
-        args.placement,
-        now,
-      );
-    } else {
-      await ctx.db.patch(todo._id, { order: nextOrder, updatedAt: now });
-    }
-
-    await ctx.db.patch(todo.listId, { updatedAt: now });
+    await placeTodo(ctx, todo, anchorTodo, neighbours, Date.now());
   },
 });
 
@@ -294,13 +266,7 @@ export const moveToSectionEndForUser = internalMutation({
     targetSectionId: v.id("todoSections"),
   },
   handler: (ctx, args) =>
-    moveTodoForUser(
-      ctx,
-      args.userId,
-      args.todoId,
-      args.targetSectionId,
-      Number.MAX_SAFE_INTEGER,
-    ),
+    moveTodoForUser(ctx, args.userId, args.todoId, args.targetSectionId),
 });
 
 export const clearCompleted = mutation({
@@ -313,7 +279,7 @@ export const clearCompleted = mutation({
 
     const completedTodos = await ctx.db
       .query("todos")
-      .withIndex("by_list_id_and_completed", (q) =>
+      .withIndex("by_list_id_completed_and_order", (q) =>
         q.eq("listId", args.listId).eq("isCompleted", true),
       )
       .collect();
@@ -337,76 +303,35 @@ export const uncheckCompleted = mutation({
   handler: async (ctx, args) => {
     const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
-    const list = await ctx.db.get(args.listId);
 
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    const [openTodos, completedTodos] = await Promise.all([
-      ctx.db
-        .query("todos")
-        .withIndex("by_list_id_and_completed", (q) =>
-          q.eq("listId", args.listId).eq("isCompleted", false),
-        )
-        .collect(),
-      ctx.db
-        .query("todos")
-        .withIndex("by_list_id_and_completed", (q) =>
-          q.eq("listId", args.listId).eq("isCompleted", true),
-        )
-        .collect(),
-    ]);
+    const completedTodos = await ctx.db
+      .query("todos")
+      .withIndex("by_list_id_completed_and_order", (q) =>
+        q.eq("listId", args.listId).eq("isCompleted", true),
+      )
+      .collect();
 
     if (completedTodos.length === 0) {
       return;
     }
 
     const now = Date.now();
+    // Completed todos keep their relative order after the open todos of their
+    // bucket. Each bucket costs one read for its last open order.
+    const nextOrders = new Map<Id<"todoSections"> | undefined, number>();
 
-    if (list.kind === "sectioned") {
-      const sectionIds = new Set(
-        completedTodos.flatMap((todo) =>
-          todo.sectionId ? [todo.sectionId] : [],
-        ),
-      );
+    for (const todo of completedTodos) {
+      const order =
+        nextOrders.get(todo.sectionId) ??
+        (await getLastOrder(ctx, { ...todo, isCompleted: false }));
 
-      for (const sectionId of sectionIds) {
-        const sectionOpenTodos = openTodos
-          .filter((todo) => todo.sectionId === sectionId)
-          .sort(compareTodosByOrder);
-        const sectionCompletedTodos = completedTodos
-          .filter((todo) => todo.sectionId === sectionId)
-          .sort(compareTodosByOrder);
-        const nextOpenOrderStart = getMaxTodoOrder(sectionOpenTodos) + 1;
-
-        await Promise.all(
-          sectionCompletedTodos.map((todo, index) =>
-            ctx.db.patch(todo._id, {
-              isCompleted: false,
-              completedAt: undefined,
-              order: nextOpenOrderStart + index,
-              updatedAt: now,
-            }),
-          ),
-        );
-      }
-    } else {
-      const nextOpenOrderStart = getMaxTodoOrder(openTodos) + 1;
-      const sortedCompletedTodos = [...completedTodos].sort(
-        compareTodosByOrder,
-      );
-
-      await Promise.all(
-        sortedCompletedTodos.map((todo, index) =>
-          ctx.db.patch(todo._id, {
-            isCompleted: false,
-            completedAt: undefined,
-            order: nextOpenOrderStart + index,
-            updatedAt: now,
-          }),
-        ),
-      );
+      nextOrders.set(todo.sectionId, order + ORDER_STEP);
+      await ctx.db.patch(todo._id, {
+        isCompleted: false,
+        completedAt: undefined,
+        order,
+        updatedAt: now,
+      });
     }
 
     await updateTodoListStats(ctx, args.listId, {
@@ -451,19 +376,17 @@ async function createTodoForUser(
   }
 
   const now = Date.now();
-  const nextOrder = await getNextCreateOrder(
-    ctx,
-    args.listId,
-    sectionId,
-    false,
-  );
   const todoId = await ctx.db.insert("todos", {
     listId: args.listId,
     sectionId,
     title: normalizeTodoTitleContent(args.title),
     description: normalizeTodoDescription(args.description),
     isCompleted: false,
-    order: nextOrder,
+    order: await getFirstOrder(ctx, {
+      listId: args.listId,
+      sectionId,
+      isCompleted: false,
+    }),
     updatedAt: now,
   });
 
@@ -487,25 +410,12 @@ async function setTodoCompletedForUser(
     return;
   }
 
-  const list = await ctx.db.get(todo.listId);
-
-  if (!list) {
-    throw new Error("Todo list was not found.");
-  }
-
   const now = Date.now();
-  const nextOrder = await getNextOrderForTodoState(
-    ctx,
-    list,
-    todo.sectionId,
-    completed,
-    todo._id,
-  );
 
   await ctx.db.patch(todo._id, {
     isCompleted: completed,
     completedAt: completed ? now : undefined,
-    order: nextOrder,
+    order: await getLastOrder(ctx, { ...todo, isCompleted: completed }),
     updatedAt: now,
   });
   await updateTodoListStats(ctx, todo.listId, {
@@ -538,12 +448,13 @@ async function removeTodoForUser(
   return todoId;
 }
 
+/** Moves a todo to slot `targetIndex` of its state bucket in the target section, or to its end. */
 async function moveTodoForUser(
   ctx: MutationCtx,
   userId: string,
   todoId: Id<"todos">,
   targetSectionId: Id<"todoSections">,
-  targetIndex: number,
+  targetIndex?: number,
 ) {
   const todo = await ctx.db.get(todoId);
 
@@ -574,199 +485,17 @@ async function moveTodoForUser(
     throw new Error("Target section was not found.");
   }
 
-  const now = Date.now();
-  const sourceSectionId = todo.sectionId;
-  const [sourceTodos, targetTodos] = await Promise.all([
-    getOrderedSectionTodosByState(
-      ctx,
-      sourceSectionId,
-      todo.isCompleted,
-      todo._id,
-    ),
-    getOrderedSectionTodosByState(
-      ctx,
-      targetSectionId,
-      todo.isCompleted,
-      sourceSectionId === targetSectionId ? todo._id : undefined,
-    ),
-  ]);
-
-  const nextTargetTodos = [...targetTodos];
-  const clampedIndex = Math.max(
-    0,
-    Math.min(targetIndex, nextTargetTodos.length),
+  const bucket = { ...todo, sectionId: targetSectionId };
+  const neighbours = await getNeighboursAtIndex(
+    ctx,
+    bucket,
+    todo._id,
+    targetIndex,
   );
 
-  nextTargetTodos.splice(clampedIndex, 0, todo);
-
-  if (sourceSectionId === targetSectionId) {
-    await patchTodoOrders(ctx, nextTargetTodos, sourceSectionId, now);
-  } else {
-    await Promise.all([
-      patchTodoOrders(ctx, sourceTodos, sourceSectionId, now),
-      patchTodoOrders(
-        ctx,
-        nextTargetTodos.map((targetTodo) =>
-          targetTodo._id === todo._id
-            ? { ...targetTodo, sectionId: targetSectionId }
-            : targetTodo,
-        ),
-        targetSectionId,
-        now,
-      ),
-    ]);
-  }
-
-  await ctx.db.patch(todo.listId, { updatedAt: now });
+  await placeTodo(ctx, todo, bucket, neighbours, Date.now());
 
   return todoId;
-}
-
-async function getNextOrderForTodoState(
-  ctx: MutationCtx,
-  list: { _id: Id<"todoLists">; kind: "regular" | "sectioned" },
-  sectionId: Id<"todoSections"> | undefined,
-  isCompleted: boolean,
-  excludedTodoId: Id<"todos">,
-) {
-  if (list.kind === "regular") {
-    const lastTodo = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id_completed_and_order", (q) =>
-        q.eq("listId", list._id).eq("isCompleted", isCompleted),
-      )
-      .order("desc")
-      .first();
-
-    return lastTodo ? lastTodo.order + ORDER_STEP : 0;
-  }
-
-  const todos = sectionId
-    ? await getOrderedSectionTodosByState(
-        ctx,
-        sectionId,
-        isCompleted,
-        excludedTodoId,
-      )
-    : await getOrderedListTodosByState(
-        ctx,
-        list._id,
-        isCompleted,
-        excludedTodoId,
-      );
-
-  return getMaxTodoOrder(todos) + 1;
-}
-
-async function getNextCreateOrder(
-  ctx: MutationCtx,
-  listId: Id<"todoLists">,
-  sectionId: Id<"todoSections"> | undefined,
-  isCompleted: boolean,
-) {
-  if (sectionId) {
-    const todos = await getOrderedSectionTodosByState(
-      ctx,
-      sectionId,
-      isCompleted,
-    );
-
-    return todos.length > 0
-      ? Math.min(...todos.map((todo) => todo.order)) - 1
-      : 0;
-  }
-
-  const firstTodo = await ctx.db
-    .query("todos")
-    .withIndex("by_list_id_completed_and_order", (q) =>
-      q.eq("listId", listId).eq("isCompleted", isCompleted),
-    )
-    .first();
-
-  return firstTodo ? firstTodo.order - ORDER_STEP : 0;
-}
-
-async function getAdjacentOpenTodo(
-  ctx: MutationCtx,
-  listId: Id<"todoLists">,
-  anchorTodo: Doc<"todos">,
-  movedTodoId: Id<"todos">,
-  placement: "before" | "after",
-) {
-  const candidates = await ctx.db
-    .query("todos")
-    .withIndex("by_list_id_completed_and_order", (q) => {
-      const openTodos = q.eq("listId", listId).eq("isCompleted", false);
-
-      return placement === "before"
-        ? openTodos.lt("order", anchorTodo.order)
-        : openTodos.gt("order", anchorTodo.order);
-    })
-    .order(placement === "before" ? "desc" : "asc")
-    .take(2);
-
-  return candidates.find((candidate) => candidate._id !== movedTodoId);
-}
-
-function getOrderBetween(lowerOrder?: number, upperOrder?: number) {
-  if (lowerOrder === undefined && upperOrder === undefined) {
-    return 0;
-  }
-
-  const nextOrder =
-    lowerOrder === undefined
-      ? upperOrder! - ORDER_STEP
-      : upperOrder === undefined
-        ? lowerOrder + ORDER_STEP
-        : lowerOrder + (upperOrder - lowerOrder) / 2;
-
-  if (
-    !Number.isFinite(nextOrder) ||
-    (lowerOrder !== undefined && nextOrder <= lowerOrder) ||
-    (upperOrder !== undefined && nextOrder >= upperOrder)
-  ) {
-    return null;
-  }
-
-  return nextOrder;
-}
-
-async function rebalanceRegularOpenTodos(
-  ctx: MutationCtx,
-  movedTodo: Doc<"todos">,
-  anchorTodo: Doc<"todos">,
-  placement: "before" | "after",
-  now: number,
-) {
-  const openTodos = await ctx.db
-    .query("todos")
-    .withIndex("by_list_id_completed_and_order", (q) =>
-      q.eq("listId", movedTodo.listId).eq("isCompleted", false),
-    )
-    .collect();
-  const nextTodos = openTodos.filter((todo) => todo._id !== movedTodo._id);
-  const anchorIndex = nextTodos.findIndex(
-    (todo) => todo._id === anchorTodo._id,
-  );
-
-  if (anchorIndex === -1) {
-    throw new Error("Todo order is out of date.");
-  }
-
-  nextTodos.splice(
-    placement === "before" ? anchorIndex : anchorIndex + 1,
-    0,
-    movedTodo,
-  );
-
-  await Promise.all(
-    nextTodos.map((todo, index) =>
-      ctx.db.patch(todo._id, {
-        order: index * ORDER_STEP,
-        updatedAt: now,
-      }),
-    ),
-  );
 }
 
 async function getDefaultSectionId(ctx: MutationCtx, listId: Id<"todoLists">) {
@@ -782,89 +511,4 @@ async function getDefaultSectionId(ctx: MutationCtx, listId: Id<"todoLists">) {
   }
 
   return defaultSection._id;
-}
-
-async function getOrderedListTodosByState(
-  ctx: MutationCtx,
-  listId: Id<"todoLists">,
-  isCompleted: boolean,
-  excludedTodoId?: Id<"todos">,
-) {
-  const todos = await ctx.db
-    .query("todos")
-    .withIndex("by_list_id_and_completed", (q) =>
-      q.eq("listId", listId).eq("isCompleted", isCompleted),
-    )
-    .collect();
-
-  return todos
-    .filter((todo) => todo._id !== excludedTodoId)
-    .sort(compareTodosByOrder);
-}
-
-async function getOrderedSectionTodosByState(
-  ctx: MutationCtx,
-  sectionId: Id<"todoSections">,
-  isCompleted: boolean,
-  excludedTodoId?: Id<"todos">,
-) {
-  const todos = await ctx.db
-    .query("todos")
-    .withIndex("by_section_id_and_completed", (q) =>
-      q.eq("sectionId", sectionId).eq("isCompleted", isCompleted),
-    )
-    .collect();
-
-  return todos
-    .filter((todo) => todo._id !== excludedTodoId)
-    .sort(compareTodosByOrder);
-}
-
-async function patchTodoOrders(
-  ctx: MutationCtx,
-  todos: Array<{
-    _id: Id<"todos">;
-    sectionId?: Id<"todoSections">;
-  }>,
-  sectionId: Id<"todoSections">,
-  now: number,
-) {
-  await Promise.all(
-    todos.map((todo, index) =>
-      ctx.db.patch(todo._id, {
-        sectionId,
-        order: index,
-        updatedAt: now,
-      }),
-    ),
-  );
-}
-
-function getMaxTodoOrder(
-  todos: Array<{
-    _creationTime: number;
-    order: number;
-  }>,
-) {
-  if (todos.length === 0) {
-    return -1;
-  }
-
-  const sortedTodos = [...todos].sort(compareTodosByOrder);
-  return sortedTodos.reduce((maxOrder, todo) => {
-    return Math.max(maxOrder, todo.order);
-  }, -1);
-}
-
-function compareTodosByOrder(
-  firstTodo: {
-    _creationTime: number;
-    order: number;
-  },
-  secondTodo: {
-    _creationTime: number;
-    order: number;
-  },
-) {
-  return firstTodo.order - secondTodo.order;
 }

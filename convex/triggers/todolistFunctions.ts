@@ -28,7 +28,9 @@ triggers.register("todoLists", async (ctx, change) => {
     // Delete all related todos.
     const todos = await ctx.db
       .query("todos")
-      .withIndex("by_list_id", (q) => q.eq("listId", oldList._id))
+      .withIndex("by_list_id_completed_and_order", (q) =>
+        q.eq("listId", oldList._id),
+      )
       .collect();
 
     for (const todo of todos) {

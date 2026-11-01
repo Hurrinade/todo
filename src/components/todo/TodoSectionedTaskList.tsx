@@ -8,12 +8,15 @@ import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCompletedTodos } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 import type { TodoListItem, TodoSection } from "@/types";
 import { todoDragSensors } from "@/utils";
 
 type TodoSectionedTaskListProps = {
+  listId: TodoListItem["listId"];
   sections: TodoSection[];
+  /** Open todos, ascending by order. */
   todos: TodoListItem[];
   onCreateSection: (title: string) => Promise<void>;
   onRenameSection: (
@@ -34,7 +37,6 @@ type TodoDragData = {
   type: "todo";
   todoId: TodoListItem["_id"];
   sectionId?: TodoListItem["sectionId"];
-  isCompleted: boolean;
 };
 
 type SectionDragData =
@@ -47,7 +49,10 @@ type SectionDragData =
       sectionId: TodoSection["_id"];
     };
 
+// Open todos are draggable and live in local state during a drag. Completed
+// todos come from the shared paginated query and render under each section.
 export function TodoSectionedTaskList({
+  listId,
   sections,
   todos,
   onCreateSection,
@@ -58,6 +63,7 @@ export function TodoSectionedTaskList({
   onDeleteTodo,
 }: TodoSectionedTaskListProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const completedTodos = useCompletedTodos(listId);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isCreatingSection, setIsCreatingSection] = useState(false);
   const [orderedSections, setOrderedSections] = useState(sections);
@@ -78,6 +84,10 @@ export function TodoSectionedTaskList({
       setSectionTodoMap(buildSectionTodoMap(sections, todos));
     }
   }, [sections, todos]);
+  const completedTodoMap = buildSectionTodoMap(
+    sections,
+    completedTodos.results,
+  );
   const openSectionIds = sections
     .map((section) => section._id)
     .filter((sectionId) => !closedSectionIds.includes(sectionId));
@@ -148,11 +158,6 @@ export function TodoSectionedTaskList({
           const sourceData = getSortableData(event.operation.source);
 
           if (sourceData?.type === "todo") {
-            if (sourceData.isCompleted) {
-              isDraggingRef.current = false;
-              return;
-            }
-
             const sectionId = findSectionIdForTodo(
               sectionTodoMap,
               sourceData.todoId,
@@ -186,7 +191,7 @@ export function TodoSectionedTaskList({
           // the DOM nodes makes the two orders fight and rows jump.
           event.preventDefault();
 
-          if (!isOnline || sourceData.isCompleted || !target) {
+          if (!isOnline || !target) {
             return;
           }
 
@@ -266,11 +271,7 @@ export function TodoSectionedTaskList({
             return;
           }
 
-          if (
-            sourceData?.type !== "todo" ||
-            sourceData.isCompleted ||
-            !todoDragRef.current
-          ) {
+          if (sourceData?.type !== "todo" || !todoDragRef.current) {
             return;
           }
 
@@ -329,6 +330,7 @@ export function TodoSectionedTaskList({
                 section={section}
                 index={index}
                 todos={sectionTodoMap[section._id] ?? []}
+                completedTodos={completedTodoMap[section._id] ?? []}
                 onToggleTodo={onToggleTodo}
                 onDeleteTodo={onDeleteTodo}
                 onRenameSection={onRenameSection}
@@ -337,55 +339,38 @@ export function TodoSectionedTaskList({
           </ul>
         </Accordion>
       </DragDropProvider>
+
+      {(completedTodos.status === "CanLoadMore" ||
+        completedTodos.status === "LoadingMore") && (
+        <Button
+          type="button"
+          variant="ghost"
+          disabled={completedTodos.status === "LoadingMore"}
+          onClick={completedTodos.loadMore}
+          className="h-11 self-center text-muted-foreground pointer-fine:h-9"
+        >
+          {completedTodos.status === "LoadingMore"
+            ? "Loading completed todos"
+            : "Show more completed"}
+        </Button>
+      )}
     </div>
   );
 }
 
+/** Groups todos by section, keeping their order. */
 function buildSectionTodoMap(sections: TodoSection[], todos: TodoListItem[]) {
-  const nextMap: Record<string, TodoListItem[]> = {};
-
-  for (const section of sections) {
-    nextMap[section._id] = [];
-  }
+  const nextMap: Record<string, TodoListItem[]> = Object.fromEntries(
+    sections.map((section) => [section._id, []]),
+  );
 
   for (const todo of todos) {
-    if (!todo.sectionId) {
-      continue;
+    if (todo.sectionId) {
+      nextMap[todo.sectionId]?.push(todo);
     }
-
-    nextMap[todo.sectionId] = [...(nextMap[todo.sectionId] ?? []), todo];
-  }
-
-  for (const section of sections) {
-    nextMap[section._id] = (nextMap[section._id] ?? []).sort(
-      compareSectionTodos,
-    );
   }
 
   return nextMap;
-}
-
-function compareSectionTodos(
-  firstTodo: TodoListItem,
-  secondTodo: TodoListItem,
-) {
-  if (firstTodo.isCompleted !== secondTodo.isCompleted) {
-    return Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted);
-  }
-
-  if (firstTodo.order !== undefined && secondTodo.order !== undefined) {
-    return firstTodo.order - secondTodo.order;
-  }
-
-  if (firstTodo.order !== undefined) {
-    return -1;
-  }
-
-  if (secondTodo.order !== undefined) {
-    return 1;
-  }
-
-  return secondTodo._creationTime - firstTodo._creationTime;
 }
 
 function getSortableData(entity: { data?: unknown } | null | undefined) {
@@ -428,29 +413,11 @@ function getTodoBucketIndex(
   sectionTodoMap: Record<string, TodoListItem[]>,
   todoId: TodoListItem["_id"],
 ) {
-  const todo = findTodoById(sectionTodoMap, todoId);
-
-  if (!todo) {
-    return 0;
-  }
-
   const sectionId = findSectionIdForTodo(sectionTodoMap, todoId);
 
-  if (!sectionId) {
-    return 0;
-  }
-
-  const sectionTodos = sectionTodoMap[sectionId] ?? [];
-
-  return sectionTodos.reduce((bucketIndex, sectionTodo) => {
-    if (sectionTodo._id === todoId) {
-      return bucketIndex;
-    }
-
-    return sectionTodo.isCompleted === todo.isCompleted
-      ? bucketIndex + 1
-      : bucketIndex;
-  }, 0);
+  return sectionId
+    ? (sectionTodoMap[sectionId] ?? []).findIndex((todo) => todo._id === todoId)
+    : 0;
 }
 
 function getTargetLocation(
@@ -459,7 +426,6 @@ function getTargetLocation(
   activeTodo: TodoListItem,
   sourceSectionId: TodoSection["_id"],
 ) {
-  const activeTodoId = activeTodo._id;
   const targetData = getSortableData(target);
 
   if (!targetData) {
@@ -473,55 +439,48 @@ function getTargetLocation(
       return null;
     }
 
-    const targetSectionTodos = (
-      sectionTodoMap[targetData.sectionId] ?? []
-    ).filter(
-      (todo) =>
-        todo._id !== activeTodoId &&
-        todo.isCompleted === activeTodo.isCompleted,
-    );
-
     return {
       sectionId: targetData.sectionId,
-      bucketIndex: targetSectionTodos.length,
+      bucketIndex: getOtherTodos(
+        sectionTodoMap,
+        targetData.sectionId,
+        activeTodo._id,
+      ).length,
     };
   }
 
-  if (targetData.type !== "todo") {
-    return null;
-  }
-
-  const targetTodo = findTodoById(sectionTodoMap, targetData.todoId);
   const targetSectionId = findSectionIdForTodo(
     sectionTodoMap,
     targetData.todoId,
   );
 
-  if (!targetTodo || !targetSectionId) {
+  if (!targetSectionId) {
     return null;
   }
 
-  const sameBucketTodos = (sectionTodoMap[targetSectionId] ?? []).filter(
-    (todo) =>
-      todo._id !== activeTodoId && todo.isCompleted === activeTodo.isCompleted,
+  const otherTodos = getOtherTodos(
+    sectionTodoMap,
+    targetSectionId,
+    activeTodo._id,
   );
-
-  if (targetTodo.isCompleted !== activeTodo.isCompleted) {
-    return {
-      sectionId: targetSectionId,
-      bucketIndex: activeTodo.isCompleted ? 0 : sameBucketTodos.length,
-    };
-  }
-
-  const targetBucketIndex = sameBucketTodos.findIndex(
-    (todo) => todo._id === targetTodo._id,
+  const targetIndex = otherTodos.findIndex(
+    (todo) => todo._id === targetData.todoId,
   );
 
   return {
     sectionId: targetSectionId,
-    bucketIndex:
-      targetBucketIndex >= 0 ? targetBucketIndex : sameBucketTodos.length,
+    bucketIndex: targetIndex >= 0 ? targetIndex : otherTodos.length,
   };
+}
+
+function getOtherTodos(
+  sectionTodoMap: Record<string, TodoListItem[]>,
+  sectionId: TodoSection["_id"],
+  activeTodoId: TodoListItem["_id"],
+) {
+  return (sectionTodoMap[sectionId] ?? []).filter(
+    (todo) => todo._id !== activeTodoId,
+  );
 }
 
 function moveTodoInSectionMap(
@@ -554,10 +513,10 @@ function moveTodoInSectionMap(
     sourceSectionId === targetSectionId
       ? sourceTodos
       : [...(nextMap[targetSectionId] ?? [])];
-  const openCount = targetTodos.filter((todo) => !todo.isCompleted).length;
-  const insertionIndex = activeTodo.isCompleted
-    ? openCount + Math.max(0, Math.min(targetBucketIndex, targetTodos.length))
-    : Math.max(0, Math.min(targetBucketIndex, openCount));
+  const insertionIndex = Math.max(
+    0,
+    Math.min(targetBucketIndex, targetTodos.length),
+  );
 
   // Same slot: keep the map identity so React skips the re-render.
   if (sourceSectionId === targetSectionId && insertionIndex === todoIndex) {

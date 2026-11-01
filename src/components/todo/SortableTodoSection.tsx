@@ -5,6 +5,7 @@ import { GripVertical } from "lucide-react";
 import { useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
+import { TodoTaskItem } from "@/components/todo/TodoTaskItem";
 import {
   AccordionContent,
   AccordionItem,
@@ -19,7 +20,9 @@ import type { TodoListItem, TodoSection } from "@/types";
 type SortableTodoSectionProps = {
   section: TodoSection;
   index: number;
+  /** Open todos; only these can be dragged. */
   todos: TodoListItem[];
+  completedTodos: TodoListItem[];
   onToggleTodo: (todoId: TodoListItem["_id"]) => void;
   onDeleteTodo: (todoId: TodoListItem["_id"]) => void;
   onRenameSection: (
@@ -32,6 +35,7 @@ export function SortableTodoSection({
   section,
   index,
   todos,
+  completedTodos,
   onToggleTodo,
   onDeleteTodo,
   onRenameSection,
@@ -126,7 +130,7 @@ export function SortableTodoSection({
 
         <AccordionContent className="pb-0">
           <div ref={dropRef} className={cn("rounded-xl bg-background/35")}>
-            {todos.length === 0 ? (
+            {todos.length === 0 && completedTodos.length === 0 ? (
               <div className="px-2 py-6 text-center text-sm text-muted-foreground">
                 No todos in this section yet.
               </div>
@@ -137,12 +141,21 @@ export function SortableTodoSection({
                     key={todo._id}
                     index={todoIndex}
                     group={section._id}
-                    isReorderEnabled={!todo.isCompleted}
+                    isReorderEnabled
                     animateIdleReorder
                     todo={todo}
                     onToggleTodo={onToggleTodo}
                     onDeleteTodo={onDeleteTodo}
                   />
+                ))}
+                {completedTodos.map((todo) => (
+                  <div key={todo._id} role="listitem" className="rounded-lg">
+                    <TodoTaskItem
+                      todo={todo}
+                      onToggleTodo={onToggleTodo}
+                      onDeleteTodo={onDeleteTodo}
+                    />
+                  </div>
                 ))}
               </div>
             )}

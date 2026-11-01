@@ -55,7 +55,6 @@ export type TodoTaskListProps = {
 
 export type TodoPaginationErrorBoundaryProps = {
   children: ReactNode;
-  onRetry: () => void;
 };
 
 export type TodoPaginationErrorBoundaryState = {

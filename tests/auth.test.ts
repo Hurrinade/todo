@@ -1,7 +1,6 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
 import { Resend, type EmailId } from "@convex-dev/resend";
 import { convexTest } from "convex-test";
-import { resolve } from "node:path";
 import { z } from "zod";
 
 import { api, components, internal } from "../convex/_generated/api";
@@ -9,6 +8,7 @@ import schema from "../convex/schema";
 import { syncBetterAuthUser } from "../convex/system/users";
 import betterAuthSchema from "../convex/betterAuth/schema";
 import { authenticateMcpRequest } from "../convex/mcp/auth";
+import { modulesIn } from "./convex-modules";
 
 // Test-process values only. No environment files or external services are used.
 process.env.SITE_URL = "http://localhost:5174";
@@ -20,18 +20,6 @@ process.env.GOOGLE_CLIENT_SECRET = "test-only-secret";
 process.env.RESEND_API_KEY = "re_test_only_not_a_real_key";
 process.env.AUTH_EMAIL_FROM = "RiTodo <login@rinadely.com>";
 const { requireAppUserId } = await import("../convex/shared/auth");
-
-// Bun supplies the module glob without starting Vite or reading environment files.
-function modulesIn(directory: string) {
-  return Object.fromEntries(
-    [...new Bun.Glob("**/*.{ts,js}").scanSync({ cwd: directory })]
-      .filter((file) => !file.endsWith(".d.ts"))
-      .map((file) => [
-        `${directory}/${file}`,
-        () => import(resolve(directory, file)),
-      ]),
-  );
-}
 
 async function setup({ linked = true, expired = false, age = 0 } = {}) {
   const t = convexTest(schema, modulesIn("convex"));
