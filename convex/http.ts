@@ -41,26 +41,28 @@ http.route({
     const body = await request.text();
     const wh = new Webhook(webhookSecret);
 
-    let payload;
+    let payload: {
+      type: string;
+      data: {
+        id: string;
+        email_addresses: Array<{
+          id: string;
+          email_address: string;
+        }>;
+        primary_email_address_id: string;
+        first_name: string | null;
+        last_name: string | null;
+        image_url: string | null;
+      };
+    };
     try {
-      payload = wh.verify(body, {
+      // svix 2 only checks the signature, so parse the verified body ourselves.
+      wh.verify(body, {
         "svix-id": svixId,
         "svix-timestamp": svixTimestamp,
         "svix-signature": svixSignature,
-      }) as {
-        type: string;
-        data: {
-          id: string;
-          email_addresses: Array<{
-            id: string;
-            email_address: string;
-          }>;
-          primary_email_address_id: string;
-          first_name: string | null;
-          last_name: string | null;
-          image_url: string | null;
-        };
-      };
+      });
+      payload = JSON.parse(body);
     } catch {
       return new Response("Invalid webhook signature", { status: 400 });
     }

@@ -326,7 +326,7 @@ workflow. Keep the component mount named `betterAuth` to preserve existing data.
 
 ## Package compatibility and local verification
 
-Better Auth uses the patched `~1.6.33` line within the component's supported
+Better Auth uses the patched `~1.6.34` line within the component's supported
 `>=1.6.11 <1.7.0` peer range. The component's published React provider type incorrectly
 infers session data as `never` with patched Better Auth releases. A single
 `@ts-expect-error` marks that prop boundary, without changing the inferred client
