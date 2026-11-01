@@ -7,6 +7,7 @@ import {
   type MutationCtx,
 } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { appError, notFoundError, requireId } from "../shared/errors";
 import { normalizeSectionTitle } from "../shared/todo";
 
 export const create = mutation({
@@ -24,11 +25,16 @@ export const create = mutation({
 export const createForUser = internalMutation({
   args: {
     userId: v.string(),
-    listId: v.id("todoLists"),
+    listId: v.string(),
     title: v.string(),
   },
   handler: (ctx, args) =>
-    createTodoSection(ctx, args.userId, args.listId, args.title),
+    createTodoSection(
+      ctx,
+      args.userId,
+      requireId(ctx, "todoLists", args.listId),
+      args.title,
+    ),
 });
 
 export const rename = mutation({
@@ -43,14 +49,20 @@ export const rename = mutation({
   },
 });
 
+// Returns the stored title so MCP replies show what was saved.
 export const renameForUser = internalMutation({
   args: {
     userId: v.string(),
-    sectionId: v.id("todoSections"),
+    sectionId: v.string(),
     title: v.string(),
   },
   handler: (ctx, args) =>
-    renameTodoSection(ctx, args.userId, args.sectionId, args.title),
+    renameTodoSection(
+      ctx,
+      args.userId,
+      requireId(ctx, "todoSections", args.sectionId),
+      args.title,
+    ),
 });
 
 export const reorder = mutation({
@@ -68,14 +80,17 @@ export const reorder = mutation({
       .collect();
 
     if (sections.length !== args.sectionIds.length) {
-      throw new Error("Section order is out of date.");
+      throw appError("conflict", "Section order is out of date.");
     }
 
     const sectionIds = new Set(sections.map((section) => section._id));
 
     for (const sectionId of args.sectionIds) {
       if (!sectionIds.has(sectionId)) {
-        throw new Error("Section order contains an invalid item.");
+        throw appError(
+          "invalid_input",
+          "Section order contains an invalid item.",
+        );
       }
     }
 
@@ -106,7 +121,10 @@ async function createTodoSection(
   const list = await ctx.db.get(listId);
 
   if (!list || list.kind !== "sectioned") {
-    throw new Error("Sections are only available in sectioned lists.");
+    throw appError(
+      "invalid_input",
+      "Sections are only available in sectioned lists.",
+    );
   }
 
   const sections = await ctx.db
@@ -142,20 +160,26 @@ async function renameTodoSection(
   const section = await ctx.db.get(sectionId);
 
   if (!section) {
-    throw new Error("Section was not found.");
+    throw notFoundError("todoSections");
   }
 
   await requireListAccess(ctx, section.listId, userId);
 
   if (section.isDefault) {
-    throw new Error("The default Other section cannot be renamed.");
+    throw appError(
+      "invalid_input",
+      "The default Other section cannot be renamed.",
+    );
   }
 
   const now = Date.now();
+  const normalizedTitle = normalizeSectionTitle(title);
 
   await ctx.db.patch(sectionId, {
-    title: normalizeSectionTitle(title),
+    title: normalizedTitle,
     updatedAt: now,
   });
   await ctx.db.patch(section.listId, { updatedAt: now });
+
+  return normalizedTitle;
 }

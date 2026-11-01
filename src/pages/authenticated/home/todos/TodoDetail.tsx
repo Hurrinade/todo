@@ -1,4 +1,5 @@
 import { api } from "@convex/_generated/api";
+import { getAppErrorMessage } from "@convex/shared/errors";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
@@ -55,7 +56,7 @@ export default function TodoDetail() {
         try {
           await renameTodo({ todoId: detail.todo._id, title });
         } catch (error) {
-          setErrorMessage(getErrorMessage(error));
+          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
           throw error;
         }
       }}
@@ -70,7 +71,7 @@ export default function TodoDetail() {
         try {
           await updateDescription({ todoId: detail.todo._id, description });
         } catch (error) {
-          setErrorMessage(getErrorMessage(error));
+          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
           throw error;
         }
       }}
@@ -136,12 +137,4 @@ function TodoDetailUnavailable({
       </div>
     </main>
   );
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error) {
-    return error.message;
-  }
-
-  return "Something went wrong.";
 }

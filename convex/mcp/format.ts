@@ -1,41 +1,56 @@
 import dayjs from "dayjs";
+import { z } from "zod";
 
 import type { Doc } from "../_generated/dataModel";
+import { getAppErrorMessage } from "../shared/errors";
 import { getTodoNoteText, getTodoTitleText } from "../shared/todo";
+import type { TodoRecord } from "../shared/todoRecord";
 
-const SAFE_ERROR_MESSAGES = [
-  "Todo was not found.",
-  "Todo list was not found.",
-  "Section was not found.",
-  "Target section was not found.",
-  "Sections are only available in sectioned lists.",
-  "Regular lists cannot contain sections.",
-  "Todo moves are only available in sectioned lists.",
-  "Todo is missing its section.",
-  "Default section was not found.",
-  "The default Other section cannot be renamed.",
-  "Provide a title or description to update.",
-  "Title is required.",
-  "Section title is required.",
-  "Title must be 240 characters or less.",
-  "Section title must be 240 characters or less.",
-  "Description must be 10000 characters or less.",
-  "List emoji must be 16 characters or less.",
-];
+export const todoOutputSchema = z.object({
+  id: z.string(),
+  list_id: z.string(),
+  list_title: z.string(),
+  section_id: z.string().nullable(),
+  section_title: z.string().nullable(),
+  title: z.string(),
+  description: z.string().nullable(),
+  completed: z.boolean(),
+  completed_at: z.string().nullable(),
+  created_at: z.string(),
+  updated_at: z.string(),
+});
+
+export const todoListOutputSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  emoji: z.string().nullable(),
+  kind: z.enum(["regular", "sectioned"]),
+  open_todo_count: z.number(),
+  completed_todo_count: z.number(),
+  created_at: z.string(),
+  updated_at: z.string(),
+  sections: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      is_default: z.boolean(),
+      created_at: z.string(),
+      updated_at: z.string(),
+    }),
+  ),
+});
 
 export function formatTodoList(record: {
   list: Doc<"todoLists">;
   sections: Doc<"todoSections">[];
-  openTodoCount: number;
-  completedTodoCount: number;
-}) {
+}): z.output<typeof todoListOutputSchema> {
   return {
     id: record.list._id,
     title: record.list.title,
     emoji: record.list.emoji ?? null,
     kind: record.list.kind,
-    open_todo_count: record.openTodoCount,
-    completed_todo_count: record.completedTodoCount,
+    open_todo_count: record.list.openTodoCount,
+    completed_todo_count: record.list.completedTodoCount,
     created_at: formatTimestamp(record.list._creationTime),
     updated_at: formatTimestamp(record.list.updatedAt),
     sections: record.sections.map((section) => ({
@@ -48,11 +63,9 @@ export function formatTodoList(record: {
   };
 }
 
-export function formatTodo(record: {
-  todo: Doc<"todos">;
-  list: Doc<"todoLists">;
-  section: Doc<"todoSections"> | null;
-}) {
+export function formatTodo(
+  record: TodoRecord,
+): z.output<typeof todoOutputSchema> {
   return {
     id: record.todo._id,
     list_id: record.list._id,
@@ -70,35 +83,31 @@ export function formatTodo(record: {
   };
 }
 
-export function createToolResult(data: Record<string, unknown>) {
-  return {
-    content: [{ type: "text" as const, text: JSON.stringify(data) }],
-    structuredContent: data,
-  };
-}
-
+// Wraps a tool body: data becomes structured content, and only app errors
+// keep their message so internal details never reach the agent.
 export async function runMcpTool(
   operation: () => Promise<Record<string, unknown>>,
 ) {
   try {
-    return createToolResult(await operation());
-  } catch (error) {
-    const message = getSafeMcpErrorMessage(error);
+    const data = await operation();
 
     return {
-      content: [{ type: "text" as const, text: message }],
+      content: [{ type: "text" as const, text: JSON.stringify(data) }],
+      structuredContent: data,
+    };
+  } catch (error) {
+    return {
+      content: [
+        {
+          type: "text" as const,
+          text:
+            getAppErrorMessage(error) ??
+            "The RiTodo operation could not be completed.",
+        },
+      ],
       isError: true,
     };
   }
-}
-
-export function getSafeMcpErrorMessage(error: unknown) {
-  const message = error instanceof Error ? error.message : "";
-  const safeMessage = SAFE_ERROR_MESSAGES.find((candidate) =>
-    message.includes(candidate),
-  );
-
-  return safeMessage ?? "The RiTodo operation could not be completed.";
 }
 
 function formatTimestamp(value: number) {

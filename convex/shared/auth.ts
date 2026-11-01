@@ -1,6 +1,7 @@
 import { authComponent } from "../auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
+import { appError, notFoundError } from "./errors";
 
 type AuthContext = QueryCtx | MutationCtx;
 
@@ -27,7 +28,7 @@ export async function resolveAppUserId(ctx: AuthContext, betterAuthId: string) {
 export async function requireAppUserId(ctx: AuthContext) {
   const userId = await getAppUserId(ctx);
   if (!userId) {
-    throw new Error("You must be signed in.");
+    throw appError("unauthenticated", "You must be signed in.");
   }
   return userId;
 }
@@ -46,7 +47,7 @@ export async function requireListAccess(
     .unique();
 
   if (!membership) {
-    throw new Error("Todo list was not found.");
+    throw notFoundError("todoLists");
   }
 
   return membership;
@@ -62,7 +63,7 @@ export async function requireOwnerListAccess(
   const list = await ctx.db.get(listId);
 
   if (!list || list.userId !== appUserId) {
-    throw new Error("User does not have access to this list as owner.");
+    throw appError("forbidden", "Only the list owner can do this.");
   }
 
   return list;

@@ -3,6 +3,8 @@ import { v } from "convex/values";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalQuery, type QueryCtx } from "../_generated/server";
 import { requireListAccess } from "../shared/auth";
+import { appError, notFoundError, requireId } from "../shared/errors";
+import { getTodoRecord } from "../shared/todoRecord";
 
 export const listTodoLists = internalQuery({
   args: {
@@ -18,74 +20,99 @@ export const listTodoLists = internalQuery({
           .withIndex("by_list_id", (q) => q.eq("listId", list._id))
           .collect();
 
-        return {
-          list,
-          sections: sections.sort(compareSections),
-          openTodoCount: list.openTodoCount,
-          completedTodoCount: list.completedTodoCount,
-        };
+        return { list, sections: sections.sort(compareSections) };
       }),
     );
   },
 });
 
+// Pages through one list at a time. The cursor is "<listId>:<list cursor>", so an
+// unscoped call walks every accessible list that has matching todos.
 export const listTodos = internalQuery({
   args: {
     userId: v.string(),
-    listId: v.optional(v.id("todoLists")),
-    sectionId: v.optional(v.id("todoSections")),
-    completed: v.optional(v.boolean()),
+    listId: v.optional(v.string()),
+    sectionId: v.optional(v.string()),
+    completed: v.boolean(),
+    limit: v.number(),
+    cursor: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const lists = await resolveTodoLists(ctx, args);
-    const todoGroups = await Promise.all(
-      lists.map(async (list) => {
-        const todos = await getTodos(ctx, list._id, args);
-        const sections = await ctx.db
-          .query("todoSections")
-          .withIndex("by_list_id", (q) => q.eq("listId", list._id))
-          .collect();
-        const sectionsById = new Map(
-          sections.map((section) => [section._id, section]),
-        );
+    const sectionId =
+      args.sectionId === undefined
+        ? undefined
+        : requireId(ctx, "todoSections", args.sectionId);
+    const lists = await resolveTodoLists(ctx, {
+      userId: args.userId,
+      listId:
+        args.listId === undefined
+          ? undefined
+          : requireId(ctx, "todoLists", args.listId),
+      sectionId,
+    });
+    // Skip lists without matching todos so pages are rarely empty.
+    const hasMatchingTodos = (list: Doc<"todoLists">) =>
+      (args.completed ? list.completedTodoCount : list.openTodoCount) > 0;
+    const position = args.cursor
+      ? parseListTodosCursor(lists, args.cursor)
+      : { listIndex: lists.findIndex(hasMatchingTodos), cursor: null };
+    const list = lists[position.listIndex];
 
-        return todos.sort(compareTodos).map((todo) => ({
-          todo,
-          list,
-          section: todo.sectionId
-            ? (sectionsById.get(todo.sectionId) ?? null)
-            : null,
-        }));
-      }),
+    if (!list) {
+      return { records: [], nextCursor: null };
+    }
+
+    const todos = ctx.db.query("todos");
+    const [page, sections] = await Promise.all([
+      (sectionId === undefined
+        ? todos.withIndex("by_list_id_completed_and_order", (q) =>
+            q.eq("listId", list._id).eq("isCompleted", args.completed),
+          )
+        : todos.withIndex("by_section_id_completed_and_order", (q) =>
+            q.eq("sectionId", sectionId).eq("isCompleted", args.completed),
+          )
+      ).paginate({ numItems: args.limit, cursor: position.cursor }),
+      ctx.db
+        .query("todoSections")
+        .withIndex("by_list_id", (q) => q.eq("listId", list._id))
+        .collect(),
+    ]);
+    const sectionsById = new Map(
+      sections.map((section) => [section._id, section]),
     );
+    const nextList = lists.slice(position.listIndex + 1).find(hasMatchingTodos);
 
-    return todoGroups.flat();
+    return {
+      records: page.page.map((todo) => ({
+        todo,
+        list,
+        section: todo.sectionId
+          ? (sectionsById.get(todo.sectionId) ?? null)
+          : null,
+      })),
+      nextCursor: !page.isDone
+        ? `${list._id}:${page.continueCursor}`
+        : nextList
+          ? `${nextList._id}:`
+          : null,
+    };
   },
 });
 
 export const getTodo = internalQuery({
   args: {
     userId: v.string(),
-    todoId: v.id("todos"),
+    todoId: v.string(),
   },
   handler: async (ctx, args) => {
-    const todo = await ctx.db.get(args.todoId);
+    const record = await getTodoRecord(
+      ctx,
+      requireId(ctx, "todos", args.todoId),
+    );
 
-    if (!todo) {
-      throw new Error("Todo was not found.");
-    }
+    await requireListAccess(ctx, record.todo.listId, args.userId);
 
-    await requireListAccess(ctx, todo.listId, args.userId);
-    const [list, section] = await Promise.all([
-      ctx.db.get(todo.listId),
-      todo.sectionId ? ctx.db.get(todo.sectionId) : null,
-    ]);
-
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    return { todo, list, section };
+    return record;
   },
 });
 
@@ -115,65 +142,45 @@ async function resolveTodoLists(
     const section = await ctx.db.get(args.sectionId);
 
     if (!section || (args.listId && section.listId !== args.listId)) {
-      throw new Error("Section was not found.");
+      throw notFoundError("todoSections");
     }
 
-    await requireListAccess(ctx, section.listId, args.userId);
-    const list = await ctx.db.get(section.listId);
-
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    return [list];
+    return [await getAccessibleList(ctx, section.listId, args.userId)];
   }
 
   if (args.listId) {
-    await requireListAccess(ctx, args.listId, args.userId);
-    const list = await ctx.db.get(args.listId);
-
-    if (!list) {
-      throw new Error("Todo list was not found.");
-    }
-
-    return [list];
+    return [await getAccessibleList(ctx, args.listId, args.userId)];
   }
 
   return getAccessibleLists(ctx, args.userId);
 }
 
-async function getTodos(
+async function getAccessibleList(
   ctx: QueryCtx,
   listId: Id<"todoLists">,
-  args: {
-    sectionId?: Id<"todoSections">;
-    completed?: boolean;
-  },
+  userId: string,
 ) {
-  const { sectionId, completed } = args;
-  const todos = ctx.db.query("todos");
+  await requireListAccess(ctx, listId, userId);
+  const list = await ctx.db.get(listId);
 
-  if (sectionId) {
-    return todos
-      .withIndex("by_section_id_completed_and_order", (q) => {
-        const sectionTodos = q.eq("sectionId", sectionId);
-
-        return completed === undefined
-          ? sectionTodos
-          : sectionTodos.eq("isCompleted", completed);
-      })
-      .collect();
+  if (!list) {
+    throw notFoundError("todoLists");
   }
 
-  return todos
-    .withIndex("by_list_id_completed_and_order", (q) => {
-      const listTodos = q.eq("listId", listId);
+  return list;
+}
 
-      return completed === undefined
-        ? listTodos
-        : listTodos.eq("isCompleted", completed);
-    })
-    .collect();
+function parseListTodosCursor(lists: Doc<"todoLists">[], cursor: string) {
+  const separatorIndex = cursor.indexOf(":");
+  const listIndex = lists.findIndex(
+    (list) => list._id === cursor.slice(0, separatorIndex),
+  );
+
+  if (separatorIndex === -1 || listIndex === -1) {
+    throw appError("invalid_input", "The cursor is invalid or expired.");
+  }
+
+  return { listIndex, cursor: cursor.slice(separatorIndex + 1) || null };
 }
 
 function compareLists(first: Doc<"todoLists">, second: Doc<"todoLists">) {
@@ -213,24 +220,4 @@ function compareSections(
   }
 
   return first._creationTime - second._creationTime;
-}
-
-function compareTodos(first: Doc<"todos">, second: Doc<"todos">) {
-  if (first.isCompleted !== second.isCompleted) {
-    return Number(first.isCompleted) - Number(second.isCompleted);
-  }
-
-  if (first.order !== undefined && second.order !== undefined) {
-    return first.order - second.order;
-  }
-
-  if (first.order !== undefined) {
-    return -1;
-  }
-
-  if (second.order !== undefined) {
-    return 1;
-  }
-
-  return second._creationTime - first._creationTime;
 }

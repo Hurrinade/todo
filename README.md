@@ -157,11 +157,15 @@ that `ritodo` is enabled.
 - Read: `list_todo_lists`, `list_todos`, `get_todo`
 - Lists and sections: `create_todo_list`, `rename_todo_list`,
   `create_todo_section`, `rename_todo_section`
-- Todos: `create_todo`, `update_todo`, `move_todo`, `set_todo_completed`,
-  `delete_todo`
+- Todos: `create_todo`, `create_todos`, `update_todo`, `move_todo`,
+  `set_todo_completed`, `delete_todo`
 
-`list_todos` accepts optional list, section, and completion filters. Omitting
-all filters loads open and completed todos from every accessible list.
+`list_todos` returns open todos unless `completed` is true. It pages through one
+list at a time (`limit` defaults to 50, max 100); pass `next_cursor` back until
+it is null. Omit `list_id` and `section_id` to walk every accessible list.
+
+`create_todos` creates up to 50 todos in one transaction. Every tool declares
+an `outputSchema` for its `structuredContent`.
 
 ## Current Routes
 
