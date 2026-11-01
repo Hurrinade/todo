@@ -16,6 +16,7 @@ import {
   InputOTPSlot,
 } from "@/components/ui/input-otp";
 import { authClient } from "@/lib/auth-client";
+import { getLastUsedEmail } from "@/lib/last-used-email";
 import { useNetworkStore } from "@/stores";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -58,7 +59,7 @@ function AuthForm({
   onSignedIn: () => void;
 }) {
   const [mode, setMode] = useState(initialMode);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(getLastUsedEmail);
   const [name, setName] = useState("");
   const [otp, setOtp] = useState("");
   const [codeSent, setCodeSent] = useState(false);

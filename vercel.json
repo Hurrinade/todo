@@ -3,7 +3,8 @@
   "git": {
     "deploymentEnabled": {
       "auth/better-auth-migration": false,
-      "design/auth-account-ui": false
+      "design/auth-account-ui": false,
+      "feat/remember-last-email": false
     }
   },
   "rewrites": [
