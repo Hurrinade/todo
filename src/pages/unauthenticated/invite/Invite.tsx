@@ -1,5 +1,6 @@
 import AuthDialog from "@/components/auth/AuthDialog";
 import { api } from "@convex/_generated/api";
+import { getAppErrorMessage } from "@convex/shared/errors";
 import {
   AuthLoading,
   useConvexAuth,
@@ -53,7 +54,9 @@ export default function Invite() {
         },
       });
     } catch (error) {
-      setErrorMessage(getErrorMessage(error));
+      setErrorMessage(
+        getAppErrorMessage(error) ?? "Something went wrong. Please try again.",
+      );
     } finally {
       setIsAcceptingInvite(false);
     }
@@ -268,12 +271,4 @@ function StatusCard({
       <p className="mt-1 text-muted-foreground">{description}</p>
     </div>
   );
-}
-
-function getErrorMessage(error: unknown) {
-  if (error instanceof Error && error.message) {
-    return error.message;
-  }
-
-  return "Something went wrong. Please try again.";
 }

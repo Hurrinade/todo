@@ -4,6 +4,8 @@ import { internalMutation, mutation } from "../_generated/server";
 import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { appError, notFoundError, requireId } from "../shared/errors";
+import { getTodoRecord } from "../shared/todoRecord";
 import { updateTodoListStats } from "../shared/todoListStats";
 import {
   getFirstOrder,
@@ -16,6 +18,7 @@ import {
 import {
   createTodoNoteContent,
   createTodoTitleContent,
+  MAX_TODOS_PER_BATCH,
   normalizeTodoDescription,
   normalizeTodoTitleContent,
   todoNoteContentValidator,
@@ -29,28 +32,52 @@ export const create = mutation({
   },
   handler: async (ctx, args) => {
     const userId = await requireAppUserId(ctx);
+    const [todoId] = await createTodosForUser(ctx, userId, [args]);
 
-    return createTodoForUser(ctx, userId, args);
+    return todoId;
   },
 });
 
-export const createForUser = internalMutation({
+// Creates plain-text todos for MCP in one transaction and returns them in input order.
+export const createManyForUser = internalMutation({
   args: {
     userId: v.string(),
-    listId: v.id("todoLists"),
-    sectionId: v.optional(v.id("todoSections")),
-    title: v.string(),
-    description: v.optional(v.string()),
+    todos: v.array(
+      v.object({
+        listId: v.string(),
+        sectionId: v.optional(v.string()),
+        title: v.string(),
+        description: v.optional(v.string()),
+      }),
+    ),
   },
-  handler: (ctx, args) =>
-    createTodoForUser(ctx, args.userId, {
-      listId: args.listId,
-      sectionId: args.sectionId,
-      title: createTodoTitleContent(args.title),
-      description: args.description
-        ? createTodoNoteContent(args.description)
-        : undefined,
-    }),
+  handler: async (ctx, args) => {
+    if (args.todos.length === 0 || args.todos.length > MAX_TODOS_PER_BATCH) {
+      throw appError(
+        "invalid_input",
+        `Provide between 1 and ${MAX_TODOS_PER_BATCH} todos.`,
+      );
+    }
+
+    const todoIds = await createTodosForUser(
+      ctx,
+      args.userId,
+      args.todos.map((todo) => ({
+        listId: requireId(ctx, "todoLists", todo.listId),
+        sectionId:
+          todo.sectionId === undefined
+            ? undefined
+            : requireId(ctx, "todoSections", todo.sectionId),
+        title: createTodoTitleContent(todo.title),
+        description:
+          todo.description === undefined
+            ? undefined
+            : createTodoNoteContent(todo.description),
+      })),
+    );
+
+    return Promise.all(todoIds.map((todoId) => getTodoRecord(ctx, todoId)));
+  },
 });
 
 export const toggle = mutation({
@@ -62,7 +89,7 @@ export const toggle = mutation({
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await setTodoCompletedForUser(ctx, userId, todo, !todo.isCompleted);
@@ -72,19 +99,19 @@ export const toggle = mutation({
 export const setCompletedForUser = internalMutation({
   args: {
     userId: v.string(),
-    todoId: v.id("todos"),
+    todoId: v.string(),
     completed: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const todo = await ctx.db.get(args.todoId);
+    const todo = await ctx.db.get(requireId(ctx, "todos", args.todoId));
 
     if (!todo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await setTodoCompletedForUser(ctx, args.userId, todo, args.completed);
 
-    return { todoId: todo._id, completed: args.completed };
+    return getTodoRecord(ctx, todo._id);
   },
 });
 
@@ -98,7 +125,7 @@ export const rename = mutation({
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await requireListAccess(ctx, todo.listId, userId);
@@ -120,7 +147,7 @@ export const updateDescription = mutation({
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await requireListAccess(ctx, todo.listId, userId);
@@ -135,21 +162,24 @@ export const updateDescription = mutation({
 export const updateForUser = internalMutation({
   args: {
     userId: v.string(),
-    todoId: v.id("todos"),
+    todoId: v.string(),
     title: v.optional(v.string()),
     description: v.optional(v.union(v.string(), v.null())),
   },
   handler: async (ctx, args) => {
-    const todo = await ctx.db.get(args.todoId);
+    const todo = await ctx.db.get(requireId(ctx, "todos", args.todoId));
 
     if (!todo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await requireListAccess(ctx, todo.listId, args.userId);
 
     if (args.title === undefined && args.description === undefined) {
-      throw new Error("Provide a title or description to update.");
+      throw appError(
+        "invalid_input",
+        "Provide a title or description to update.",
+      );
     }
 
     const title =
@@ -163,13 +193,13 @@ export const updateForUser = internalMutation({
           ? undefined
           : createTodoNoteContent(args.description);
 
-    await ctx.db.patch(args.todoId, {
+    await ctx.db.patch(todo._id, {
       title,
       description,
       updatedAt: Date.now(),
     });
 
-    return args.todoId;
+    return getTodoRecord(ctx, todo._id);
   },
 });
 
@@ -187,9 +217,10 @@ export const remove = mutation({
 export const removeForUser = internalMutation({
   args: {
     userId: v.string(),
-    todoId: v.id("todos"),
+    todoId: v.string(),
   },
-  handler: (ctx, args) => removeTodoForUser(ctx, args.userId, args.todoId),
+  handler: (ctx, args) =>
+    removeTodoForUser(ctx, args.userId, requireId(ctx, "todos", args.todoId)),
 });
 
 export const reposition = mutation({
@@ -206,27 +237,33 @@ export const reposition = mutation({
     ]);
 
     if (!todo || !anchorTodo) {
-      throw new Error("Todo was not found.");
+      throw notFoundError("todos");
     }
 
     await requireListAccess(ctx, todo.listId, userId);
 
     if (todo._id === anchorTodo._id) {
-      throw new Error("A todo cannot be positioned relative to itself.");
+      throw appError(
+        "invalid_input",
+        "A todo cannot be positioned relative to itself.",
+      );
     }
 
     if (todo.listId !== anchorTodo.listId) {
-      throw new Error("Todos must belong to the same list.");
+      throw appError("invalid_input", "Todos must belong to the same list.");
     }
 
     const list = await ctx.db.get(todo.listId);
 
     if (!list || list.kind !== "regular") {
-      throw new Error("Repositioning is only available in regular lists.");
+      throw appError(
+        "invalid_input",
+        "Repositioning is only available in regular lists.",
+      );
     }
 
     if (todo.isCompleted || anchorTodo.isCompleted) {
-      throw new Error("Only open todos can be repositioned.");
+      throw appError("invalid_input", "Only open todos can be repositioned.");
     }
 
     const neighbours = await getNeighboursOfAnchor(
@@ -262,11 +299,19 @@ export const move = mutation({
 export const moveToSectionEndForUser = internalMutation({
   args: {
     userId: v.string(),
-    todoId: v.id("todos"),
-    targetSectionId: v.id("todoSections"),
+    todoId: v.string(),
+    targetSectionId: v.string(),
   },
-  handler: (ctx, args) =>
-    moveTodoForUser(ctx, args.userId, args.todoId, args.targetSectionId),
+  handler: async (ctx, args) => {
+    const todoId = await moveTodoForUser(
+      ctx,
+      args.userId,
+      requireId(ctx, "todos", args.todoId),
+      requireId(ctx, "todoSections", args.targetSectionId),
+    );
+
+    return getTodoRecord(ctx, todoId);
+  },
 });
 
 export const clearCompleted = mutation({
@@ -342,41 +387,71 @@ export const uncheckCompleted = mutation({
   },
 });
 
-async function createTodoForUser(
+type CreateTodoInput = {
+  listId: Id<"todoLists">;
+  sectionId?: Id<"todoSections">;
+  title: Doc<"todos">["title"];
+  description?: Doc<"todos">["description"];
+};
+
+// Creates todos in one transaction, updating each list's stats once.
+// Returns the new IDs in input order.
+async function createTodosForUser(
   ctx: MutationCtx,
   userId: string,
-  args: {
-    listId: Id<"todoLists">;
-    sectionId?: Id<"todoSections">;
-    title: Doc<"todos">["title"];
-    description?: Doc<"todos">["description"];
-  },
+  inputs: CreateTodoInput[],
+) {
+  const now = Date.now();
+  const todoIds: Id<"todos">[] = [];
+  const createdCounts = new Map<Id<"todoLists">, number>();
+
+  // New todos go to the top of their section, so inserting in reverse keeps
+  // the batch in input order.
+  for (const input of inputs.toReversed()) {
+    todoIds.unshift(await insertTodoForUser(ctx, userId, input, now));
+    createdCounts.set(input.listId, (createdCounts.get(input.listId) ?? 0) + 1);
+  }
+
+  for (const [listId, count] of createdCounts) {
+    await updateTodoListStats(ctx, listId, {
+      openTodoDelta: count,
+      updatedAt: now,
+    });
+  }
+
+  return todoIds;
+}
+
+async function insertTodoForUser(
+  ctx: MutationCtx,
+  userId: string,
+  args: CreateTodoInput,
+  now: number,
 ) {
   await requireListAccess(ctx, args.listId, userId);
   const list = await ctx.db.get(args.listId);
 
   if (!list) {
-    throw new Error("Todo list was not found.");
+    throw notFoundError("todoLists");
   }
 
   let sectionId = args.sectionId;
 
   if (list.kind === "regular") {
     if (sectionId) {
-      throw new Error("Regular lists cannot contain sections.");
+      throw appError("invalid_input", "Regular lists cannot contain sections.");
     }
   } else if (sectionId) {
     const section = await ctx.db.get(sectionId);
 
     if (!section || section.listId !== args.listId) {
-      throw new Error("Target section was not found.");
+      throw notFoundError("todoSections");
     }
   } else {
     sectionId = await getDefaultSectionId(ctx, args.listId);
   }
 
-  const now = Date.now();
-  const todoId = await ctx.db.insert("todos", {
+  return ctx.db.insert("todos", {
     listId: args.listId,
     sectionId,
     title: normalizeTodoTitleContent(args.title),
@@ -389,13 +464,6 @@ async function createTodoForUser(
     }),
     updatedAt: now,
   });
-
-  await updateTodoListStats(ctx, args.listId, {
-    openTodoDelta: 1,
-    updatedAt: now,
-  });
-
-  return todoId;
 }
 
 async function setTodoCompletedForUser(
@@ -433,7 +501,7 @@ async function removeTodoForUser(
   const todo = await ctx.db.get(todoId);
 
   if (!todo) {
-    throw new Error("Todo was not found.");
+    throw notFoundError("todos");
   }
 
   await requireListAccess(ctx, todo.listId, userId);
@@ -459,7 +527,7 @@ async function moveTodoForUser(
   const todo = await ctx.db.get(todoId);
 
   if (!todo) {
-    throw new Error("Todo was not found.");
+    throw notFoundError("todos");
   }
 
   await requireListAccess(ctx, todo.listId, userId);
@@ -470,19 +538,22 @@ async function moveTodoForUser(
   ]);
 
   if (!list) {
-    throw new Error("Todo list was not found.");
+    throw notFoundError("todoLists");
   }
 
   if (list.kind !== "sectioned") {
-    throw new Error("Todo moves are only available in sectioned lists.");
+    throw appError(
+      "invalid_input",
+      "Todo moves are only available in sectioned lists.",
+    );
   }
 
   if (!todo.sectionId) {
-    throw new Error("Todo is missing its section.");
+    throw appError("not_found", "Todo is missing its section.");
   }
 
   if (!targetSection || targetSection.listId !== todo.listId) {
-    throw new Error("Target section was not found.");
+    throw notFoundError("todoSections");
   }
 
   const bucket = { ...todo, sectionId: targetSectionId };
@@ -507,7 +578,7 @@ async function getDefaultSectionId(ctx: MutationCtx, listId: Id<"todoLists">) {
     .unique();
 
   if (!defaultSection) {
-    throw new Error("Default section was not found.");
+    throw appError("not_found", "Default section was not found.");
   }
 
   return defaultSection._id;

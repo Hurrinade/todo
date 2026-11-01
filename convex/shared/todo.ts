@@ -1,9 +1,12 @@
 import { v, type Infer } from "convex/values";
 
+import { appError } from "./errors";
+
 const MAX_TITLE_LENGTH = 240;
 const MAX_TITLE_CONTENT_LENGTH = 10000;
 const MAX_DESCRIPTION_LENGTH = 10000;
 const MAX_LIST_EMOJI_LENGTH = 16;
+export const MAX_TODOS_PER_BATCH = 50;
 export const DEFAULT_TODO_SECTION_TITLE = "Other";
 
 const todoTitleLinkAttributesValidator = v.object({
@@ -99,13 +102,17 @@ export function normalizeTodoTitleContent(
   title: Infer<typeof todoTitleContentValidator>,
 ) {
   if (JSON.stringify(title).length > MAX_TITLE_CONTENT_LENGTH) {
-    throw new Error(
+    throw appError(
+      "invalid_input",
       `Title content must be ${MAX_TITLE_CONTENT_LENGTH} characters or less.`,
     );
   }
 
   if (title.content.length !== 1) {
-    throw new Error("Title must contain exactly one paragraph.");
+    throw appError(
+      "invalid_input",
+      "Title must contain exactly one paragraph.",
+    );
   }
 
   const paragraph = title.content[0];
@@ -114,13 +121,16 @@ export function normalizeTodoTitleContent(
 
   for (const node of textNodes) {
     if (/[\r\n]/.test(node.text)) {
-      throw new Error("Title must be a single line.");
+      throw appError("invalid_input", "Title must be a single line.");
     }
 
     titleText += node.text;
 
     if ((node.marks?.length ?? 0) > 1) {
-      throw new Error("Title text can contain only one link mark.");
+      throw appError(
+        "invalid_input",
+        "Title text can contain only one link mark.",
+      );
     }
 
     for (const mark of node.marks ?? []) {
@@ -129,11 +139,14 @@ export function normalizeTodoTitleContent(
   }
 
   if (!titleText.trim()) {
-    throw new Error("Title is required.");
+    throw appError("invalid_input", "Title is required.");
   }
 
   if (titleText.length > MAX_TITLE_LENGTH) {
-    throw new Error(`Title must be ${MAX_TITLE_LENGTH} characters or less.`);
+    throw appError(
+      "invalid_input",
+      `Title must be ${MAX_TITLE_LENGTH} characters or less.`,
+    );
   }
 
   return title;
@@ -149,7 +162,8 @@ export function normalizeTodoDescription(
   const descriptionLength = getTodoNoteTextLength(description);
 
   if (descriptionLength > MAX_DESCRIPTION_LENGTH) {
-    throw new Error(
+    throw appError(
+      "invalid_input",
       `Description must be ${MAX_DESCRIPTION_LENGTH} characters or less.`,
     );
   }
@@ -161,7 +175,8 @@ export function normalizeTodoListEmoji(emoji: string) {
   const normalizedEmoji = emoji.trim();
 
   if (normalizedEmoji.length > MAX_LIST_EMOJI_LENGTH) {
-    throw new Error(
+    throw appError(
+      "invalid_input",
       `List emoji must be ${MAX_LIST_EMOJI_LENGTH} characters or less.`,
     );
   }
@@ -177,38 +192,36 @@ function normalizeTitle(title: string, label: string) {
   const normalizedTitle = title.trim();
 
   if (!normalizedTitle) {
-    throw new Error(`${label} is required.`);
+    throw appError("invalid_input", `${label} is required.`);
   }
 
   if (normalizedTitle.length > MAX_TITLE_LENGTH) {
-    throw new Error(`${label} must be ${MAX_TITLE_LENGTH} characters or less.`);
+    throw appError(
+      "invalid_input",
+      `${label} must be ${MAX_TITLE_LENGTH} characters or less.`,
+    );
   }
 
   return normalizedTitle;
 }
 
 function validateTodoTitleLink(href: string) {
+  let url: URL;
+
   try {
-    const url = new URL(href);
+    url = new URL(href);
+  } catch {
+    throw appError("invalid_input", "Title contains an invalid link.");
+  }
 
-    if (url.protocol !== "http:" && url.protocol !== "https:") {
-      throw new Error("Title links must use HTTP or HTTPS.");
-    }
-  } catch (error) {
-    if (
-      error instanceof Error &&
-      error.message === "Title links must use HTTP or HTTPS."
-    ) {
-      throw error;
-    }
-
-    throw new Error("Title contains an invalid link.");
+  if (url.protocol !== "http:" && url.protocol !== "https:") {
+    throw appError("invalid_input", "Title links must use HTTP or HTTPS.");
   }
 }
 
 function getTodoNoteTextLength(node: unknown): number {
   if (!isRecord(node) || typeof node.type !== "string") {
-    throw new Error("Description contains an invalid node.");
+    throw appError("invalid_input", "Description contains an invalid node.");
   }
 
   const attrs = node.attrs;
@@ -217,23 +230,30 @@ function getTodoNoteTextLength(node: unknown): number {
   const text = node.text;
 
   if (attrs !== undefined && !isRecord(attrs)) {
-    throw new Error("Description contains invalid node attributes.");
+    throw appError(
+      "invalid_input",
+      "Description contains invalid node attributes.",
+    );
   }
 
   if (text !== undefined && typeof text !== "string") {
-    throw new Error("Description contains invalid text.");
+    throw appError("invalid_input", "Description contains invalid text.");
   }
 
   if (content !== undefined && !Array.isArray(content)) {
-    throw new Error("Description contains invalid nested content.");
+    throw appError(
+      "invalid_input",
+      "Description contains invalid nested content.",
+    );
   }
 
   if (marks !== undefined && !Array.isArray(marks)) {
-    throw new Error("Description contains invalid text marks.");
+    throw appError("invalid_input", "Description contains invalid text marks.");
   }
 
   if (text !== undefined && content !== undefined) {
-    throw new Error(
+    throw appError(
+      "invalid_input",
       "Description nodes cannot contain text and nested content.",
     );
   }
@@ -283,11 +303,17 @@ function separatesChildBlocks(type: unknown) {
 
 function validateTodoNoteMark(mark: unknown) {
   if (!isRecord(mark) || typeof mark.type !== "string") {
-    throw new Error("Description contains an invalid text mark.");
+    throw appError(
+      "invalid_input",
+      "Description contains an invalid text mark.",
+    );
   }
 
   if (mark.attrs !== undefined && !isRecord(mark.attrs)) {
-    throw new Error("Description contains invalid text mark attributes.");
+    throw appError(
+      "invalid_input",
+      "Description contains invalid text mark attributes.",
+    );
   }
 }
 

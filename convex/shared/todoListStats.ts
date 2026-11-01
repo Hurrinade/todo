@@ -1,5 +1,6 @@
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx } from "../_generated/server";
+import { notFoundError } from "./errors";
 
 type TodoListStatsUpdate = {
   openTodoCount?: number;
@@ -19,7 +20,7 @@ export async function updateTodoListStats(
   const list = await ctx.db.get(listId);
 
   if (!list) {
-    throw new Error("Todo list was not found.");
+    throw notFoundError("todoLists");
   }
 
   const nextStats = {

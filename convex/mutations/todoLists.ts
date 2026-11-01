@@ -8,6 +8,7 @@ import {
   requireOwnerListAccess,
   resolveAppUserId,
 } from "../shared/auth";
+import { appError, requireId } from "../shared/errors";
 import {
   DEFAULT_TODO_SECTION_TITLE,
   normalizeTodoListEmoji,
@@ -63,14 +64,20 @@ export const rename = mutation({
   },
 });
 
+// Returns the stored title so MCP replies show what was saved.
 export const renameForUser = internalMutation({
   args: {
     userId: v.string(),
-    listId: v.id("todoLists"),
+    listId: v.string(),
     title: v.string(),
   },
   handler: (ctx, args) =>
-    renameTodoList(ctx, args.userId, args.listId, args.title),
+    renameTodoList(
+      ctx,
+      args.userId,
+      requireId(ctx, "todoLists", args.listId),
+      args.title,
+    ),
 });
 
 export const updateEmoji = mutation({
@@ -103,7 +110,7 @@ export const reorder = mutation({
       .collect();
 
     if (todoListUsers.length !== args.listIds.length) {
-      throw new Error("Todo list order is out of date.");
+      throw appError("conflict", "Todo list order is out of date.");
     }
 
     const todoListIds = new Set(
@@ -112,7 +119,10 @@ export const reorder = mutation({
 
     for (const listId of args.listIds) {
       if (!todoListIds.has(listId)) {
-        throw new Error("Todo list order contains an invalid item.");
+        throw appError(
+          "invalid_input",
+          "Todo list order contains an invalid item.",
+        );
       }
     }
 
@@ -145,7 +155,10 @@ async function createTodoList(
     (await resolveAppUserId(ctx, userId.slice("better-auth:".length))) !==
       userId
   ) {
-    throw new Error("Your account identity changed. Retry this request.");
+    throw appError(
+      "conflict",
+      "Your account identity changed. Retry this request.",
+    );
   }
   const existingLists = await ctx.db
     .query("todoLists")
@@ -187,9 +200,12 @@ async function renameTodoList(
   title: string,
 ) {
   await requireListAccess(ctx, listId, userId);
+  const normalizedTitle = normalizeTodoTitle(title);
 
   await ctx.db.patch(listId, {
-    title: normalizeTodoTitle(title),
+    title: normalizedTitle,
     updatedAt: Date.now(),
   });
+
+  return normalizedTitle;
 }

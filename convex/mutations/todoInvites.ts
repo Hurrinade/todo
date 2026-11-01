@@ -3,6 +3,7 @@ import { mutation, internalMutation } from "../_generated/server";
 import { v } from "convex/values";
 
 import { requireAppUserId, requireOwnerListAccess } from "../shared/auth";
+import { appError, notFoundError } from "../shared/errors";
 import { updateTodoListStats } from "../shared/todoListStats";
 
 const INVITE_EXPIRATION_MS = 30 * 60 * 1000;
@@ -63,19 +64,19 @@ export const accept = mutation({
       .unique();
 
     if (!invite) {
-      throw new Error("Invite link is not valid.");
+      throw appError("not_found", "Invite link is not valid.");
     }
 
     if (invite.expiresAt <= Date.now()) {
       await ctx.db.delete(invite._id);
-      throw new Error("Invite link has expired.");
+      throw appError("invalid_input", "Invite link has expired.");
     }
 
     const list = await ctx.db.get(invite.listId);
 
     if (!list) {
       await ctx.db.delete(invite._id);
-      throw new Error("Todo list was not found.");
+      throw notFoundError("todoLists");
     }
 
     const existingMembership = await ctx.db
