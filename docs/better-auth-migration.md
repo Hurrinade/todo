@@ -66,6 +66,10 @@ and every other identity mapping remain untouched.
   Email OTP creates persistent sessions by default and has no `rememberMe` switch.
   The client does not opt out of persistence. The integration stores the session
   in browser local storage for cross-domain requests.
+- The last successful account email is also stored as a local form preference,
+  including Google sessions. It prefills the editable email field after sign-out
+  or expiration. Storage restrictions fall back to an empty field. Verification
+  is still required for a new session.
 - Profile sync and explicit identity resolution preserve legacy Clerk ownership IDs.
 - Better Auth's official API-key plugin issues hashed `ritodo_` MCP keys. Keys
   expire after 90 days, allow 120 requests per minute and can be revoked. They
