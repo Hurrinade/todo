@@ -8,6 +8,7 @@ import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
 import { TodoListSmallHeader } from "@/components/todo/TodoListSmallHeader";
 import { TodoListSidebar } from "@/components/todo/TodoListSidebar";
+import { TodoPaginationErrorBoundary } from "@/components/todo/TodoPaginationErrorBoundary";
 import { TodoSectionedTaskList } from "@/components/todo/TodoSectionedTaskList";
 import { TodoSidebarToggle } from "@/components/todo/TodoSidebarToggle";
 import { TodoTaskList } from "@/components/todo/TodoTaskList";
@@ -86,23 +87,17 @@ export function TodoWorkspace({
     (state) => state.setUnknownErrorMessage,
   );
 
-  const regularTodoResult = useQuery(
+  // Both list kinds load open todos up front; completed todos are paginated.
+  const openTodoResult = useQuery(
     api.queries.todos.listOpen,
-    activeList?.kind === "regular" ? { listId: activeList._id } : "skip",
-  );
-  const sectionedTodoResult = useQuery(
-    api.queries.todos.listSectioned,
-    activeList?.kind === "sectioned" ? { listId: activeList._id } : "skip",
+    activeList ? { listId: activeList._id } : "skip",
   );
   const sectionResult = useQuery(
     api.queries.todoSections.list,
     activeList?.kind === "sectioned" ? { listId: activeList._id } : "skip",
   );
-  const activeTodoResult =
-    activeList?.kind === "regular" ? regularTodoResult : sectionedTodoResult;
-  const todos = useMemo(() => sectionedTodoResult ?? [], [sectionedTodoResult]);
   const sections = useMemo(() => sectionResult ?? [], [sectionResult]);
-  const openTodos = useMemo(() => regularTodoResult ?? [], [regularTodoResult]);
+  const openTodos = useMemo(() => openTodoResult ?? [], [openTodoResult]);
 
   // Set zustand data from queries, for local cache
   useEffect(() => {
@@ -300,7 +295,7 @@ export function TodoWorkspace({
         <SidebarInset className="min-h-0 overflow-hidden">
           <TodoWorkspaceContent
             activeList={activeList}
-            activeTodoResult={activeTodoResult}
+            openTodoResult={openTodoResult}
             detailPanel={detailPanel}
             errorMessage={errorMessage}
             createTodoError={createTodoError}
@@ -318,7 +313,6 @@ export function TodoWorkspace({
             openTodos={openTodos}
             sectionResult={sectionResult}
             sections={sections}
-            todos={todos}
           />
         </SidebarInset>
       </SidebarProvider>
@@ -328,7 +322,7 @@ export function TodoWorkspace({
 
 type TodoWorkspaceContentProps = {
   activeList: TodoListSummary | null;
-  activeTodoResult: TodoListItem[] | undefined;
+  openTodoResult: TodoListItem[] | undefined;
   detailPanel?: ReactNode;
   errorMessage: string | null;
   createTodoError: string | null;
@@ -357,12 +351,11 @@ type TodoWorkspaceContentProps = {
   openTodos: TodoListItem[];
   sectionResult: TodoSection[] | undefined;
   sections: TodoSection[];
-  todos: TodoListItem[];
 };
 
 function TodoWorkspaceContent({
   activeList,
-  activeTodoResult,
+  openTodoResult,
   detailPanel,
   errorMessage,
   createTodoError,
@@ -380,7 +373,6 @@ function TodoWorkspaceContent({
   openTodos,
   sectionResult,
   sections,
-  todos,
 }: TodoWorkspaceContentProps) {
   const { isMobile, open, openMobile } = useSidebar();
   const todoListViewportRef = useRef<HTMLDivElement>(null);
@@ -406,7 +398,7 @@ function TodoWorkspaceContent({
               className="min-h-0 flex-1"
             >
               <div className="flex flex-col gap-4 px-2 py-3">
-                {activeTodoResult === undefined ? (
+                {openTodoResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
                     Loading todos
                   </div>
@@ -416,17 +408,19 @@ function TodoWorkspaceContent({
                     Loading sections
                   </div>
                 ) : activeList.kind === "sectioned" ? (
-                  <TodoSectionedTaskList
-                    key={activeList._id}
-                    sections={sections}
-                    todos={todos}
-                    onCreateSection={onCreateSection}
-                    onRenameSection={onRenameSection}
-                    onReorderSections={onReorderSections}
-                    onToggleTodo={onToggleTodo}
-                    onMoveTodo={onMoveTodo}
-                    onDeleteTodo={onDeleteTodo}
-                  />
+                  <TodoPaginationErrorBoundary key={activeList._id}>
+                    <TodoSectionedTaskList
+                      listId={activeList._id}
+                      sections={sections}
+                      todos={openTodos}
+                      onCreateSection={onCreateSection}
+                      onRenameSection={onRenameSection}
+                      onReorderSections={onReorderSections}
+                      onToggleTodo={onToggleTodo}
+                      onMoveTodo={onMoveTodo}
+                      onDeleteTodo={onDeleteTodo}
+                    />
+                  </TodoPaginationErrorBoundary>
                 ) : (
                   <TodoTaskList
                     key={activeList._id}

@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import type { Id } from "@convex/_generated/dataModel";
+import { getOrderBetween, ORDER_STEP } from "@convex/shared/todoOrder";
 import type { OptimisticLocalStore } from "convex/browser";
 import { insertAtTop } from "convex/react";
 import type { FunctionArgs } from "convex/server";
@@ -9,9 +10,9 @@ import type { TodoItem, TodoListItem } from "@/types";
 // Optimistic updates for todo mutations. Each one mirrors what the matching
 // mutation in convex/mutations/todos.ts does, applied to whichever todo
 // queries are currently loaded. Convex rolls them back if the mutation fails.
+// Both list kinds share listOpen and listCompleted; sectioned todos carry a
+// sectionId, and ordering uses the same sparse helpers as the server.
 
-// Mirrors ORDER_STEP in convex/mutations/todos.ts.
-const ORDER_STEP = 1024;
 const OPTIMISTIC_TODO_ID_PREFIX = "optimistic:";
 
 type TodoMutationArgs<Name extends keyof typeof api.mutations.todos> =
@@ -29,41 +30,29 @@ export function createTodoOptimistically(
   { listId, title }: TodoMutationArgs<"create">,
 ) {
   const now = Date.now();
-  const todo: TodoListItem = {
-    _id: `${OPTIMISTIC_TODO_ID_PREFIX}${crypto.randomUUID()}` as Id<"todos">,
-    _creationTime: now,
-    listId,
-    sectionId: undefined,
-    title,
-    isCompleted: false,
-    completedAt: undefined,
-    order: 0,
-    updatedAt: now,
-  };
-
-  updateOpenTodos(localStore, listId, (todos) => [
-    { ...todo, order: todos[0] ? todos[0].order - ORDER_STEP : 0 },
-    ...todos,
-  ]);
-
-  const defaultSectionId = localStore
+  // Sectioned lists add to the top of their default section.
+  const sectionId = localStore
     .getQuery(api.queries.todoSections.list, { listId })
     ?.find((section) => section.isDefault)?._id;
 
-  if (defaultSectionId) {
-    updateSectionedTodos(localStore, listId, (todos) => {
-      const orders = getBucketOrders(todos, defaultSectionId, false);
+  updateOpenTodos(localStore, listId, (todos) => {
+    const firstTodo = todos.find((current) => current.sectionId === sectionId);
 
-      return [
-        ...todos,
-        {
-          ...todo,
-          sectionId: defaultSectionId,
-          order: orders.length > 0 ? Math.min(...orders) - 1 : 0,
-        },
-      ];
-    });
-  }
+    return [
+      ...todos,
+      {
+        _id: `${OPTIMISTIC_TODO_ID_PREFIX}${crypto.randomUUID()}` as Id<"todos">,
+        _creationTime: now,
+        listId,
+        sectionId,
+        title,
+        isCompleted: false,
+        completedAt: undefined,
+        order: firstTodo ? firstTodo.order - ORDER_STEP : 0,
+        updatedAt: now,
+      },
+    ];
+  });
 
   updateListStats(localStore, listId, { open: 1 });
 }
@@ -83,7 +72,8 @@ export function toggleTodoOptimistically(
   const completedAt = isCompleted ? now : undefined;
   const toggledTodo = { ...todo, isCompleted, completedAt, updatedAt: now };
 
-  // Regular lists keep open and completed todos in separate queries.
+  // Completing moves the todo to the top of the newest-first completed pages.
+  // Unchecking puts it last among the open todos of its section or list.
   if (isCompleted) {
     updateOpenTodos(localStore, todo.listId, (todos) =>
       todos.filter(({ _id }) => _id !== todoId),
@@ -99,7 +89,9 @@ export function toggleTodoOptimistically(
       todos.filter(({ _id }) => _id !== todoId),
     );
     updateOpenTodos(localStore, todo.listId, (todos) => {
-      const lastTodo = todos.at(-1);
+      const lastTodo = todos.findLast(
+        ({ sectionId }) => sectionId === todo.sectionId,
+      );
 
       return [
         ...todos,
@@ -107,16 +99,6 @@ export function toggleTodoOptimistically(
       ];
     });
   }
-
-  // Sectioned lists move the todo to the end of its new bucket.
-  updateSectionedTodos(localStore, todo.listId, (todos) => {
-    const orders = getBucketOrders(todos, todo.sectionId, isCompleted);
-    const order = Math.max(-1, ...orders) + 1;
-
-    return todos.map((currentTodo) =>
-      currentTodo._id === todoId ? { ...toggledTodo, order } : currentTodo,
-    );
-  });
 
   updateTodoDetail(localStore, todoId, { isCompleted, completedAt });
   updateListStats(
@@ -182,16 +164,11 @@ export function repositionTodoOptimistically(
     }
 
     const insertIndex = placement === "before" ? anchorIndex : anchorIndex + 1;
-    const lowerOrder = nextTodos[insertIndex - 1]?.order;
-    const upperOrder = nextTodos[insertIndex]?.order;
-    const order =
-      lowerOrder === undefined
-        ? (upperOrder ?? ORDER_STEP) - ORDER_STEP
-        : upperOrder === undefined
-          ? lowerOrder + ORDER_STEP
-          : (lowerOrder + upperOrder) / 2;
 
-    nextTodos.splice(insertIndex, 0, { ...todo, order });
+    nextTodos.splice(insertIndex, 0, {
+      ...todo,
+      order: getSlotOrder(nextTodos, insertIndex),
+    });
 
     return nextTodos;
   });
@@ -202,52 +179,37 @@ export function moveTodoOptimistically(
   { todoId, targetSectionId, targetIndex }: TodoMutationArgs<"move">,
 ) {
   const todo = findLoadedTodo(localStore, todoId);
-  const sourceSectionId = todo?.sectionId;
 
-  if (!todo || !sourceSectionId) {
+  // The UI only moves open todos, which all live in listOpen.
+  if (!todo || todo.isCompleted) {
     return;
   }
 
-  updateSectionedTodos(localStore, todo.listId, (todos) => {
-    const getBucket = (sectionId: Id<"todoSections">) =>
-      todos
-        .filter(
-          (currentTodo) =>
-            currentTodo.sectionId === sectionId &&
-            currentTodo.isCompleted === todo.isCompleted &&
-            currentTodo._id !== todoId,
-        )
-        .sort(compareByOrder);
-    const sourceTodos = getBucket(sourceSectionId);
-    const targetTodos =
-      sourceSectionId === targetSectionId
-        ? sourceTodos
-        : getBucket(targetSectionId);
-
-    targetTodos.splice(
-      Math.max(0, Math.min(targetIndex, targetTodos.length)),
-      0,
-      todo,
+  updateOpenTodos(localStore, todo.listId, (todos) => {
+    const targetTodos = todos.filter(
+      ({ _id, sectionId }) => sectionId === targetSectionId && _id !== todoId,
     );
+    const slot = Math.max(0, Math.min(targetIndex, targetTodos.length));
+    const movedTodo = {
+      ...todo,
+      sectionId: targetSectionId,
+      order: getSlotOrder(targetTodos, slot),
+    };
 
-    // Like the server, both buckets are renumbered from 0.
-    const nextPositions = new Map([
-      ...sourceTodos.map(
-        ({ _id }, order) =>
-          [_id, { sectionId: sourceSectionId, order }] as const,
-      ),
-      ...targetTodos.map(
-        ({ _id }, order) =>
-          [_id, { sectionId: targetSectionId, order }] as const,
-      ),
-    ]);
-
-    return todos.map((currentTodo) => {
-      const position = nextPositions.get(currentTodo._id);
-
-      return position ? { ...currentTodo, ...position } : currentTodo;
-    });
+    return todos.map((current) =>
+      current._id === todoId ? movedTodo : current,
+    );
   });
+}
+
+/**
+ * Order for a todo inserted at `slot` of an ordered bucket. When the gap has
+ * run out the server rebalances; the lower order keeps the local sort right.
+ */
+function getSlotOrder(todos: TodoListItem[], slot: number) {
+  const lowerOrder = todos[slot - 1]?.order;
+
+  return getOrderBetween(lowerOrder, todos[slot]?.order) ?? lowerOrder ?? 0;
 }
 
 function findLoadedTodo(
@@ -257,9 +219,6 @@ function findLoadedTodo(
   const loadedTodoLists = [
     ...localStore
       .getAllQueries(api.queries.todos.listOpen)
-      .map(({ value }) => value),
-    ...localStore
-      .getAllQueries(api.queries.todos.listSectioned)
       .map(({ value }) => value),
     ...localStore
       .getAllQueries(api.queries.todos.listCompleted)
@@ -285,9 +244,9 @@ function updateListTodos(
 ) {
   updateOpenTodos(localStore, listId, update);
   updateCompletedTodos(localStore, listId, update);
-  updateSectionedTodos(localStore, listId, update);
 }
 
+/** Keeps the server sort: ascending by order. */
 function updateOpenTodos(
   localStore: OptimisticLocalStore,
   listId: TodoListItem["listId"],
@@ -296,7 +255,13 @@ function updateOpenTodos(
   const todos = localStore.getQuery(api.queries.todos.listOpen, { listId });
 
   if (todos) {
-    localStore.setQuery(api.queries.todos.listOpen, { listId }, update(todos));
+    localStore.setQuery(
+      api.queries.todos.listOpen,
+      { listId },
+      update(todos).toSorted(
+        (firstTodo, secondTodo) => firstTodo.order - secondTodo.order,
+      ),
+    );
   }
 }
 
@@ -314,29 +279,6 @@ function updateCompletedTodos(
         page: update(value.page),
       });
     }
-  }
-}
-
-/** Keeps the server sort: open todos first, then by order. */
-function updateSectionedTodos(
-  localStore: OptimisticLocalStore,
-  listId: TodoListItem["listId"],
-  update: UpdateTodos,
-) {
-  const todos = localStore.getQuery(api.queries.todos.listSectioned, {
-    listId,
-  });
-
-  if (todos) {
-    localStore.setQuery(
-      api.queries.todos.listSectioned,
-      { listId },
-      [...update(todos)].sort(
-        (firstTodo, secondTodo) =>
-          Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted) ||
-          compareByOrder(firstTodo, secondTodo),
-      ),
-    );
   }
 }
 
@@ -383,21 +325,4 @@ function updateListStats(
         : list,
     ),
   );
-}
-
-function getBucketOrders(
-  todos: TodoListItem[],
-  sectionId: TodoListItem["sectionId"],
-  isCompleted: boolean,
-) {
-  return todos
-    .filter(
-      (todo) =>
-        todo.sectionId === sectionId && todo.isCompleted === isCompleted,
-    )
-    .map(({ order }) => order);
-}
-
-function compareByOrder(firstTodo: TodoListItem, secondTodo: TodoListItem) {
-  return firstTodo.order - secondTodo.order;
 }

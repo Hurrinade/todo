@@ -76,14 +76,16 @@ export default defineSchema({
     order: v.number(),
     updatedAt: v.number(),
   })
-    .index("by_list_id", ["listId"])
-    .index("by_list_id_and_completed", ["listId", "isCompleted"])
+    // The order indexes also serve listId and sectionId prefix lookups.
     .index("by_list_id_completed_and_order", ["listId", "isCompleted", "order"])
     .index("by_list_id_completed_and_completed_at", [
       "listId",
       "isCompleted",
       "completedAt",
     ])
-    .index("by_section_id", ["sectionId"])
-    .index("by_section_id_and_completed", ["sectionId", "isCompleted"]),
+    .index("by_section_id_completed_and_order", [
+      "sectionId",
+      "isCompleted",
+      "order",
+    ]),
 });

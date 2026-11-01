@@ -150,34 +150,29 @@ async function getTodos(
     completed?: boolean;
   },
 ) {
-  if (args.sectionId && args.completed !== undefined) {
-    return ctx.db
-      .query("todos")
-      .withIndex("by_section_id_and_completed", (q) =>
-        q.eq("sectionId", args.sectionId).eq("isCompleted", args.completed!),
-      )
+  const { sectionId, completed } = args;
+  const todos = ctx.db.query("todos");
+
+  if (sectionId) {
+    return todos
+      .withIndex("by_section_id_completed_and_order", (q) => {
+        const sectionTodos = q.eq("sectionId", sectionId);
+
+        return completed === undefined
+          ? sectionTodos
+          : sectionTodos.eq("isCompleted", completed);
+      })
       .collect();
   }
 
-  if (args.sectionId) {
-    return ctx.db
-      .query("todos")
-      .withIndex("by_section_id", (q) => q.eq("sectionId", args.sectionId))
-      .collect();
-  }
+  return todos
+    .withIndex("by_list_id_completed_and_order", (q) => {
+      const listTodos = q.eq("listId", listId);
 
-  if (args.completed !== undefined) {
-    return ctx.db
-      .query("todos")
-      .withIndex("by_list_id_and_completed", (q) =>
-        q.eq("listId", listId).eq("isCompleted", args.completed!),
-      )
-      .collect();
-  }
-
-  return ctx.db
-    .query("todos")
-    .withIndex("by_list_id", (q) => q.eq("listId", listId))
+      return completed === undefined
+        ? listTodos
+        : listTodos.eq("isCompleted", completed);
+    })
     .collect();
 }
 

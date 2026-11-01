@@ -41,7 +41,6 @@ export function SortableTodoTaskItem({
       type: "todo",
       todoId: todo._id,
       sectionId: todo.sectionId,
-      isCompleted: todo.isCompleted,
     },
     disabled: !canReorder,
   });

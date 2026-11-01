@@ -1,29 +1,20 @@
-import { api } from "@convex/_generated/api";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { usePaginatedQuery } from "convex/react";
-import { ChevronDown, ChevronUp, ClipboardList, RotateCcw } from "lucide-react";
-import { Component, useEffect, useMemo, useRef, useState } from "react";
+import { ChevronDown, ChevronUp, ClipboardList } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
+import { TodoPaginationErrorBoundary } from "@/components/todo/TodoPaginationErrorBoundary";
 import { TodoTaskItem } from "@/components/todo/TodoTaskItem";
-import { Button } from "@/components/ui/button";
-import type {
-  TodoListItem,
-  TodoPaginationErrorBoundaryProps,
-  TodoPaginationErrorBoundaryState,
-  TodoTaskListProps,
-  TodoVirtualRow,
-} from "@/types";
+import { useCompletedTodos } from "@/hooks";
+import type { TodoListItem, TodoTaskListProps, TodoVirtualRow } from "@/types";
 import { todoDragSensors } from "@/utils";
 
-const COMPLETED_PAGE_SIZE = 40;
 const LOAD_MORE_THRESHOLD = 8;
 
 export function TodoTaskList(props: TodoTaskListProps) {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
-  const [retryKey, setRetryKey] = useState(0);
 
   if (props.openTodos.length === 0 && props.completedTodoCount === 0) {
     return (
@@ -36,12 +27,7 @@ export function TodoTaskList(props: TodoTaskListProps) {
   }
 
   return (
-    <TodoPaginationErrorBoundary
-      key={retryKey}
-      onRetry={() => {
-        setRetryKey((currentKey) => currentKey + 1);
-      }}
-    >
+    <TodoPaginationErrorBoundary>
       <TodoVirtualTaskRows
         {...props}
         isCompletedExpanded={isCompletedExpanded}
@@ -66,10 +52,9 @@ function TodoVirtualTaskRows({
   onCompletedExpandedChange: (isExpanded: boolean) => void;
 }) {
   const shouldLoadCompleted = isCompletedExpanded && completedTodoCount > 0;
-  const { results, status, loadMore } = usePaginatedQuery(
-    api.queries.todos.listCompleted,
-    shouldLoadCompleted ? { listId } : "skip",
-    { initialNumItems: COMPLETED_PAGE_SIZE },
+  const { results, status, loadMore } = useCompletedTodos(
+    listId,
+    shouldLoadCompleted,
   );
   const [orderedOpenTodos, setOrderedOpenTodos] = useState(openTodos);
   const [draggedTodo, setDraggedTodo] = useState<TodoListItem | null>(null);
@@ -137,7 +122,7 @@ function TodoVirtualTaskRows({
       status === "CanLoadMore" &&
       lastVirtualIndex >= loadedCompletedEndIndex - LOAD_MORE_THRESHOLD
     ) {
-      loadMore(COMPLETED_PAGE_SIZE);
+      loadMore();
     }
   }, [
     lastVirtualIndex,
@@ -300,38 +285,4 @@ function TodoVirtualTaskRows({
       </DragOverlay>
     </DragDropProvider>
   );
-}
-
-class TodoPaginationErrorBoundary extends Component<
-  TodoPaginationErrorBoundaryProps,
-  TodoPaginationErrorBoundaryState
-> {
-  state: TodoPaginationErrorBoundaryState = { hasError: false };
-
-  static getDerivedStateFromError() {
-    return { hasError: true };
-  }
-
-  render() {
-    if (!this.state.hasError) {
-      return this.props.children;
-    }
-
-    return (
-      <div className="flex min-h-40 flex-col items-center justify-center gap-3 rounded-lg border border-border bg-card/55 px-4 text-center">
-        <p className="text-sm text-muted-foreground">
-          Completed todos could not be loaded.
-        </p>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={this.props.onRetry}
-        >
-          <RotateCcw className="size-4" />
-          Retry
-        </Button>
-      </div>
-    );
-  }
 }

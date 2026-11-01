@@ -35,6 +35,8 @@ export const get = query({
   },
 });
 
+// Open todos of a list, ascending by order. Sectioned lists group them by
+// sectionId on the client.
 export const listOpen = query({
   args: {
     listId: v.id("todoLists"),
@@ -42,13 +44,6 @@ export const listOpen = query({
   handler: async (ctx, args) => {
     const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
-    const list = await ctx.db.get(args.listId);
-
-    if (!list || list.kind !== "regular") {
-      throw new Error(
-        "Open todo queries are only available for regular lists.",
-      );
-    }
 
     const todos = await ctx.db
       .query("todos")
@@ -61,6 +56,7 @@ export const listOpen = query({
   },
 });
 
+// Completed todos of a list, newest first, in cursor pages.
 export const listCompleted = query({
   args: {
     listId: v.id("todoLists"),
@@ -69,13 +65,6 @@ export const listCompleted = query({
   handler: async (ctx, args) => {
     const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
-    const list = await ctx.db.get(args.listId);
-
-    if (!list || list.kind !== "regular") {
-      throw new Error(
-        "Completed todo pagination is only available for regular lists.",
-      );
-    }
 
     const result = await ctx.db
       .query("todos")
@@ -92,28 +81,6 @@ export const listCompleted = query({
   },
 });
 
-export const listSectioned = query({
-  args: {
-    listId: v.id("todoLists"),
-  },
-  handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
-    await requireListAccess(ctx, args.listId, userId);
-    const list = await ctx.db.get(args.listId);
-
-    if (!list || list.kind !== "sectioned") {
-      throw new Error("Sectioned todo queries require a sectioned list.");
-    }
-
-    const todos = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
-      .collect();
-
-    return todos.sort(compareTodos).map(toTodoListItem);
-  },
-});
-
 function toTodoListItem(todo: Doc<"todos">) {
   return {
     _id: todo._id,
@@ -126,23 +93,4 @@ function toTodoListItem(todo: Doc<"todos">) {
     order: todo.order,
     updatedAt: todo.updatedAt,
   };
-}
-
-function compareTodos(
-  firstTodo: {
-    _creationTime: number;
-    isCompleted: boolean;
-    order: number;
-  },
-  secondTodo: {
-    _creationTime: number;
-    isCompleted: boolean;
-    order: number;
-  },
-) {
-  if (firstTodo.isCompleted !== secondTodo.isCompleted) {
-    return Number(firstTodo.isCompleted) - Number(secondTodo.isCompleted);
-  }
-
-  return firstTodo.order - secondTodo.order;
 }
