@@ -6,13 +6,13 @@ import type { MutationCtx } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { appError, notFoundError, requireId } from "../shared/errors";
 import { getTodoRecord } from "../shared/todoRecord";
+import { processCompletedTodos } from "../system/todoBatches";
 import { updateTodoListStats } from "../shared/todoListStats";
 import {
   getFirstOrder,
   getLastOrder,
   getNeighboursAtIndex,
   getNeighboursOfAnchor,
-  ORDER_STEP,
   placeTodo,
 } from "../shared/todoOrder";
 import {
@@ -314,6 +314,8 @@ export const moveToSectionEndForUser = internalMutation({
   },
 });
 
+// Bulk actions below run their first batch here and schedule the rest, so the
+// UI updates right away even for lists with a long completed history.
 export const clearCompleted = mutation({
   args: {
     listId: v.id("todoLists"),
@@ -322,21 +324,10 @@ export const clearCompleted = mutation({
     const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
-    const completedTodos = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id_completed_and_order", (q) =>
-        q.eq("listId", args.listId).eq("isCompleted", true),
-      )
-      .collect();
-
-    if (completedTodos.length === 0) {
-      return;
-    }
-
-    await Promise.all(completedTodos.map((todo) => ctx.db.delete(todo._id)));
-    await updateTodoListStats(ctx, args.listId, {
-      completedTodoCount: 0,
-      updatedAt: Date.now(),
+    await processCompletedTodos(ctx, {
+      listId: args.listId,
+      action: "clear",
+      completedBefore: Date.now(),
     });
   },
 });
@@ -349,40 +340,10 @@ export const uncheckCompleted = mutation({
     const userId = await requireAppUserId(ctx);
     await requireListAccess(ctx, args.listId, userId);
 
-    const completedTodos = await ctx.db
-      .query("todos")
-      .withIndex("by_list_id_completed_and_order", (q) =>
-        q.eq("listId", args.listId).eq("isCompleted", true),
-      )
-      .collect();
-
-    if (completedTodos.length === 0) {
-      return;
-    }
-
-    const now = Date.now();
-    // Completed todos keep their relative order after the open todos of their
-    // bucket. Each bucket costs one read for its last open order.
-    const nextOrders = new Map<Id<"todoSections"> | undefined, number>();
-
-    for (const todo of completedTodos) {
-      const order =
-        nextOrders.get(todo.sectionId) ??
-        (await getLastOrder(ctx, { ...todo, isCompleted: false }));
-
-      nextOrders.set(todo.sectionId, order + ORDER_STEP);
-      await ctx.db.patch(todo._id, {
-        isCompleted: false,
-        completedAt: undefined,
-        order,
-        updatedAt: now,
-      });
-    }
-
-    await updateTodoListStats(ctx, args.listId, {
-      openTodoDelta: completedTodos.length,
-      completedTodoCount: 0,
-      updatedAt: now,
+    await processCompletedTodos(ctx, {
+      listId: args.listId,
+      action: "uncheck",
+      completedBefore: Date.now(),
     });
   },
 });

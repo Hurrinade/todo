@@ -9,6 +9,7 @@
  */
 
 import type * as auth from "../auth.js";
+import type * as crons from "../crons.js";
 import type * as http from "../http.js";
 import type * as mcp_auth from "../mcp/auth.js";
 import type * as mcp_format from "../mcp/format.js";
@@ -30,6 +31,7 @@ import type * as shared_todoListStats from "../shared/todoListStats.js";
 import type * as shared_todoOrder from "../shared/todoOrder.js";
 import type * as shared_todoRecord from "../shared/todoRecord.js";
 import type * as system_identityLinks from "../system/identityLinks.js";
+import type * as system_todoBatches from "../system/todoBatches.js";
 import type * as system_users from "../system/users.js";
 import type * as triggers_todolistFunctions from "../triggers/todolistFunctions.js";
 
@@ -41,6 +43,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   auth: typeof auth;
+  crons: typeof crons;
   http: typeof http;
   "mcp/auth": typeof mcp_auth;
   "mcp/format": typeof mcp_format;
@@ -62,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   "shared/todoOrder": typeof shared_todoOrder;
   "shared/todoRecord": typeof shared_todoRecord;
   "system/identityLinks": typeof system_identityLinks;
+  "system/todoBatches": typeof system_todoBatches;
   "system/users": typeof system_users;
   "triggers/todolistFunctions": typeof triggers_todolistFunctions;
 }>;
