@@ -6,7 +6,11 @@ import {
   internalQuery,
   type MutationCtx,
 } from "../_generated/server";
-import { getRecipeHost, recipeContentFields } from "../shared/recipe";
+import {
+  getRecipeHost,
+  getRecipeLinkLabel,
+  recipeContentFields,
+} from "../shared/recipe";
 import { createTodoTitleContent, getTodoTitleText } from "../shared/todo";
 
 // Reads and writes for system/recipeImport.ts. The recipe or its todo may be
@@ -85,13 +89,19 @@ export const failImport = internalMutation({
       updatedAt: now,
     });
 
-    // Only replace the placeholder host name, never a name the family chose.
+    // Only replace the placeholder link, never a name the family chose.
+    // Recipes saved before the link placeholder used the host name.
+    const linkLabel = getRecipeLinkLabel(recipe.sourceUrl);
+    const currentTitle = getTodoTitleText(todo.title);
+    const nextTitle = args.pageTitle ?? linkLabel;
+
     if (
-      args.pageTitle &&
-      getTodoTitleText(todo.title) === getRecipeHost(recipe.sourceUrl)
+      (currentTitle === linkLabel ||
+        currentTitle === getRecipeHost(recipe.sourceUrl)) &&
+      currentTitle !== nextTitle
     ) {
       await ctx.db.patch(todo._id, {
-        title: createTodoTitleContent(args.pageTitle),
+        title: createTodoTitleContent(nextTitle),
         updatedAt: now,
       });
     }

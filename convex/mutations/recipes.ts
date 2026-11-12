@@ -4,13 +4,13 @@ import { internal } from "../_generated/api";
 import { mutation } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { appError, notFoundError } from "../shared/errors";
-import { getRecipeHost, normalizeRecipeUrl } from "../shared/recipe";
+import { getRecipeLinkLabel, normalizeRecipeUrl } from "../shared/recipe";
 import { createTodoTitleContent } from "../shared/todo";
 import { updateTodoListStats } from "../shared/todoListStats";
 import { getFirstOrder } from "../shared/todoOrder";
 
 // Saves a pasted link as a recipe todo right away, then copies the page
-// content in the background. The todo shows the host name until it loads.
+// content in the background. The todo shows the link until it loads.
 export const create = mutation({
   args: {
     listId: v.id("todoLists"),
@@ -36,7 +36,7 @@ export const create = mutation({
     const now = Date.now();
     const todoId = await ctx.db.insert("todos", {
       listId: args.listId,
-      title: createTodoTitleContent(getRecipeHost(sourceUrl)),
+      title: createTodoTitleContent(getRecipeLinkLabel(sourceUrl)),
       isCompleted: false,
       order: await getFirstOrder(ctx, {
         listId: args.listId,

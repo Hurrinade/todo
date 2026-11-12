@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test";
 
 import {
+  getRecipeLinkLabel,
   normalizeRecipeUrl,
   parsePageTitle,
   parseRecipeFromHtml,
@@ -104,4 +105,14 @@ test("normalizeRecipeUrl adds https and rejects non-links", () => {
   );
   expect(() => normalizeRecipeUrl("javascript:alert(1)")).toThrow();
   expect(() => normalizeRecipeUrl("grandma's soup")).toThrow();
+});
+
+test("getRecipeLinkLabel shows a readable link without protocol", () => {
+  expect(
+    getRecipeLinkLabel("https://recepti.index.hr/recept/330-snenokle/"),
+  ).toBe("recepti.index.hr/recept/330-snenokle");
+  expect(getRecipeLinkLabel("https://www.example.com/sarma-%C4%8Dorba")).toBe(
+    "example.com/sarma-čorba",
+  );
+  expect(getRecipeLinkLabel("https://example.com/")).toBe("example.com");
 });

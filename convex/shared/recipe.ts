@@ -50,9 +50,30 @@ export function normalizeRecipeUrl(input: string) {
   return url.href;
 }
 
-// "www.bbcgoodfood.com" -> "bbcgoodfood.com", used until the real name loads.
+// "https://www.bbcgoodfood.com/recipes/x" -> "bbcgoodfood.com".
 export function getRecipeHost(url: string) {
   return new URL(url).hostname.replace(/^www\./, "");
+}
+
+/**
+ * The link without protocol, readable: "recepti.index.hr/recept/330-snenokle".
+ * Names a recipe until its copy loads, and stays if no recipe was found.
+ */
+export function getRecipeLinkLabel(url: string) {
+  const { pathname } = new URL(url);
+  const path = pathname.replace(/\/+$/, "");
+  let readablePath = path;
+
+  try {
+    readablePath = decodeURIComponent(path);
+  } catch {
+    // Keep the encoded path when it isn't valid UTF-8.
+  }
+
+  return truncate(
+    `${getRecipeHost(url)}${readablePath}`,
+    MAX_RECIPE_NAME_LENGTH,
+  );
 }
 
 // The recipe fields the web app shows, with a URL for the stored image.

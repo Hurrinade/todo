@@ -1,6 +1,6 @@
 import { api } from "@convex/_generated/api";
 import { getAppErrorMessage } from "@convex/shared/errors";
-import { getRecipeHost } from "@convex/shared/recipe";
+import { getRecipeHost, getRecipeLinkLabel } from "@convex/shared/recipe";
 import { useMutation } from "convex/react";
 import dayjs from "dayjs";
 import { ArrowLeft, ArrowUpRight, Trash2, X } from "lucide-react";
@@ -16,6 +16,7 @@ import { useNetworkStore } from "@/stores";
 import type { RecipeDetailViewProps, TodoRecipe } from "@/types";
 import {
   formatRecipeMinutes,
+  getTodoTitleText,
   OFFLINE_ACTION_MESSAGE,
   splitIngredientQuantity,
 } from "@/utils";
@@ -36,6 +37,11 @@ export function RecipeDetailView({
 }: RecipeDetailViewProps) {
   const { todo } = detail;
   const hasPhoto = Boolean(recipe.imageUrl);
+  // Until the copy loads, show the whole link so it's clear which page it is,
+  // unless the title already is that link.
+  const showFullLink =
+    recipe.status !== "ready" &&
+    getTodoTitleText(todo.title) !== getRecipeLinkLabel(recipe.sourceUrl);
   const title = (
     <TodoDetailTitle
       key={`${todo._id}-${JSON.stringify(todo.title)}`}
@@ -66,7 +72,11 @@ export function RecipeDetailView({
             presentation={presentation}
           />
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-5 pb-12 @2xl:px-8">
-            <SourceLink recipe={recipe} className="text-white/85" />
+            <SourceLink
+              recipe={recipe}
+              className="text-white/85"
+              showFullLink={showFullLink}
+            />
             {title}
           </div>
         </div>
@@ -87,7 +97,11 @@ export function RecipeDetailView({
       >
         {hasPhoto ? null : (
           <div className="flex min-w-0 flex-col gap-1">
-            <SourceLink recipe={recipe} className="text-primary" />
+            <SourceLink
+              recipe={recipe}
+              className="text-primary"
+              showFullLink={showFullLink}
+            />
             {title}
           </div>
         )}
@@ -237,9 +251,11 @@ function RecipeHeader({
 function SourceLink({
   recipe,
   className,
+  showFullLink,
 }: {
   recipe: TodoRecipe;
   className: string;
+  showFullLink: boolean;
 }) {
   return (
     <a
@@ -247,11 +263,15 @@ function SourceLink({
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "inline-flex w-fit max-w-full items-center gap-1 text-sm underline-offset-4 hover:underline",
+        "inline-flex w-fit max-w-full items-center gap-1 rounded-sm text-sm underline-offset-4 outline-none hover:underline focus-visible:ring-3 focus-visible:ring-ring/40",
         className,
       )}
     >
-      <span className="truncate">{getRecipeHost(recipe.sourceUrl)}</span>
+      <span className={showFullLink ? "break-all" : "truncate"}>
+        {showFullLink
+          ? getRecipeLinkLabel(recipe.sourceUrl)
+          : getRecipeHost(recipe.sourceUrl)}
+      </span>
       <ArrowUpRight className="size-3.5 shrink-0" />
     </a>
   );
