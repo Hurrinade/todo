@@ -105,59 +105,67 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
 
             <div className="flex shrink-0 items-center gap-2">
               <TodoListInviteActions list={list} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-mobile-lg"
-                    disabled={
-                      !isOnline || list.completedTodoCount === 0 || isLoading
-                    }
-                    onClick={handleUncheckCompleted}
-                    className="bg-card"
-                    aria-label={
-                      isLoading
+              {list.kind === "recipe" ? null : (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-mobile-lg"
+                        disabled={
+                          !isOnline ||
+                          list.completedTodoCount === 0 ||
+                          isLoading
+                        }
+                        onClick={handleUncheckCompleted}
+                        className="bg-card"
+                        aria-label={
+                          isLoading
+                            ? "Unchecking completed todos"
+                            : "Uncheck completed todos"
+                        }
+                      >
+                        <RotateCcw className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isLoading
                         ? "Unchecking completed todos"
-                        : "Uncheck completed todos"
-                    }
-                  >
-                    <RotateCcw className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {isLoading
-                    ? "Unchecking completed todos"
-                    : "Uncheck completed todos"}
-                </TooltipContent>
-              </Tooltip>
+                        : "Uncheck completed todos"}
+                    </TooltipContent>
+                  </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-mobile-lg"
-                    disabled={
-                      !isOnline || list.completedTodoCount === 0 || isLoading
-                    }
-                    onClick={handleClearCompleted}
-                    aria-label={
-                      isLoading
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-mobile-lg"
+                        disabled={
+                          !isOnline ||
+                          list.completedTodoCount === 0 ||
+                          isLoading
+                        }
+                        onClick={handleClearCompleted}
+                        aria-label={
+                          isLoading
+                            ? "Clearing completed todos"
+                            : "Clear completed todos"
+                        }
+                        className="text-destructive hover:text-destructive bg-card"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isLoading
                         ? "Clearing completed todos"
-                        : "Clear completed todos"
-                    }
-                    className="text-destructive hover:text-destructive bg-card"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {isLoading
-                    ? "Clearing completed todos"
-                    : "Clear completed todos"}
-                </TooltipContent>
-              </Tooltip>
+                        : "Clear completed todos"}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              )}
             </div>
           </div>
         </div>

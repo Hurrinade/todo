@@ -14,6 +14,8 @@ import {
   normalizeTodoListEmoji,
   normalizeSectionTitle,
   normalizeTodoTitle,
+  todoListKindValidator,
+  type TodoListKind,
 } from "../shared/todo";
 import { internalMutation, mutation } from "../triggers/todolistFunctions";
 
@@ -21,7 +23,7 @@ export const create = mutation({
   args: {
     title: v.string(),
     emoji: v.optional(v.string()),
-    kind: v.union(v.literal("regular"), v.literal("sectioned")),
+    kind: todoListKindValidator,
   },
   handler: async (ctx, args) => {
     const userId = await requireAppUserId(ctx);
@@ -35,7 +37,7 @@ export const createForUser = internalMutation({
     userId: v.string(),
     title: v.string(),
     emoji: v.optional(v.string()),
-    kind: v.union(v.literal("regular"), v.literal("sectioned")),
+    kind: todoListKindValidator,
   },
   handler: (ctx, args) => createTodoList(ctx, args.userId, args),
 });
@@ -145,7 +147,7 @@ async function createTodoList(
   args: {
     title: string;
     emoji?: string;
-    kind: "regular" | "sectioned";
+    kind: TodoListKind;
   },
 ) {
   // An MCP request may authenticate before an approved identity link commits.

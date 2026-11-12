@@ -1,8 +1,11 @@
 import { api } from "@convex/_generated/api";
+import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
+import { getAppErrorMessage } from "@convex/shared/errors";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
+import { RecipeList } from "@/components/recipe/RecipeList";
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
@@ -65,6 +68,7 @@ export function TodoWorkspace({
   const moveTodo = useMutation(api.mutations.todos.move).withOptimisticUpdate(
     moveTodoOptimistically,
   );
+  const createRecipe = useMutation(api.mutations.recipes.create);
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
@@ -87,10 +91,13 @@ export function TodoWorkspace({
     (state) => state.setUnknownErrorMessage,
   );
 
-  // Both list kinds load open todos up front; completed todos are paginated.
+  // Todo lists load open todos up front; completed todos are paginated.
+  // Recipe lists load their rows in RecipeList.
   const openTodoResult = useQuery(
     api.queries.todos.listOpen,
-    activeList ? { listId: activeList._id } : "skip",
+    activeList && activeList.kind !== "recipe"
+      ? { listId: activeList._id }
+      : "skip",
   );
   const sectionResult = useQuery(
     api.queries.todoSections.list,
@@ -114,12 +121,12 @@ export function TodoWorkspace({
     event.preventDefault();
 
     const submittedTitle = newTodoTitle.trim();
+    const isRecipeList = activeList?.kind === "recipe";
+    const maxLength = isRecipeList
+      ? MAX_RECIPE_URL_LENGTH
+      : MAX_TODO_TITLE_LENGTH;
 
-    if (
-      !activeList ||
-      !submittedTitle ||
-      submittedTitle.length > MAX_TODO_TITLE_LENGTH
-    ) {
+    if (!activeList || !submittedTitle || submittedTitle.length > maxLength) {
       return false;
     }
 
@@ -134,13 +141,21 @@ export function TodoWorkspace({
     const submittedEditVersion = titleEditVersion.current;
     setNewTodoTitle("");
 
-    createTodo({
-      listId: activeList._id,
-      title: createTodoTitleContent(submittedTitle),
-    }).catch(() => {
+    const request = isRecipeList
+      ? createRecipe({ listId: activeList._id, url: submittedTitle })
+      : createTodo({
+          listId: activeList._id,
+          title: createTodoTitleContent(submittedTitle),
+        });
+
+    request.catch((error: unknown) => {
       if (titleEditVersion.current === submittedEditVersion) {
         setNewTodoTitle(submittedTitle);
-        setCreateTodoError("Couldn't add todo. Try again.");
+        setCreateTodoError(
+          isRecipeList
+            ? (getAppErrorMessage(error) ?? "Couldn't save recipe. Try again.")
+            : "Couldn't add todo. Try again.",
+        );
       }
     });
 
@@ -398,7 +413,12 @@ function TodoWorkspaceContent({
               className="min-h-0 flex-1"
             >
               <div className="flex flex-col gap-4 px-2 py-3">
-                {openTodoResult === undefined ? (
+                {activeList.kind === "recipe" ? (
+                  <RecipeList
+                    listId={activeList._id}
+                    onDeleteRecipe={onDeleteTodo}
+                  />
+                ) : openTodoResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
                     Loading todos
                   </div>
@@ -441,6 +461,7 @@ function TodoWorkspaceContent({
                 title={newTodoTitle}
                 createError={createTodoError}
                 isOnline={isOnline}
+                variant={activeList.kind === "recipe" ? "recipe" : "todo"}
                 onTitleChange={onTodoTitleChange}
                 onCreateTodo={onCreateTodo}
                 onSubmitted={() => {

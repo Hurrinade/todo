@@ -72,6 +72,12 @@ export type TodoDetail = NonNullable<
 
 export type TodoItem = TodoDetail["todo"];
 
+export type TodoRecipe = NonNullable<TodoDetail["recipe"]>;
+
+export type RecipeListItem = FunctionReturnType<
+  typeof api.queries.recipes.list
+>[number];
+
 export type TodoSection = FunctionReturnType<
   typeof api.queries.todoSections.list
 >[number];

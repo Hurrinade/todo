@@ -21,6 +21,12 @@ import {
 import type { CreateTodoListModalPayload, TodoListKind } from "@/types";
 import { useNetworkStore } from "@/stores";
 
+const LIST_TITLE_PLACEHOLDERS = {
+  regular: "New list",
+  sectioned: "New sectioned list",
+  recipe: "Family recipes",
+} satisfies Record<TodoListKind, string>;
+
 type CreateTodoListModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -140,6 +146,7 @@ export default function CreateTodoListModal({
                   <SelectContent>
                     <SelectItem value="regular">Regular list</SelectItem>
                     <SelectItem value="sectioned">Sectioned list</SelectItem>
+                    <SelectItem value="recipe">Recipe list</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -160,9 +167,7 @@ export default function CreateTodoListModal({
                   onChange={(event) => {
                     setTitle(event.target.value);
                   }}
-                  placeholder={
-                    kind === "sectioned" ? "New sectioned list" : "New list"
-                  }
+                  placeholder={LIST_TITLE_PLACEHOLDERS[kind]}
                   className="h-10"
                 />
               </div>
