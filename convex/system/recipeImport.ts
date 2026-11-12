@@ -8,11 +8,13 @@ import { parsePageTitle, parseRecipeFromHtml } from "../shared/recipe";
 const FETCH_TIMEOUT_MS = 15_000;
 const MAX_PAGE_BYTES = 5 * 1024 * 1024;
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
-// Many recipe sites turn away requests that don't look like a browser.
-const REQUEST_HEADERS = {
-  "User-Agent":
+const USER_AGENTS = {
+  // Many recipe sites turn away requests that don't look like a browser.
+  browser:
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36",
-  "Accept-Language": "en,hr;q=0.8",
+  // Sites built as JavaScript apps send browsers an empty shell, but serve a
+  // pre-rendered page with the recipe data to clients that say they are bots.
+  bot: "Mozilla/5.0 (compatible; RiTodoBot/1.0)",
 };
 
 /**
@@ -45,21 +47,15 @@ async function importRecipe(ctx: ActionCtx, recipeId: Id<"recipes">) {
     return;
   }
 
-  const page = await fetchWithLimit(recipeImport.sourceUrl, {
-    accept: "text/html,application/xhtml+xml",
-    maxBytes: MAX_PAGE_BYTES,
-  });
+  const { html, recipe } = await fetchRecipePage(recipeImport.sourceUrl);
 
-  if (!page) {
+  if (html === null) {
     await ctx.runMutation(internal.system.recipes.failImport, {
       recipeId,
       errorMessage: "The page could not be opened.",
     });
     return;
   }
-
-  const html = await page.blob.text();
-  const recipe = parseRecipeFromHtml(html, page.url);
 
   if (!recipe) {
     await ctx.runMutation(internal.system.recipes.failImport, {
@@ -75,6 +71,7 @@ async function importRecipe(ctx: ActionCtx, recipeId: Id<"recipes">) {
     ? await fetchWithLimit(imageUrl, {
         accept: "image/*",
         maxBytes: MAX_IMAGE_BYTES,
+        userAgent: USER_AGENTS.browser,
       })
     : null;
   const imageId = image?.blob.type.startsWith("image/")
@@ -88,18 +85,51 @@ async function importRecipe(ctx: ActionCtx, recipeId: Id<"recipes">) {
   });
 }
 
+// Tries the page as a browser, then as a bot. Returns the first parsed
+// recipe, or the first page that loaded (null when none did) for its title.
+async function fetchRecipePage(url: string) {
+  let firstHtml: string | null = null;
+
+  for (const userAgent of [USER_AGENTS.browser, USER_AGENTS.bot]) {
+    const page = await fetchWithLimit(url, {
+      accept: "text/html,application/xhtml+xml",
+      maxBytes: MAX_PAGE_BYTES,
+      userAgent,
+    });
+
+    if (!page) {
+      continue;
+    }
+
+    const html = await page.blob.text();
+    const recipe = parseRecipeFromHtml(html, page.url);
+
+    if (recipe) {
+      return { html, recipe };
+    }
+
+    firstHtml ??= html;
+  }
+
+  return { html: firstHtml, recipe: null };
+}
+
 // Returns the body with the URL after redirects, or null when the request
 // fails, times out, or the body is too large.
 async function fetchWithLimit(
   url: string,
-  options: { accept: string; maxBytes: number },
+  options: { accept: string; maxBytes: number; userAgent: string },
 ) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
     const response = await fetch(url, {
-      headers: { ...REQUEST_HEADERS, Accept: options.accept },
+      headers: {
+        "User-Agent": options.userAgent,
+        "Accept-Language": "en,hr;q=0.8",
+        Accept: options.accept,
+      },
       redirect: "follow",
       signal: controller.signal,
     });
