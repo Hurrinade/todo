@@ -18,3 +18,19 @@ export function formatRecipeServings(servings: string) {
     ? `${servings} ${servings === "1" ? "serving" : "servings"}`
     : servings;
 }
+
+const INGREDIENT_QUANTITY_PATTERN =
+  /^((?:\d+(?:[.,/]\d+)?|[½¼¾⅓⅔⅛])(?:\s*[½¼¾⅓⅔⅛])?(?:\s*[-–]\s*\d+(?:[.,/]\d+)?)?(?:\s*(?:kg|g|mg|ml|dl|cl|l|oz|lbs?|tsp|tbsp|cups?)\b\.?)?)\s+(\S.*)$/i;
+
+/**
+ * Splits a leading amount off an ingredient line so it can be emphasized:
+ * "200-230 ml mlijeka" -> { quantity: "200-230 ml", name: "mlijeka" }.
+ * Lines without a leading amount come back as the name only.
+ */
+export function splitIngredientQuantity(ingredient: string) {
+  const match = ingredient.match(INGREDIENT_QUANTITY_PATTERN);
+
+  return match
+    ? { quantity: match[1], name: match[2] }
+    : { quantity: null, name: ingredient };
+}

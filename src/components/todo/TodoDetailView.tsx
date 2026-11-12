@@ -1,10 +1,5 @@
 import { ArrowLeft, X } from "lucide-react";
 
-import {
-  RecipeContent,
-  RecipeHero,
-  RecipeSummary,
-} from "@/components/recipe/RecipeDetails";
 import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
@@ -19,7 +14,7 @@ export function TodoDetailView({
   onUpdateDescription,
   presentation,
 }: TodoDetailViewProps) {
-  const { todo, list, recipe } = detail;
+  const { todo, list } = detail;
   const isPanel = presentation === "panel";
 
   return (
@@ -94,29 +89,19 @@ export function TodoDetailView({
           </div>
         ) : null}
 
-        <section className="@container flex min-w-0 flex-1 flex-col gap-8 px-1 py-2 sm:px-2">
-          <div className="flex min-w-0 flex-col gap-4">
-            {recipe ? <RecipeHero recipe={recipe} /> : null}
-            <div className="flex min-w-0 flex-col gap-2">
-              <TodoDetailTitle
-                key={`${todo._id}-${JSON.stringify(todo.title)}`}
-                todo={todo}
-                onRenameTodo={onRenameTodo}
-              />
-              {recipe ? (
-                <RecipeSummary todoId={todo._id} recipe={recipe} />
-              ) : null}
-            </div>
-          </div>
-
-          {recipe ? <RecipeContent key={recipe._id} recipe={recipe} /> : null}
+        <section className="flex min-w-0 flex-1 flex-col gap-8 px-1 py-2 sm:px-2">
+          <TodoDetailTitle
+            key={`${todo._id}-${JSON.stringify(todo.title)}`}
+            todo={todo}
+            onRenameTodo={onRenameTodo}
+          />
 
           <div className="flex min-w-0 flex-col gap-2.5 border-t pt-5">
             <label
               htmlFor="todo-description"
               className="text-sm font-medium text-muted-foreground"
             >
-              {recipe ? "Notes" : "Note"}
+              Note
             </label>
             <TodoNoteEditor
               key={`${todo._id}-${JSON.stringify(todo.description ?? null)}`}

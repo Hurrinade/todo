@@ -4,6 +4,7 @@ import { useMutation } from "convex/react";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
+import { RecipeDetailView } from "@/components/recipe/RecipeDetailView";
 import { TodoDetailView } from "@/components/todo/TodoDetailView";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,7 @@ import type {
   TodoDetailPresentation,
   TodoDetailRouteContext,
   TodoDetailUnavailableProps,
+  TodoDetailViewProps,
 } from "@/types";
 import { OFFLINE_ACTION_MESSAGE, renameTodoOptimistically } from "@/utils";
 
@@ -40,43 +42,47 @@ export default function TodoDetail() {
     );
   }
 
-  return (
-    <TodoDetailView
-      detail={detail}
-      errorMessage={errorMessage}
-      onClose={onClose}
-      onRenameTodo={async (title) => {
-        setErrorMessage(null);
+  const viewProps = {
+    detail,
+    errorMessage,
+    onClose,
+    onRenameTodo: async (title) => {
+      setErrorMessage(null);
 
-        if (!isOnline) {
-          setErrorMessage(OFFLINE_ACTION_MESSAGE);
-          throw new Error(OFFLINE_ACTION_MESSAGE);
-        }
+      if (!isOnline) {
+        setErrorMessage(OFFLINE_ACTION_MESSAGE);
+        throw new Error(OFFLINE_ACTION_MESSAGE);
+      }
 
-        try {
-          await renameTodo({ todoId: detail.todo._id, title });
-        } catch (error) {
-          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
-          throw error;
-        }
-      }}
-      onUpdateDescription={async (description) => {
-        setErrorMessage(null);
+      try {
+        await renameTodo({ todoId: detail.todo._id, title });
+      } catch (error) {
+        setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
+        throw error;
+      }
+    },
+    onUpdateDescription: async (description) => {
+      setErrorMessage(null);
 
-        if (!isOnline) {
-          setErrorMessage(OFFLINE_ACTION_MESSAGE);
-          throw new Error(OFFLINE_ACTION_MESSAGE);
-        }
+      if (!isOnline) {
+        setErrorMessage(OFFLINE_ACTION_MESSAGE);
+        throw new Error(OFFLINE_ACTION_MESSAGE);
+      }
 
-        try {
-          await updateDescription({ todoId: detail.todo._id, description });
-        } catch (error) {
-          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
-          throw error;
-        }
-      }}
-      presentation={presentation}
-    />
+      try {
+        await updateDescription({ todoId: detail.todo._id, description });
+      } catch (error) {
+        setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
+        throw error;
+      }
+    },
+    presentation,
+  } satisfies TodoDetailViewProps;
+
+  return detail.recipe ? (
+    <RecipeDetailView {...viewProps} recipe={detail.recipe} />
+  ) : (
+    <TodoDetailView {...viewProps} />
   );
 }
 

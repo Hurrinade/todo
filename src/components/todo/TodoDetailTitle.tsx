@@ -7,7 +7,11 @@ import { useNetworkStore } from "@/stores";
 import type { TodoDetailTitleProps, TodoTitleContent } from "@/types";
 import { getTodoTitleText } from "@/utils";
 
-export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
+export function TodoDetailTitle({
+  todo,
+  onRenameTodo,
+  className,
+}: TodoDetailTitleProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -224,6 +228,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
         todo.isCompleted
           ? "text-muted-foreground line-through"
           : "text-foreground",
+        className,
       )}
     >
       <EditorContent editor={editor} />
