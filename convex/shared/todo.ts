@@ -9,6 +9,16 @@ const MAX_LIST_EMOJI_LENGTH = 16;
 export const MAX_TODOS_PER_BATCH = 50;
 export const DEFAULT_TODO_SECTION_TITLE = "Other";
 
+// Recipe lists hold saved recipes: their todos are never completed, and each
+// one has a row in the recipes table with the copied page content.
+export const todoListKindValidator = v.union(
+  v.literal("regular"),
+  v.literal("sectioned"),
+  v.literal("recipe"),
+);
+
+export type TodoListKind = Infer<typeof todoListKindValidator>;
+
 const todoTitleLinkAttributesValidator = v.object({
   href: v.string(),
   target: v.optional(v.union(v.literal("_blank"), v.null())),

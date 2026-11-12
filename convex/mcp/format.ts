@@ -24,7 +24,7 @@ export const todoListOutputSchema = z.object({
   id: z.string(),
   title: z.string(),
   emoji: z.string().nullable(),
-  kind: z.enum(["regular", "sectioned"]),
+  kind: z.enum(["regular", "sectioned", "recipe"]),
   open_todo_count: z.number(),
   completed_todo_count: z.number(),
   created_at: z.string(),

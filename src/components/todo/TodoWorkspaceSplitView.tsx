@@ -5,6 +5,9 @@ import {
 } from "@/components/ui/resizable";
 import type { TodoWorkspaceSplitViewProps } from "@/types";
 
+// The detail panel opens at its widest so recipes and notes have room.
+const DETAIL_PANEL_MAX_SIZE = "55%";
+
 // The panel group always renders, and only the detail panel comes and goes.
 // That keeps the list mounted (and its scroll position intact) when a todo
 // opens or closes.
@@ -30,9 +33,9 @@ export function TodoWorkspaceSplitView({
 
             <ResizablePanel
               id="todo-detail"
-              defaultSize="40%"
+              defaultSize={DETAIL_PANEL_MAX_SIZE}
               minSize="16rem"
-              maxSize="55%"
+              maxSize={DETAIL_PANEL_MAX_SIZE}
               className="min-w-0"
             >
               <div className="h-full min-w-0 overflow-hidden bg-background">

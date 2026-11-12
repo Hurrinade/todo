@@ -1,7 +1,9 @@
 import { defineSchema, defineTable } from "convex/server";
 import { v } from "convex/values";
 
+import { recipeContentFields, recipeStatusValidator } from "./shared/recipe";
 import {
+  todoListKindValidator,
   todoNoteContentValidator,
   todoTitleContentValidator,
 } from "./shared/todo";
@@ -33,7 +35,7 @@ export default defineSchema({
   todoLists: defineTable({
     title: v.string(),
     emoji: v.optional(v.string()),
-    kind: v.union(v.literal("regular"), v.literal("sectioned")),
+    kind: todoListKindValidator,
     userId: v.string(),
     order: v.optional(v.number()),
     openTodoCount: v.number(),
@@ -90,4 +92,19 @@ export default defineSchema({
     ])
     // Finds expired completed todos across all lists for the retention cron.
     .index("by_completed_and_completed_at", ["isCompleted", "completedAt"]),
+  // The saved copy of a recipe list todo. The todo title is the recipe name
+  // and its description holds the family's own notes.
+  recipes: defineTable({
+    listId: v.id("todoLists"),
+    todoId: v.id("todos"),
+    sourceUrl: v.string(),
+    status: recipeStatusValidator,
+    errorMessage: v.optional(v.string()),
+    imageId: v.optional(v.id("_storage")),
+    ...recipeContentFields,
+    importedAt: v.optional(v.number()),
+    updatedAt: v.number(),
+  })
+    .index("by_todo_id", ["todoId"])
+    .index("by_list_id", ["listId"]),
 });

@@ -1,3 +1,4 @@
+import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
 import { Plus } from "lucide-react";
 import { useRef } from "react";
 
@@ -14,7 +15,24 @@ type TodoComposerProps = {
   /** Returns whether the todo was submitted. */
   onCreateTodo: (event: React.SubmitEvent) => boolean;
   onSubmitted?: () => void;
+  /** Recipe lists take a link here instead of a todo title. */
+  variant?: "todo" | "recipe";
 };
+
+const COMPOSER_VARIANTS = {
+  todo: {
+    placeholder: "Add the next thing",
+    inputLabel: "New todo title",
+    submitLabel: "Add todo",
+    maxLength: MAX_TODO_TITLE_LENGTH,
+  },
+  recipe: {
+    placeholder: "Paste a recipe link",
+    inputLabel: "Recipe link",
+    submitLabel: "Save recipe",
+    maxLength: MAX_RECIPE_URL_LENGTH,
+  },
+} as const;
 
 export function TodoComposer({
   title,
@@ -23,12 +41,16 @@ export function TodoComposer({
   onTitleChange,
   onCreateTodo,
   onSubmitted,
+  variant = "todo",
 }: TodoComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const { placeholder, inputLabel, submitLabel, maxLength } =
+    COMPOSER_VARIANTS[variant];
   const titleLength = title.trim().length;
-  const isTitleTooLong = titleLength > MAX_TODO_TITLE_LENGTH;
+  const isTitleTooLong = titleLength > maxLength;
+  const showsCount = variant === "todo" && titleLength >= 200;
   const feedback = isTitleTooLong
-    ? `Title is too long (${titleLength}/${MAX_TODO_TITLE_LENGTH}).`
+    ? `${variant === "todo" ? "Title" : "Link"} is too long (${titleLength}/${maxLength}).`
     : createError;
 
   return (
@@ -46,18 +68,17 @@ export function TodoComposer({
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
-          aria-label="New todo title"
+          aria-label={inputLabel}
           aria-invalid={isTitleTooLong}
           aria-describedby={
-            feedback || titleLength >= 200
-              ? "new-todo-title-feedback"
-              : undefined
+            feedback || showsCount ? "new-todo-title-feedback" : undefined
           }
           value={title}
           onChange={(event) => {
             onTitleChange(event.target.value);
           }}
-          placeholder="Add the next thing"
+          inputMode={variant === "recipe" ? "url" : undefined}
+          placeholder={placeholder}
           className="h-11 min-w-0 flex-1 py-2 pointer-fine:h-8"
         />
         <Button
@@ -65,12 +86,14 @@ export function TodoComposer({
           size="icon-mobile"
           disabled={!isOnline || !title.trim() || isTitleTooLong}
           className="rounded-full bg-card text-muted-foreground"
-          aria-label={isOnline ? "Add todo" : "Reconnect to add todo"}
+          aria-label={
+            isOnline ? submitLabel : `Reconnect to ${submitLabel.toLowerCase()}`
+          }
         >
           <Plus />
         </Button>
       </div>
-      {(feedback || titleLength >= 200) && (
+      {(feedback || showsCount) && (
         <p
           id="new-todo-title-feedback"
           role={feedback ? "alert" : undefined}
@@ -79,7 +102,7 @@ export function TodoComposer({
             feedback ? "text-destructive" : "text-muted-foreground",
           )}
         >
-          {feedback ?? `${titleLength}/${MAX_TODO_TITLE_LENGTH}`}
+          {feedback ?? `${titleLength}/${maxLength}`}
         </p>
       )}
     </form>

@@ -81,7 +81,7 @@ maintain them for web and MCP writes.
 
 ## List scaling
 
-Both list kinds subscribe to all open todos in ordered form so drag-and-drop
+Regular and sectioned lists subscribe to all open todos in ordered form so drag-and-drop
 has the complete order. Completed todos load newest-first in cursor pages of 40. Regular lists load them once the Completed section is opened and virtualize
 the combined list, with eight rows of overscan. Sectioned lists show the first
 page under each todo's section and load more on request.
@@ -93,6 +93,18 @@ index. Convex normally updates only the moved todo by assigning a sparse
 numeric rank between its neighbours. If adjacent ranks run out of
 floating-point space, the bucket is rebalanced to multiples of 1024 in the same
 transaction, changing only `order` on the other todos.
+
+## Recipe lists
+
+Recipe lists save a copy of a recipe page, so it stays readable if the site
+changes or goes away. Pasting a link creates a todo right away and schedules
+`convex/system/recipeImport.ts`, which downloads the page, reads the
+schema.org `Recipe` JSON-LD most recipe sites embed, and copies the main image
+into Convex file storage. The content lives in the `recipes` table, linked to
+its todo; the todo title is the recipe name and its note holds family notes.
+Pages without that data, or sites that block server requests, keep the link
+and can be retried. Recipe todos cannot be completed, so the two-week cleanup
+of completed todos never touches them.
 
 ## RiTodo MCP Server
 
