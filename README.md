@@ -106,6 +106,13 @@ Pages without that data, or sites that block server requests, keep the link
 and can be retried. Recipe todos cannot be completed, so the two-week cleanup
 of completed todos never touches them.
 
+Typing a name instead of a link starts a recipe without a source, written in
+the app's editor; the editor also fixes imported copies. A link already in the
+list is rejected. On Android the installed app appears in the share menu
+(`share_target` in `vite.config.ts`), which opens `/share` to pick a recipe
+list. The recipe page can keep the screen on (Wake Lock API), scale ingredient
+amounts to a different number of servings, and mark the current step.
+
 ## RiTodo MCP Server
 
 The Convex deployment exposes a stateless Streamable HTTP MCP server at

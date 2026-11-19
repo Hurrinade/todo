@@ -97,7 +97,8 @@ export default defineSchema({
   recipes: defineTable({
     listId: v.id("todoLists"),
     todoId: v.id("todos"),
-    sourceUrl: v.string(),
+    // Missing for recipes typed by hand.
+    sourceUrl: v.optional(v.string()),
     status: recipeStatusValidator,
     errorMessage: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
@@ -106,5 +107,6 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_todo_id", ["todoId"])
-    .index("by_list_id", ["listId"]),
+    .index("by_list_id", ["listId"])
+    .index("by_list_id_and_source_url", ["listId", "sourceUrl"]),
 });

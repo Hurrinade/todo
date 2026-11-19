@@ -80,7 +80,11 @@ export default function TodoDetail() {
   } satisfies TodoDetailViewProps;
 
   return detail.recipe ? (
-    <RecipeDetailView {...viewProps} recipe={detail.recipe} />
+    <RecipeDetailView
+      key={detail.todo._id}
+      {...viewProps}
+      recipe={detail.recipe}
+    />
   ) : (
     <TodoDetailView {...viewProps} />
   );

@@ -8,6 +8,8 @@ export const MAX_RECIPE_URL_LENGTH = 2048;
 const MAX_RECIPE_NAME_LENGTH = 240;
 const MAX_RECIPE_LINES = 200;
 const MAX_RECIPE_LINE_LENGTH = 2000;
+const MAX_RECIPE_SERVINGS_LENGTH = 100;
+const MAX_RECIPE_MINUTES = 7 * 24 * 60;
 
 export const recipeStatusValidator = v.union(
   v.literal("importing"),
@@ -25,10 +27,96 @@ export const recipeContentFields = {
 
 const recipeContentValidator = v.object(recipeContentFields);
 
-export type ParsedRecipe = Infer<typeof recipeContentValidator> & {
+export type RecipeContent = Infer<typeof recipeContentValidator>;
+
+export type ParsedRecipe = RecipeContent & {
   name: string;
   imageUrl?: string;
 };
+
+/**
+ * Tells a pasted link from a recipe name typed by hand. A link imports a copy
+ * of the page; a name starts an empty recipe the family fills in.
+ */
+export function parseRecipeInput(
+  input: string,
+): { kind: "link"; sourceUrl: string } | { kind: "manual"; name: string } {
+  const trimmed = input.trim();
+  const looksLikeLink =
+    /^https?:\/\//i.test(trimmed) ||
+    /^[^\s/]+\.[a-z]{2,}(?:[/?#:]\S*)?$/i.test(trimmed);
+
+  if (looksLikeLink) {
+    return { kind: "link", sourceUrl: normalizeRecipeUrl(trimmed) };
+  }
+
+  if (!trimmed) {
+    throw appError("invalid_input", "Paste a link or type a recipe name.");
+  }
+
+  if (trimmed.length > MAX_RECIPE_NAME_LENGTH) {
+    throw appError(
+      "invalid_input",
+      `Recipe names can be up to ${MAX_RECIPE_NAME_LENGTH} characters.`,
+    );
+  }
+
+  return { kind: "manual", name: trimmed };
+}
+
+/**
+ * Checks recipe content typed in the app. Trims lines and drops blank ones,
+ * and rejects anything over the limits an imported copy is held to.
+ */
+export function cleanRecipeContent(content: RecipeContent): RecipeContent {
+  const ingredients = cleanTypedLines(content.ingredients);
+  const steps = cleanTypedLines(content.steps);
+  const servings = content.servings?.trim() || undefined;
+  const { totalMinutes } = content;
+
+  if (servings && servings.length > MAX_RECIPE_SERVINGS_LENGTH) {
+    throw appError(
+      "invalid_input",
+      `Servings can be up to ${MAX_RECIPE_SERVINGS_LENGTH} characters.`,
+    );
+  }
+
+  if (
+    totalMinutes !== undefined &&
+    (!Number.isInteger(totalMinutes) ||
+      totalMinutes < 0 ||
+      totalMinutes > MAX_RECIPE_MINUTES)
+  ) {
+    throw appError("invalid_input", "Enter the total time in whole minutes.");
+  }
+
+  return {
+    totalMinutes: totalMinutes || undefined,
+    servings,
+    ingredients,
+    steps,
+  };
+}
+
+function cleanTypedLines(lines: string[]) {
+  const cleaned = lines.map((line) => line.trim()).filter(Boolean);
+
+  if (cleaned.length > MAX_RECIPE_LINES) {
+    throw appError(
+      "invalid_input",
+      `A recipe can have up to ${MAX_RECIPE_LINES} ingredients and ${MAX_RECIPE_LINES} steps.`,
+    );
+  }
+
+  if (cleaned.some((line) => line.length > MAX_RECIPE_LINE_LENGTH)) {
+    throw appError(
+      "invalid_input",
+      `Each line can be up to ${MAX_RECIPE_LINE_LENGTH} characters.`,
+    );
+  }
+
+  return cleaned;
+}
 
 // Accepts a pasted link and returns it as an absolute HTTP(S) URL.
 export function normalizeRecipeUrl(input: string) {

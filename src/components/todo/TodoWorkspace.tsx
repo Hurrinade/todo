@@ -4,6 +4,7 @@ import { getAppErrorMessage } from "@convex/shared/errors";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 
 import { RecipeList } from "@/components/recipe/RecipeList";
 import { TodoComposer } from "@/components/todo/TodoComposer";
@@ -69,6 +70,7 @@ export function TodoWorkspace({
     moveTodoOptimistically,
   );
   const createRecipe = useMutation(api.mutations.recipes.create);
+  const navigate = useNavigate();
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
@@ -141,8 +143,16 @@ export function TodoWorkspace({
     const submittedEditVersion = titleEditVersion.current;
     setNewTodoTitle("");
 
+    const listId = activeList._id;
     const request = isRecipeList
-      ? createRecipe({ listId: activeList._id, url: submittedTitle })
+      ? createRecipe({ listId, text: submittedTitle }).then((result) => {
+          // A recipe typed by hand opens so it can be written in.
+          if (result.kind === "manual") {
+            void navigate(`/home/todos/${result.todoId}`, {
+              state: { selectedListId: listId },
+            });
+          }
+        })
       : createTodo({
           listId: activeList._id,
           title: createTodoTitleContent(submittedTitle),

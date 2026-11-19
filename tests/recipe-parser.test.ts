@@ -5,6 +5,7 @@ import {
   normalizeRecipeUrl,
   parsePageTitle,
   parseRecipeFromHtml,
+  parseRecipeInput,
 } from "../convex/shared/recipe";
 
 const PAGE_URL = "https://www.example.com/recipes/risotto";
@@ -115,4 +116,18 @@ test("getRecipeLinkLabel shows a readable link without protocol", () => {
     "example.com/sarma-čorba",
   );
   expect(getRecipeLinkLabel("https://example.com/")).toBe("example.com");
+});
+
+test("parseRecipeInput tells links from recipe names", () => {
+  expect(parseRecipeInput("coolinarika.com/recept/sarma")).toEqual({
+    kind: "link",
+    sourceUrl: "https://coolinarika.com/recept/sarma",
+  });
+  expect(parseRecipeInput(" http://example.com ").kind).toBe("link");
+  expect(parseRecipeInput("Bakina sarma")).toEqual({
+    kind: "manual",
+    name: "Bakina sarma",
+  });
+  expect(parseRecipeInput("Šnenokle").kind).toBe("manual");
+  expect(parseRecipeInput("Torta 2.5 kg").kind).toBe("manual");
 });

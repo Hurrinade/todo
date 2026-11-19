@@ -21,7 +21,7 @@ export const getImport = internalQuery({
   handler: async (ctx, args) => {
     const recipe = await ctx.db.get(args.recipeId);
 
-    return recipe?.status === "importing"
+    return recipe?.status === "importing" && recipe.sourceUrl
       ? { sourceUrl: recipe.sourceUrl }
       : null;
   },
@@ -88,6 +88,10 @@ export const failImport = internalMutation({
       errorMessage: args.errorMessage,
       updatedAt: now,
     });
+
+    if (!recipe.sourceUrl) {
+      return;
+    }
 
     // Only replace the placeholder link, never a name the family chose.
     // Recipes saved before the link placeholder used the host name.

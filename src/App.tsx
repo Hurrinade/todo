@@ -10,6 +10,9 @@ const Home = lazy(() => import("@/pages/authenticated/home/Home"));
 const TodoDetail = lazy(
   () => import("@/pages/authenticated/home/todos/TodoDetail"),
 );
+const ShareRecipe = lazy(
+  () => import("@/pages/authenticated/share/ShareRecipe"),
+);
 const Invite = lazy(() => import("@/pages/unauthenticated/invite/Invite"));
 
 function ProtectedRoutes() {
@@ -40,6 +43,7 @@ function App() {
               <Route path="/home" element={<Home />}>
                 <Route path="todos/:todoId" element={<TodoDetail />} />
               </Route>
+              <Route path="/share" element={<ShareRecipe />} />
             </Route>
           </Routes>
         </Suspense>

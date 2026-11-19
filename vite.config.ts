@@ -55,6 +55,12 @@ export default defineConfig({
         background_color: "#f6f1e8",
         display: "standalone",
         start_url: "/",
+        // Android lists RiTodo in the share menu; pages land on /share.
+        share_target: {
+          action: "/share",
+          method: "GET",
+          params: { title: "title", text: "text", url: "url" },
+        },
         categories: ["productivity"],
         icons: [
           {
