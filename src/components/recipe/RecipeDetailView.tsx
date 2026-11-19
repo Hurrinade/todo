@@ -69,6 +69,11 @@ export function RecipeDetailView({
         setIsEditing(true);
       }
     : undefined;
+  const handleCancelEdit = isEditing
+    ? () => {
+        setIsEditing(false);
+      }
+    : undefined;
   const title = (
     <TodoDetailTitle
       key={`${todo._id}-${JSON.stringify(todo.title)}`}
@@ -97,6 +102,7 @@ export function RecipeDetailView({
             onImage
             onClose={onClose}
             onEdit={handleEdit}
+            onCancelEdit={handleCancelEdit}
             presentation={presentation}
           />
           <div className="absolute inset-x-0 bottom-0 flex flex-col gap-1 px-5 pb-12 @2xl:px-8">
@@ -116,6 +122,7 @@ export function RecipeDetailView({
           onImage={false}
           onClose={onClose}
           onEdit={handleEdit}
+          onCancelEdit={handleCancelEdit}
           presentation={presentation}
         />
       )}
@@ -211,15 +218,22 @@ export function RecipeDetailView({
 type RecipeHeaderProps = Pick<
   RecipeDetailViewProps,
   "detail" | "onClose" | "presentation"
-> & { onImage: boolean; onEdit: (() => void) | undefined };
+> & {
+  onImage: boolean;
+  onEdit: (() => void) | undefined;
+  /** Set while editing: the header then only offers to cancel the edit. */
+  onCancelEdit: (() => void) | undefined;
+};
 
-// Back (page) or list name and close (panel), plus edit and delete. On a
-// photo the buttons get a dark backdrop so they stay readable.
+// Back (page) or list name and close (panel), plus edit and delete. While
+// editing, a single X cancels the edit and leaves the recipe open. On a photo
+// the buttons get a dark backdrop so they stay readable.
 function RecipeHeader({
   detail,
   onImage,
   onClose,
   onEdit,
+  onCancelEdit,
   presentation,
 }: RecipeHeaderProps) {
   const { openModal } = useModal();
@@ -248,13 +262,30 @@ function RecipeHeader({
     });
   };
 
+  const headerClassName = cn(
+    "flex min-w-0 items-center justify-between gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 @2xl:px-5",
+    onImage && "absolute inset-x-0 top-0",
+  );
+
+  if (onCancelEdit) {
+    return (
+      <header className={cn(headerClassName, "justify-end")}>
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon-mobile-sm"
+          onClick={onCancelEdit}
+          aria-label="Cancel editing"
+          className={iconButtonClassName}
+        >
+          <X className="size-5" />
+        </Button>
+      </header>
+    );
+  }
+
   return (
-    <header
-      className={cn(
-        "flex min-w-0 items-center justify-between gap-2 px-3 pt-[calc(0.75rem+env(safe-area-inset-top))] pb-3 @2xl:px-5",
-        onImage && "absolute inset-x-0 top-0",
-      )}
-    >
+    <header className={headerClassName}>
       {isPanel ? (
         <div
           className={cn(
@@ -423,17 +454,18 @@ function RecipeStatus({
 // Time, servings and size at a glance, with the keep-screen-on switch for
 // cooking from the phone.
 function RecipeOverview({ recipe }: { recipe: TodoRecipe }) {
-  const isServingCount = recipe.servings && /^\d+$/.test(recipe.servings);
+  const servingCount = getServingCount(recipe.servings);
   const stats = [
     recipe.totalMinutes
       ? { label: "Total time", value: formatRecipeMinutes(recipe.totalMinutes) }
       : null,
-    recipe.servings
-      ? {
-          label: isServingCount ? "Servings" : "Yield",
-          value: recipe.servings,
-        }
-      : null,
+    // A yield with a number shows just the number, so the label stays in
+    // the app's language; one without, like "1 loaf", keeps the site's text.
+    servingCount
+      ? { label: "Servings", value: String(servingCount) }
+      : recipe.servings
+        ? { label: "Yield", value: recipe.servings }
+        : null,
     recipe.ingredients.length > 0
       ? { label: "Ingredients", value: String(recipe.ingredients.length) }
       : null,
@@ -545,11 +577,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
                 factor !== 1 && "text-primary",
               )}
             >
-              {recipe.servings && baseCount
-                ? formatRecipeServings(
-                    scaleIngredientQuantity(recipe.servings, factor),
-                  )
-                : `${count}× recipe`}
+              {baseCount ? formatRecipeServings(count) : `${count}× recipe`}
             </span>
             <Button
               type="button"

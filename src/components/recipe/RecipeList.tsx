@@ -12,6 +12,7 @@ import type { RecipeListItem, TodoListSummary } from "@/types";
 import {
   formatRecipeMinutes,
   formatRecipeServings,
+  getServingCount,
   getTodoTitleText,
   normalizeRecipeSearch,
 } from "@/utils";
@@ -149,6 +150,14 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
   );
 }
 
+// Yields with a number read in the app's words ("4 osobe" -> "4 servings");
+// ones without, like "1 loaf", keep the site's text.
+function getServings(servings: string | undefined) {
+  const count = getServingCount(servings);
+
+  return count ? formatRecipeServings(count) : servings;
+}
+
 function getRecipeCardDetails(recipe: NonNullable<RecipeListItem["recipe"]>) {
   if (recipe.status === "importing") {
     return "Just added";
@@ -160,7 +169,7 @@ function getRecipeCardDetails(recipe: NonNullable<RecipeListItem["recipe"]>) {
 
   const facts = [
     recipe.totalMinutes && formatRecipeMinutes(recipe.totalMinutes),
-    recipe.servings && formatRecipeServings(recipe.servings),
+    getServings(recipe.servings),
   ].filter(Boolean);
 
   if (facts.length > 0) {

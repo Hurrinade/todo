@@ -12,11 +12,12 @@ export function formatRecipeMinutes(minutes: number) {
   return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
 }
 
-/** Sites send "4" or "Serves 4"; a bare number gets a unit. */
-export function formatRecipeServings(servings: string) {
-  return /^\d+$/.test(servings)
-    ? `${servings} ${servings === "1" ? "serving" : "servings"}`
-    : servings;
+/**
+ * Servings in the app's own words, whatever language the site used:
+ * 4 -> "4 servings". Pair with getServingCount for a saved yield.
+ */
+export function formatRecipeServings(count: number) {
+  return `${count} ${count === 1 ? "serving" : "servings"}`;
 }
 
 const INGREDIENT_QUANTITY_PATTERN =
