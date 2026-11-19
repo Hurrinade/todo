@@ -11,6 +11,9 @@ import { useNetworkStore } from "@/stores";
 import type { RecipeDetailViewProps, TodoRecipe } from "@/types";
 import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
+// Lets the Save button in the recipe header submit this form.
+export const RECIPE_EDITOR_FORM_ID = "recipe-editor";
+
 type RecipeEditorProps = {
   todoId: RecipeDetailViewProps["detail"]["todo"]["_id"];
   recipe: TodoRecipe;
@@ -35,6 +38,10 @@ export function RecipeEditor({ todoId, recipe, onDone }: RecipeEditorProps) {
 
   const handleSubmit = async (event: React.SubmitEvent) => {
     event.preventDefault();
+
+    if (isSaving) {
+      return;
+    }
 
     if (!isOnline) {
       setError(OFFLINE_ACTION_MESSAGE);
@@ -61,6 +68,7 @@ export function RecipeEditor({ todoId, recipe, onDone }: RecipeEditorProps) {
 
   return (
     <form
+      id={RECIPE_EDITOR_FORM_ID}
       className="flex min-w-0 flex-col gap-6"
       onSubmit={(event) => {
         void handleSubmit(event);

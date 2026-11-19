@@ -9,13 +9,17 @@ import {
   Minus,
   Pencil,
   Plus,
+  Save,
   Sun,
   Trash2,
   X,
 } from "lucide-react";
 import { useState } from "react";
 
-import { RecipeEditor } from "@/components/recipe/RecipeEditor";
+import {
+  RECIPE_EDITOR_FORM_ID,
+  RecipeEditor,
+} from "@/components/recipe/RecipeEditor";
 import { RECIPE_SECTION_HEADING } from "@/components/recipe/recipe-styles";
 import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
@@ -221,12 +225,12 @@ type RecipeHeaderProps = Pick<
 > & {
   onImage: boolean;
   onEdit: (() => void) | undefined;
-  /** Set while editing: the header then only offers to cancel the edit. */
+  /** Set while editing: the header then only offers save and cancel. */
   onCancelEdit: (() => void) | undefined;
 };
 
 // Back (page) or list name and close (panel), plus edit and delete. While
-// editing, a single X cancels the edit and leaves the recipe open. On a photo
+// editing, Save submits the editor and X cancels; both keep the recipe open. On a photo
 // the buttons get a dark backdrop so they stay readable.
 function RecipeHeader({
   detail,
@@ -270,6 +274,17 @@ function RecipeHeader({
   if (onCancelEdit) {
     return (
       <header className={cn(headerClassName, "justify-end")}>
+        <Button
+          type="submit"
+          form={RECIPE_EDITOR_FORM_ID}
+          variant="ghost"
+          size="icon-mobile-sm"
+          disabled={!isOnline}
+          aria-label="Save recipe"
+          className={iconButtonClassName}
+        >
+          <Save className="size-4.5" />
+        </Button>
         <Button
           type="button"
           variant="ghost"
