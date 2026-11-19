@@ -80,7 +80,11 @@ export const reorder = mutation({
       .collect();
 
     if (sections.length !== args.sectionIds.length) {
-      throw appError("conflict", "Section order is out of date.");
+      throw appError(
+        "conflict",
+        "Section order is out of date.",
+        "sectionOrderStale",
+      );
     }
 
     const sectionIds = new Set(sections.map((section) => section._id));

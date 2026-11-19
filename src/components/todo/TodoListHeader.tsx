@@ -10,6 +10,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { useT } from "@/hooks";
 import type { TodoListSummary } from "@/types";
 import { useState } from "react";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
@@ -22,6 +23,7 @@ type TodoListHeaderProps = {
 export function TodoListHeader({ list }: TodoListHeaderProps) {
   const { openModal } = useModal();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
 
   const uncheckCompletedTodos = useMutation(
     api.mutations.todos.uncheckCompleted,
@@ -41,13 +43,14 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
       return;
     }
 
-    const completedLabel = list.completedTodoCount === 1 ? "todo" : "todos";
-
     openModal("confirm", {
-      title: "Clear completed todos",
-      message: `Delete ${list.completedTodoCount} completed ${completedLabel} from "${list.title}"?`,
-      confirmText: "Delete completed",
-      cancelText: "Keep todos",
+      title: t.lists.clearCompleted,
+      message: t.lists.clearCompletedMessage(
+        list.completedTodoCount,
+        list.title,
+      ),
+      confirmText: t.lists.clearCompletedConfirm,
+      cancelText: t.lists.clearCompletedCancel,
       variant: "danger",
       onConfirm: async () => {
         setIsLoading(true);
@@ -70,13 +73,14 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
       return;
     }
 
-    const completedLabel = list.completedTodoCount === 1 ? "todo" : "todos";
-
     openModal("confirm", {
-      title: "Uncheck completed todos",
-      message: `Mark ${list.completedTodoCount} completed ${completedLabel} in "${list.title}" as unchecked?`,
-      confirmText: "Uncheck completed",
-      cancelText: "Keep checked",
+      title: t.lists.uncheckCompleted,
+      message: t.lists.uncheckCompletedMessage(
+        list.completedTodoCount,
+        list.title,
+      ),
+      confirmText: t.lists.uncheckCompletedConfirm,
+      cancelText: t.lists.uncheckCompletedCancel,
       variant: "secondary",
       onConfirm: async () => {
         setIsLoading(true);
@@ -105,59 +109,67 @@ export function TodoListHeader({ list }: TodoListHeaderProps) {
 
             <div className="flex shrink-0 items-center gap-2">
               <TodoListInviteActions list={list} />
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-mobile-lg"
-                    disabled={
-                      !isOnline || list.completedTodoCount === 0 || isLoading
-                    }
-                    onClick={handleUncheckCompleted}
-                    className="bg-card"
-                    aria-label={
-                      isLoading
-                        ? "Unchecking completed todos"
-                        : "Uncheck completed todos"
-                    }
-                  >
-                    <RotateCcw className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {isLoading
-                    ? "Unchecking completed todos"
-                    : "Uncheck completed todos"}
-                </TooltipContent>
-              </Tooltip>
+              {list.kind === "recipe" ? null : (
+                <>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-mobile-lg"
+                        disabled={
+                          !isOnline ||
+                          list.completedTodoCount === 0 ||
+                          isLoading
+                        }
+                        onClick={handleUncheckCompleted}
+                        className="bg-card"
+                        aria-label={
+                          isLoading
+                            ? t.lists.uncheckingCompleted
+                            : t.lists.uncheckCompleted
+                        }
+                      >
+                        <RotateCcw className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isLoading
+                        ? t.lists.uncheckingCompleted
+                        : t.lists.uncheckCompleted}
+                    </TooltipContent>
+                  </Tooltip>
 
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon-mobile-lg"
-                    disabled={
-                      !isOnline || list.completedTodoCount === 0 || isLoading
-                    }
-                    onClick={handleClearCompleted}
-                    aria-label={
-                      isLoading
-                        ? "Clearing completed todos"
-                        : "Clear completed todos"
-                    }
-                    className="text-destructive hover:text-destructive bg-card"
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent sideOffset={8}>
-                  {isLoading
-                    ? "Clearing completed todos"
-                    : "Clear completed todos"}
-                </TooltipContent>
-              </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="icon-mobile-lg"
+                        disabled={
+                          !isOnline ||
+                          list.completedTodoCount === 0 ||
+                          isLoading
+                        }
+                        onClick={handleClearCompleted}
+                        aria-label={
+                          isLoading
+                            ? t.lists.clearingCompleted
+                            : t.lists.clearCompleted
+                        }
+                        className="text-destructive hover:text-destructive bg-card"
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent sideOffset={8}>
+                      {isLoading
+                        ? t.lists.clearingCompleted
+                        : t.lists.clearCompleted}
+                    </TooltipContent>
+                  </Tooltip>
+                </>
+              )}
             </div>
           </div>
         </div>

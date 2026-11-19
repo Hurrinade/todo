@@ -4,17 +4,13 @@ import { ArrowRight, LogIn, UserPlus } from "lucide-react";
 import { Navigate } from "react-router";
 import { Button } from "@/components/ui/button";
 import { legalConfig } from "@/config/legal";
+import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
-
-const landingHighlights = [
-  "Organize boards with focused task lists.",
-  "Capture todo notes without leaving the workspace.",
-  "Share lists through simple invite links.",
-];
 
 export default function Root() {
   const { isAuthenticated, isLoading } = useConvexAuth();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
 
   if (isLoading) {
     return null;
@@ -35,7 +31,7 @@ export default function Root() {
                 className="-mr-2 inline-flex min-h-11 items-center px-2 text-muted-foreground transition-colors pointer-fine:min-h-6 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!isOnline}
               >
-                Sign in
+                {t.auth.signIn}
               </button>
             </AuthDialog>
           </Unauthenticated>
@@ -43,14 +39,15 @@ export default function Root() {
 
         <section className="flex flex-col gap-8 pt-8 sm:pt-14">
           <div className="max-w-2xl space-y-5">
-            <p className="text-sm font-medium text-primary">Personal lists</p>
+            <p className="text-sm font-medium text-primary">
+              {t.landing.eyebrow}
+            </p>
             <div className="space-y-4">
               <h1 className="max-w-xl text-3xl leading-tight font-semibold text-balance sm:text-4xl">
-                A quiet workspace for the things you need to finish.
+                {t.landing.title}
               </h1>
               <p className="max-w-xl text-base leading-7 text-muted-foreground">
-                RiTodo keeps boards, todos, notes, and shared lists in one clean
-                place so everyday planning stays direct and readable.
+                {t.landing.description}
               </p>
             </div>
 
@@ -60,7 +57,7 @@ export default function Root() {
                   <AuthDialog initialMode="sign-up">
                     <Button size="mobile-lg" disabled={!isOnline}>
                       <UserPlus />
-                      Create account
+                      {t.auth.createAccount}
                       <ArrowRight data-icon="inline-end" />
                     </Button>
                   </AuthDialog>
@@ -71,7 +68,7 @@ export default function Root() {
                       disabled={!isOnline}
                     >
                       <LogIn />
-                      Sign in
+                      {t.auth.signIn}
                     </Button>
                   </AuthDialog>
                 </>
@@ -82,14 +79,14 @@ export default function Root() {
           <div className="overflow-hidden rounded-md border border-border/70 bg-card/35">
             <img
               src="/ritodo.webp"
-              alt="RiTodo workspace showing todo boards and a grocery list"
+              alt={t.landing.imageAlt}
               className="block h-auto w-full"
             />
           </div>
         </section>
 
         <section className="grid gap-5 border-t border-border/70 pt-8 text-sm text-muted-foreground sm:grid-cols-3">
-          {landingHighlights.map((highlight) => (
+          {t.landing.highlights.map((highlight) => (
             <p key={highlight} className="leading-6">
               {highlight}
             </p>
@@ -98,7 +95,7 @@ export default function Root() {
 
         <footer className="border-t border-border/70 pt-6 text-sm text-muted-foreground">
           <p>
-            {legalConfig.appName} &mdash; built by{" "}
+            {legalConfig.appName} &mdash; {t.landing.builtBy}{" "}
             <a
               className="transition-colors hover:text-foreground"
               href={legalConfig.companyWebsite}

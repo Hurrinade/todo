@@ -1,37 +1,36 @@
 import { Monitor, Moon, Sun } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useTheme } from "@/hooks";
+import { useT, useTheme } from "@/hooks";
 import type { ThemeOption } from "@/types";
 
 const themeOptions: ThemeOption[] = [
   {
     value: "system",
-    label: "Use system theme",
     icon: Monitor,
   },
   {
     value: "light",
-    label: "Use light theme",
     icon: Sun,
   },
   {
     value: "dark",
-    label: "Use dark theme",
     icon: Moon,
   },
 ];
 
 export default function ThemeToggle() {
   const { preference, setThemePreference } = useTheme();
+  const t = useT();
 
   return (
     <div
-      aria-label="Theme selection"
+      aria-label={t.theme.selection}
       className="flex min-w-0 flex-1 rounded-lg border border-border bg-card/95 text-card-foreground shadow-sm"
       role="group"
     >
-      {themeOptions.map(({ value, label, icon: Icon }) => {
+      {themeOptions.map(({ value, icon: Icon }) => {
         const isSelected = preference === value;
+        const label = t.theme.modes[value];
 
         return (
           <Button

@@ -5,6 +5,7 @@ import type {
   TodoItem,
   TodoListSummary,
   TodoNoteContent,
+  TodoRecipe,
   TodoTitleContent,
 } from "@/types/todo/todo.types";
 
@@ -19,6 +20,8 @@ export type TodoDetailRouteContext = {
 export type TodoDetailTitleProps = {
   todo: TodoItem;
   onRenameTodo: (title: TodoTitleContent) => Promise<void>;
+  /** Overrides the title color and size, e.g. white on a recipe photo. */
+  className?: string;
 };
 
 export type TodoDetailViewProps = {
@@ -28,6 +31,10 @@ export type TodoDetailViewProps = {
   onRenameTodo: (title: TodoTitleContent) => Promise<void>;
   onUpdateDescription: (description?: TodoNoteContent) => Promise<void>;
   presentation: TodoDetailPresentation;
+};
+
+export type RecipeDetailViewProps = TodoDetailViewProps & {
+  recipe: TodoRecipe;
 };
 
 export type TodoNoteEditorProps = {

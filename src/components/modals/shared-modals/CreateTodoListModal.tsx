@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import type { CreateTodoListModalPayload, TodoListKind } from "@/types";
+import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 
 type CreateTodoListModalProps = {
@@ -33,6 +34,7 @@ export default function CreateTodoListModal({
   payload,
 }: CreateTodoListModalProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [title, setTitle] = useState("");
   const [emoji, setEmoji] = useState("📝");
   const [kind, setKind] = useState<TodoListKind>("regular");
@@ -92,10 +94,8 @@ export default function CreateTodoListModal({
         <form onSubmit={handleSubmit}>
           <div className="px-5 pt-6 pb-5 sm:px-6">
             <DialogHeader className="text-left">
-              <DialogTitle>Create a new list</DialogTitle>
-              <DialogDescription>
-                Choose a title and the layout that fits this list best.
-              </DialogDescription>
+              <DialogTitle>{t.lists.createTitle}</DialogTitle>
+              <DialogDescription>{t.lists.createDescription}</DialogDescription>
             </DialogHeader>
 
             <div className="mt-5 flex flex-col gap-4">
@@ -104,12 +104,12 @@ export default function CreateTodoListModal({
                   htmlFor="create-todo-list-emoji"
                   className="text-sm font-medium text-foreground"
                 >
-                  List emoji
+                  {t.lists.emoji}
                 </label>
                 <TodoListEmojiPicker
                   id="create-todo-list-emoji"
                   value={emoji}
-                  ariaLabel="List emoji"
+                  ariaLabel={t.lists.emoji}
                   onEmojiChange={setEmoji}
                   disabled={!isOnline || isSubmitting}
                   className="pointer-fine:size-10"
@@ -121,7 +121,7 @@ export default function CreateTodoListModal({
                   htmlFor="create-todo-list-kind"
                   className="text-sm font-medium text-foreground"
                 >
-                  List type
+                  {t.lists.kind}
                 </label>
                 <Select
                   value={kind}
@@ -132,14 +132,21 @@ export default function CreateTodoListModal({
                 >
                   <SelectTrigger
                     id="create-todo-list-kind"
-                    aria-label="List type"
+                    aria-label={t.lists.kind}
                     className="h-10 w-full"
                   >
-                    <SelectValue placeholder="List type" />
+                    <SelectValue placeholder={t.lists.kind} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="regular">Regular list</SelectItem>
-                    <SelectItem value="sectioned">Sectioned list</SelectItem>
+                    <SelectItem value="regular">
+                      {t.lists.kinds.regular}
+                    </SelectItem>
+                    <SelectItem value="sectioned">
+                      {t.lists.kinds.sectioned}
+                    </SelectItem>
+                    <SelectItem value="recipe">
+                      {t.lists.kinds.recipe}
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -149,27 +156,25 @@ export default function CreateTodoListModal({
                   htmlFor="create-todo-list-title"
                   className="text-sm font-medium text-foreground"
                 >
-                  List name
+                  {t.lists.name}
                 </label>
                 <Input
                   id="create-todo-list-title"
-                  aria-label="List name"
+                  aria-label={t.lists.name}
                   value={title}
                   autoFocus
                   disabled={!isOnline || isSubmitting}
                   onChange={(event) => {
                     setTitle(event.target.value);
                   }}
-                  placeholder={
-                    kind === "sectioned" ? "New sectioned list" : "New list"
-                  }
+                  placeholder={t.lists.kindPlaceholders[kind]}
                   className="h-10"
                 />
               </div>
             </div>
             {!isOnline ? (
               <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-foreground">
-                Reconnect to create a list.
+                {t.lists.reconnectToCreate}
               </p>
             ) : null}
           </div>
@@ -184,7 +189,7 @@ export default function CreateTodoListModal({
                 className="w-full sm:min-w-24 sm:w-auto"
                 size="mobile"
               >
-                Cancel
+                {t.common.cancel}
               </Button>
               <Button
                 type="submit"
@@ -192,7 +197,7 @@ export default function CreateTodoListModal({
                 className="w-full sm:min-w-28 sm:w-auto"
                 size="mobile"
               >
-                {isSubmitting ? "Creating..." : "Create list"}
+                {isSubmitting ? t.common.creating : t.lists.create}
               </Button>
             </DialogFooter>
           </div>

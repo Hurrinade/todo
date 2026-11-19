@@ -6,6 +6,7 @@ import { useState } from "react";
 
 import { TodoListMembersPopover } from "@/components/todo/TodoListMembersPopover";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks";
 import { useModal } from "@/hooks/modals/use-modal";
 import { cn } from "@/lib/utils";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
@@ -30,6 +31,7 @@ export function SortableTodoListSidebarItem({
 }: SortableTodoListSidebarItemProps) {
   const { openModal } = useModal();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const deleteList = useMutation(api.mutations.todoLists.remove);
   const clearErrorMessage = useTodoErrorStore(
     (state) => state.clearErrorMessage,
@@ -47,10 +49,10 @@ export function SortableTodoListSidebarItem({
 
   const handleDeleteList = () => {
     openModal("confirm", {
-      title: "Delete todo list",
-      message: `Delete "${list.title}" and every todo inside it?`,
-      confirmText: "Delete list",
-      cancelText: "Keep list",
+      title: t.lists.deleteTitle,
+      message: t.lists.deleteMessage(list.title),
+      confirmText: t.lists.deleteConfirm,
+      cancelText: t.lists.deleteCancel,
       variant: "danger",
       onConfirm: async () => {
         setIsDeletingList(true);
@@ -107,7 +109,7 @@ export function SortableTodoListSidebarItem({
       )}
       <Button
         variant="ghost"
-        aria-label={`Delete ${list.title}`}
+        aria-label={t.lists.deleteLabel(list.title)}
         className="cursor-pointer"
         size="icon-mobile-sm"
         disabled={!isOnline || isDeletingList}

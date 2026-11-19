@@ -10,6 +10,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 import type { ConfirmModalPayload, ConfirmVariant } from "@/types";
 
@@ -40,6 +41,7 @@ export default function ConfirmationModal({
   payload,
 }: ConfirmationModalProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [isConfirming, setIsConfirming] = useState(false);
   const confirmVariant = payload.variant ?? "danger";
 
@@ -112,7 +114,7 @@ export default function ConfirmationModal({
           </DialogHeader>
           {!isOnline ? (
             <p className="mt-4 rounded-lg bg-warning-soft px-3 py-2 text-sm text-warning-foreground">
-              Reconnect before confirming this change.
+              {t.common.reconnectToConfirm}
             </p>
           ) : null}
         </div>
@@ -128,8 +130,8 @@ export default function ConfirmationModal({
               size="mobile"
             >
               {isConfirming
-                ? "Processing..."
-                : (payload.confirmText ?? "Confirm")}
+                ? t.common.processing
+                : (payload.confirmText ?? t.common.confirm)}
             </Button>
             <Button
               type="button"
@@ -139,7 +141,7 @@ export default function ConfirmationModal({
               className="w-full sm:min-w-24 sm:w-auto"
               size="mobile"
             >
-              {payload.cancelText ?? "Cancel"}
+              {payload.cancelText ?? t.common.cancel}
             </Button>
           </DialogFooter>
         </div>

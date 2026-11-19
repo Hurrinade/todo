@@ -1,9 +1,11 @@
 import { WifiOff } from "lucide-react";
 
+import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 
 export default function OfflineBanner() {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
 
   if (isOnline) {
     return null;
@@ -15,7 +17,7 @@ export default function OfflineBanner() {
       role="status"
     >
       <WifiOff className="size-4 shrink-0" aria-hidden="true" />
-      You're offline. Viewing remains available, but changes are paused.
+      {t.common.offlineBanner}
     </div>
   );
 }

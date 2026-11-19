@@ -4,6 +4,7 @@ import { internal } from "../_generated/api";
 import type { Doc, Id } from "../_generated/dataModel";
 import { internalMutation, type MutationCtx } from "../_generated/server";
 import { updateTodoListStats } from "../shared/todoListStats";
+import { deleteRecipe } from "./recipes";
 import { getLastOrder, ORDER_STEP } from "../shared/todoOrder";
 
 // Bulk todo work runs in batches so lists of any size stay under Convex's
@@ -76,16 +77,33 @@ export const processCompletedTodosBatch = internalMutation({
   handler: processCompletedTodos,
 });
 
-/** Deletes the todos of a deleted list. Called by the todoLists delete trigger. */
-export async function deleteListTodos(ctx: BatchCtx, listId: Id<"todoLists">) {
-  const todos = await ctx.db
-    .query("todos")
-    .withIndex("by_list_id_completed_and_order", (q) => q.eq("listId", listId))
-    .take(TODO_BATCH_SIZE);
+/**
+ * Deletes the todos and recipes of a deleted list, with recipe images.
+ * Called by the todoLists delete trigger.
+ */
+export async function deleteListTodos(
+  ctx: BatchCtx & Pick<MutationCtx, "storage">,
+  listId: Id<"todoLists">,
+) {
+  const [todos, recipes] = await Promise.all([
+    ctx.db
+      .query("todos")
+      .withIndex("by_list_id_completed_and_order", (q) =>
+        q.eq("listId", listId),
+      )
+      .take(TODO_BATCH_SIZE),
+    ctx.db
+      .query("recipes")
+      .withIndex("by_list_id", (q) => q.eq("listId", listId))
+      .take(TODO_BATCH_SIZE),
+  ]);
 
-  await Promise.all(todos.map((todo) => ctx.db.delete(todo._id)));
+  await Promise.all([
+    ...todos.map((todo) => ctx.db.delete(todo._id)),
+    ...recipes.map((recipe) => deleteRecipe(ctx, recipe._id, recipe.imageId)),
+  ]);
 
-  if (todos.length === TODO_BATCH_SIZE) {
+  if (todos.length === TODO_BATCH_SIZE || recipes.length === TODO_BATCH_SIZE) {
     await ctx.scheduler.runAfter(
       0,
       internal.system.todoBatches.deleteListTodosBatch,

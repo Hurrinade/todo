@@ -8,6 +8,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useT } from "@/hooks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type { authClient } from "@/lib/auth-client";
 import ProfileSettings from "./ProfileSettings";
@@ -21,10 +22,7 @@ type SettingsUser = Pick<
 // Light backdrop so the app stays visible. McpKeySettings uses the same one.
 const overlayClassName = "bg-black/20 backdrop-blur-none";
 
-const tabs = [
-  ["profile", "Profile"],
-  ["mcp", "MCP keys"],
-] as const;
+const tabs = ["profile", "mcp"] as const;
 
 /** Account settings. Centered dialog on desktop, full screen below the md breakpoint. */
 export default function AccountSettingsDialog({
@@ -86,6 +84,7 @@ function SettingsContent({
       }),
   );
   const isMobile = useIsMobile();
+  const t = useT();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -95,16 +94,16 @@ function SettingsContent({
         className="min-w-0 gap-5 md:grid md:grid-cols-[8rem_minmax(0,1fr)] md:gap-6"
       >
         <TabsList
-          aria-label="Account settings"
+          aria-label={t.settings.title}
           className="h-auto w-full justify-start gap-5 rounded-none border-b border-border/50 bg-transparent p-0 md:flex-col md:items-stretch md:gap-0.5 md:self-start md:border-0"
         >
-          {tabs.map(([value, label]) => (
+          {tabs.map((value) => (
             <TabsTrigger
               key={value}
               value={value}
               className="-mb-px min-h-11 flex-none justify-start rounded-none border-b-2 border-transparent px-0 py-2 font-normal data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:shadow-none md:mb-0 md:min-h-9 md:border-b-0 md:border-l-2 md:px-3"
             >
-              {label}
+              {t.settings.tabs[value]}
             </TabsTrigger>
           ))}
         </TabsList>

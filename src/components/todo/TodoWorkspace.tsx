@@ -1,8 +1,11 @@
 import { api } from "@convex/_generated/api";
+import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useNavigate } from "react-router";
 
+import { RecipeList } from "@/components/recipe/RecipeList";
 import { TodoComposer } from "@/components/todo/TodoComposer";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { TodoListHeader } from "@/components/todo/TodoListHeader";
@@ -19,6 +22,8 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useT } from "@/hooks";
+import { translateAppError } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useNetworkStore, useTodoErrorStore, useTodoStore } from "@/stores";
 import type {
@@ -33,7 +38,6 @@ import {
   createTodoTitleContent,
   MAX_TODO_TITLE_LENGTH,
   moveTodoOptimistically,
-  OFFLINE_ACTION_MESSAGE,
   removeTodoOptimistically,
   repositionTodoOptimistically,
   toggleTodoOptimistically,
@@ -65,9 +69,12 @@ export function TodoWorkspace({
   const moveTodo = useMutation(api.mutations.todos.move).withOptimisticUpdate(
     moveTodoOptimistically,
   );
+  const createRecipe = useMutation(api.mutations.recipes.create);
+  const navigate = useNavigate();
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [createTodoError, setCreateTodoError] = useState<string | null>(null);
   const titleEditVersion = useRef(0);
@@ -87,10 +94,13 @@ export function TodoWorkspace({
     (state) => state.setUnknownErrorMessage,
   );
 
-  // Both list kinds load open todos up front; completed todos are paginated.
+  // Todo lists load open todos up front; completed todos are paginated.
+  // Recipe lists load their rows in RecipeList.
   const openTodoResult = useQuery(
     api.queries.todos.listOpen,
-    activeList ? { listId: activeList._id } : "skip",
+    activeList && activeList.kind !== "recipe"
+      ? { listId: activeList._id }
+      : "skip",
   );
   const sectionResult = useQuery(
     api.queries.todoSections.list,
@@ -114,17 +124,17 @@ export function TodoWorkspace({
     event.preventDefault();
 
     const submittedTitle = newTodoTitle.trim();
+    const isRecipeList = activeList?.kind === "recipe";
+    const maxLength = isRecipeList
+      ? MAX_RECIPE_URL_LENGTH
+      : MAX_TODO_TITLE_LENGTH;
 
-    if (
-      !activeList ||
-      !submittedTitle ||
-      submittedTitle.length > MAX_TODO_TITLE_LENGTH
-    ) {
+    if (!activeList || !submittedTitle || submittedTitle.length > maxLength) {
       return false;
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return false;
     }
 
@@ -134,13 +144,29 @@ export function TodoWorkspace({
     const submittedEditVersion = titleEditVersion.current;
     setNewTodoTitle("");
 
-    createTodo({
-      listId: activeList._id,
-      title: createTodoTitleContent(submittedTitle),
-    }).catch(() => {
+    const listId = activeList._id;
+    const request = isRecipeList
+      ? createRecipe({ listId, text: submittedTitle }).then((result) => {
+          // A recipe typed by hand opens so it can be written in.
+          if (result.kind === "manual") {
+            void navigate(`/home/todos/${result.todoId}`, {
+              state: { selectedListId: listId },
+            });
+          }
+        })
+      : createTodo({
+          listId: activeList._id,
+          title: createTodoTitleContent(submittedTitle),
+        });
+
+    request.catch((error: unknown) => {
       if (titleEditVersion.current === submittedEditVersion) {
         setNewTodoTitle(submittedTitle);
-        setCreateTodoError("Couldn't add todo. Try again.");
+        setCreateTodoError(
+          isRecipeList
+            ? (translateAppError(error, t) ?? t.recipe.saveFailed)
+            : t.todos.addFailed,
+        );
       }
     });
 
@@ -156,7 +182,7 @@ export function TodoWorkspace({
 
   const handleToggleTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -171,7 +197,7 @@ export function TodoWorkspace({
 
   const handleDeleteTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -190,7 +216,7 @@ export function TodoWorkspace({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -209,7 +235,7 @@ export function TodoWorkspace({
     title: string,
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -229,7 +255,7 @@ export function TodoWorkspace({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -249,7 +275,7 @@ export function TodoWorkspace({
     targetIndex: number,
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -269,8 +295,8 @@ export function TodoWorkspace({
     placement: TodoRepositionArgs["placement"],
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
-      throw new Error(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
+      throw new Error(t.common.offlineAction);
     }
 
     clearErrorMessage();
@@ -377,6 +403,7 @@ function TodoWorkspaceContent({
   const { isMobile, open, openMobile } = useSidebar();
   const todoListViewportRef = useRef<HTMLDivElement>(null);
   const isSidebarOpen = isMobile ? openMobile : open;
+  const t = useT();
 
   return (
     <>
@@ -398,14 +425,16 @@ function TodoWorkspaceContent({
               className="min-h-0 flex-1"
             >
               <div className="flex flex-col gap-4 px-2 py-3">
-                {openTodoResult === undefined ? (
+                {activeList.kind === "recipe" ? (
+                  <RecipeList listId={activeList._id} />
+                ) : openTodoResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                    Loading todos
+                    {t.todos.loading}
                   </div>
                 ) : activeList.kind === "sectioned" &&
                   sectionResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                    Loading sections
+                    {t.todos.loadingSections}
                   </div>
                 ) : activeList.kind === "sectioned" ? (
                   <TodoPaginationErrorBoundary key={activeList._id}>
@@ -441,6 +470,7 @@ function TodoWorkspaceContent({
                 title={newTodoTitle}
                 createError={createTodoError}
                 isOnline={isOnline}
+                variant={activeList.kind === "recipe" ? "recipe" : "todo"}
                 onTitleChange={onTodoTitleChange}
                 onCreateTodo={onCreateTodo}
                 onSubmitted={() => {
@@ -460,8 +490,8 @@ function TodoWorkspaceContent({
             >
               <TodoEmptyState
                 icon={CircleSlash}
-                title="No list selected"
-                description="Create a list in the left rail to start collecting todos."
+                title={t.todos.noList}
+                description={t.todos.noListDescription}
               />
             </div>
           </div>

@@ -4,6 +4,7 @@ import { v } from "convex/values";
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { getRecipeView } from "../shared/recipe";
 
 export const get = query({
   args: {
@@ -24,6 +25,14 @@ export const get = query({
       return null;
     }
 
+    const recipe =
+      list.kind === "recipe"
+        ? await ctx.db
+            .query("recipes")
+            .withIndex("by_todo_id", (q) => q.eq("todoId", todo._id))
+            .unique()
+        : null;
+
     return {
       todo,
       list: {
@@ -31,6 +40,7 @@ export const get = query({
         title: list.title,
         emoji: list.emoji,
       },
+      recipe: recipe ? await getRecipeView(ctx, recipe) : null,
     };
   },
 });

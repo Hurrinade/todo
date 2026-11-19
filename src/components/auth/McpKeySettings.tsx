@@ -12,6 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { envConfig } from "@/config/env";
 import { authClient } from "@/lib/auth-client";
+import { useT } from "@/hooks";
+import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
 const PAGE_SIZE = 20;
@@ -25,6 +27,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
   const id = useId();
   const queryClient = useQueryClient();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const newKeyRef = useRef<HTMLButtonElement>(null);
   const [page, setPage] = useState(0);
   const [createOpen, setCreateOpen] = useState(false);
@@ -45,7 +48,9 @@ export default function McpKeySettings({ userId }: { userId: string }) {
         fetchOptions: { signal },
       });
       if (result.error) {
-        throw new Error(result.error.message ?? "Could not load MCP keys.");
+        throw new Error(
+          translateServerMessage(t, result.error.message, t.mcp.loadFailed),
+        );
       }
       return result.data;
     },
@@ -54,7 +59,9 @@ export default function McpKeySettings({ userId }: { userId: string }) {
     mutationFn: async (keyName: string) => {
       const result = await authClient.apiKey.create({ name: keyName });
       if (result.error) {
-        throw new Error(result.error.message ?? "Could not create a key.");
+        throw new Error(
+          translateServerMessage(t, result.error.message, t.mcp.createFailed),
+        );
       }
       // Keep the one-time secret out of TanStack Query's mutation cache.
       setCreatedKey(result.data.key);
@@ -69,7 +76,9 @@ export default function McpKeySettings({ userId }: { userId: string }) {
     mutationFn: async (keyId: string) => {
       const result = await authClient.apiKey.delete({ keyId });
       if (result.error) {
-        throw new Error(result.error.message ?? "Could not revoke this key.");
+        throw new Error(
+          translateServerMessage(t, result.error.message, t.mcp.revokeFailed),
+        );
       }
     },
     onSuccess: () => {
@@ -101,22 +110,19 @@ export default function McpKeySettings({ userId }: { userId: string }) {
       <div className="flex min-h-11 items-center gap-3">
         <div className="min-w-0 flex-1">
           {!isOnline ? (
-            <p role="status">You are offline. Keys load when you reconnect.</p>
+            <p role="status">{t.mcp.offline}</p>
           ) : keys.isPending ? (
             <p role="status" className="text-muted-foreground">
-              Loading keys...
+              {t.mcp.loading}
             </p>
           ) : keys.isError ? (
             <p role="alert" className="text-destructive">
               {keys.error.message}
             </p>
           ) : total === 0 ? (
-            <p className="text-muted-foreground">No MCP keys yet.</p>
+            <p className="text-muted-foreground">{t.mcp.empty}</p>
           ) : (
-            <p>
-              {total} {total === 1 ? "key" : "keys"}. Each expires after 90
-              days.
-            </p>
+            <p>{t.mcp.count(total)}</p>
           )}
         </div>
         {isOnline && keys.isError ? (
@@ -127,7 +133,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
             disabled={keys.isFetching}
             onClick={() => void keys.refetch()}
           >
-            Retry
+            {t.common.retry}
           </Button>
         ) : (
           <Button
@@ -140,7 +146,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
               setCreateOpen(true);
             }}
           >
-            New key
+            {t.mcp.newKey}
           </Button>
         )}
       </div>
@@ -148,7 +154,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
       {keys.data && keys.data.apiKeys.length > 0 && (
         <ul className="divide-y divide-border/50">
           {keys.data.apiKeys.map((key) => {
-            const label = key.name || "MCP key";
+            const label = key.name || t.mcp.defaultName;
             const expired =
               key.expiresAt != null &&
               new Date(key.expiresAt).getTime() <= keys.dataUpdatedAt;
@@ -168,17 +174,17 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                       }
                     >
                       {expired
-                        ? "Expired"
+                        ? t.mcp.expired
                         : key.expiresAt
                           ? new Date(key.expiresAt).toLocaleDateString(
-                              undefined,
+                              t.language,
                               {
                                 month: "short",
                                 day: "numeric",
                                 year: "numeric",
                               },
                             )
-                          : "No expiration"}
+                          : t.mcp.noExpiration}
                     </span>
                   </p>
                 </div>
@@ -186,14 +192,14 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                   type="button"
                   variant="outline"
                   size="mobile"
-                  aria-label={`Revoke ${label}`}
+                  aria-label={t.mcp.revokeLabel(label)}
                   disabled={!isOnline}
                   onClick={() => {
                     revoke.reset();
                     setRevokeTarget({ id: key.id, name: label });
                   }}
                 >
-                  Revoke
+                  {t.mcp.revoke}
                 </Button>
               </li>
             );
@@ -212,9 +218,9 @@ export default function McpKeySettings({ userId }: { userId: string }) {
               setPage(page - 1);
             }}
           >
-            Previous
+            {t.mcp.previous}
           </Button>
-          <span className="text-xs">Page {page + 1}</span>
+          <span className="text-xs">{t.mcp.page(page + 1)}</span>
           <Button
             type="button"
             variant="outline"
@@ -224,7 +230,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
               setPage(page + 1);
             }}
           >
-            Next
+            {t.mcp.next}
           </Button>
         </div>
       )}
@@ -234,7 +240,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
           htmlFor={`${id}-endpoint`}
           className="text-muted-foreground max-md:sr-only"
         >
-          Endpoint
+          {t.mcp.endpoint}
         </label>
         <Input
           id={`${id}-endpoint`}
@@ -245,7 +251,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
           }}
           className="h-11 min-w-0 flex-1 border-0 bg-transparent px-0 font-mono text-xs dark:bg-transparent"
         />
-        <CopyButton value={endpoint} label="Copy endpoint" />
+        <CopyButton value={endpoint} label={t.mcp.copyEndpoint} />
       </div>
 
       <Dialog
@@ -276,13 +282,10 @@ export default function McpKeySettings({ userId }: { userId: string }) {
               className="grid gap-4"
               aria-busy={create.isPending}
             >
-              <DialogTitle>New MCP key</DialogTitle>
-              <DialogDescription>
-                Keys can access your lists and shared lists. They expire after
-                90 days.
-              </DialogDescription>
+              <DialogTitle>{t.mcp.newKeyTitle}</DialogTitle>
+              <DialogDescription>{t.mcp.newKeyDescription}</DialogDescription>
               <div className="space-y-2">
-                <label htmlFor={`${id}-name`}>Name</label>
+                <label htmlFor={`${id}-name`}>{t.auth.name}</label>
                 <Input
                   id={`${id}-name`}
                   autoComplete="off"
@@ -297,7 +300,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                   className="h-11"
                 />
               </div>
-              {!isOnline && <p role="status">You are offline.</p>}
+              {!isOnline && <p role="status">{t.common.offline}</p>}
               {create.isError && (
                 <p role="alert" className="text-destructive">
                   {create.error.message}
@@ -311,23 +314,23 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                   disabled={create.isPending}
                   onClick={closeCreate}
                 >
-                  Cancel
+                  {t.common.cancel}
                 </Button>
                 <Button
                   type="submit"
                   className="h-11"
                   disabled={!isOnline || create.isPending || !name.trim()}
                 >
-                  {create.isPending ? "Creating..." : "Create"}
+                  {create.isPending ? t.common.creating : t.common.create}
                 </Button>
               </DialogFooter>
             </form>
           ) : (
             <>
-              <DialogTitle>Copy your key</DialogTitle>
-              <DialogDescription>It will not be shown again.</DialogDescription>
+              <DialogTitle>{t.mcp.copyKeyTitle}</DialogTitle>
+              <DialogDescription>{t.mcp.copyKeyDescription}</DialogDescription>
               <Input
-                aria-label="New MCP key"
+                aria-label={t.mcp.newKeyTitle}
                 readOnly
                 value={createdKey}
                 autoComplete="off"
@@ -337,9 +340,13 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                 className="h-11 font-mono text-xs"
               />
               <DialogFooter>
-                <CopyButton value={createdKey} label="Copy" className="h-11" />
+                <CopyButton
+                  value={createdKey}
+                  label={t.mcp.copy}
+                  className="h-11"
+                />
                 <Button type="button" className="h-11" onClick={closeCreate}>
-                  Done
+                  {t.common.done}
                 </Button>
               </DialogFooter>
             </>
@@ -368,12 +375,10 @@ export default function McpKeySettings({ userId }: { userId: string }) {
           }}
         >
           <DialogTitle className="break-words">
-            Revoke {revokeTarget?.name}?
+            {t.mcp.revokeTitle(revokeTarget?.name ?? "")}
           </DialogTitle>
-          <DialogDescription>
-            Clients using this key lose access immediately.
-          </DialogDescription>
-          {!isOnline && <p role="status">You are offline.</p>}
+          <DialogDescription>{t.mcp.revokeDescription}</DialogDescription>
+          {!isOnline && <p role="status">{t.common.offline}</p>}
           {revoke.isError && (
             <p role="alert" className="text-destructive">
               {revoke.error.message}
@@ -389,7 +394,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                 setRevokeTarget(null);
               }}
             >
-              Cancel
+              {t.common.cancel}
             </Button>
             <Button
               type="button"
@@ -402,7 +407,7 @@ export default function McpKeySettings({ userId }: { userId: string }) {
                 }
               }}
             >
-              {revoke.isPending ? "Revoking..." : "Revoke"}
+              {revoke.isPending ? t.mcp.revoking : t.mcp.revoke}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -422,6 +427,7 @@ function CopyButton({
   className?: string;
 }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
+  const t = useT();
 
   async function copy() {
     try {
@@ -443,10 +449,10 @@ function CopyButton({
     >
       <span aria-live="polite">
         {state === "copied"
-          ? "Copied"
+          ? t.mcp.copied
           : state === "failed"
-            ? "Copy failed"
-            : "Copy"}
+            ? t.mcp.copyFailed
+            : t.mcp.copy}
       </span>
     </Button>
   );

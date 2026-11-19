@@ -6,6 +6,7 @@ import type { MutationCtx } from "../_generated/server";
 import { requireAppUserId, requireListAccess } from "../shared/auth";
 import { appError, notFoundError, requireId } from "../shared/errors";
 import { getTodoRecord } from "../shared/todoRecord";
+import { deleteRecipeForTodo } from "../system/recipes";
 import { processCompletedTodos } from "../system/todoBatches";
 import { updateTodoListStats } from "../shared/todoListStats";
 import {
@@ -396,6 +397,13 @@ async function insertTodoForUser(
     throw notFoundError("todoLists");
   }
 
+  if (list.kind === "recipe") {
+    throw appError(
+      "invalid_input",
+      "Recipe lists only take recipe links, added from the app.",
+    );
+  }
+
   let sectionId = args.sectionId;
 
   if (list.kind === "regular") {
@@ -439,6 +447,11 @@ async function setTodoCompletedForUser(
     return;
   }
 
+  // Completed todos are deleted after two weeks, so saved recipes never are.
+  if ((await ctx.db.get(todo.listId))?.kind === "recipe") {
+    throw appError("invalid_input", "Recipes cannot be completed.");
+  }
+
   const now = Date.now();
 
   await ctx.db.patch(todo._id, {
@@ -468,6 +481,7 @@ async function removeTodoForUser(
   await requireListAccess(ctx, todo.listId, userId);
 
   await ctx.db.delete(todoId);
+  await deleteRecipeForTodo(ctx, todoId);
   await updateTodoListStats(ctx, todo.listId, {
     openTodoDelta: todo.isCompleted ? 0 : -1,
     completedTodoDelta: todo.isCompleted ? -1 : 0,

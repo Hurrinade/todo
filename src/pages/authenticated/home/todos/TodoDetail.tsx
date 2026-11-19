@@ -1,20 +1,23 @@
 import { api } from "@convex/_generated/api";
-import { getAppErrorMessage } from "@convex/shared/errors";
 import { useMutation } from "convex/react";
 import { useState } from "react";
 import { useOutletContext } from "react-router";
 
+import { RecipeDetailView } from "@/components/recipe/RecipeDetailView";
 import { TodoDetailView } from "@/components/todo/TodoDetailView";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
+import { translateAppError } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 import type {
   TodoDetailPresentation,
   TodoDetailRouteContext,
   TodoDetailUnavailableProps,
+  TodoDetailViewProps,
 } from "@/types";
-import { OFFLINE_ACTION_MESSAGE, renameTodoOptimistically } from "@/utils";
+import { renameTodoOptimistically } from "@/utils";
 
 export default function TodoDetail() {
   const { detail, onClose, presentation } =
@@ -25,6 +28,7 @@ export default function TodoDetail() {
   ).withOptimisticUpdate(renameTodoOptimistically);
   const updateDescription = useMutation(api.mutations.todos.updateDescription);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const t = useT();
 
   if (detail === undefined) {
     return <TodoDetailLoading presentation={presentation} />;
@@ -33,50 +37,62 @@ export default function TodoDetail() {
   if (detail == null) {
     return (
       <TodoDetailUnavailable
-        message="Todo was not found."
+        message={t.errors.todoNotFound}
         onClose={onClose}
         presentation={presentation}
       />
     );
   }
 
-  return (
-    <TodoDetailView
-      detail={detail}
-      errorMessage={errorMessage}
-      onClose={onClose}
-      onRenameTodo={async (title) => {
-        setErrorMessage(null);
+  const viewProps = {
+    detail,
+    errorMessage,
+    onClose,
+    onRenameTodo: async (title) => {
+      setErrorMessage(null);
 
-        if (!isOnline) {
-          setErrorMessage(OFFLINE_ACTION_MESSAGE);
-          throw new Error(OFFLINE_ACTION_MESSAGE);
-        }
+      if (!isOnline) {
+        setErrorMessage(t.common.offlineAction);
+        throw new Error(t.common.offlineAction);
+      }
 
-        try {
-          await renameTodo({ todoId: detail.todo._id, title });
-        } catch (error) {
-          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
-          throw error;
-        }
-      }}
-      onUpdateDescription={async (description) => {
-        setErrorMessage(null);
+      try {
+        await renameTodo({ todoId: detail.todo._id, title });
+      } catch (error) {
+        setErrorMessage(
+          translateAppError(error, t) ?? t.common.somethingWentWrong,
+        );
+        throw error;
+      }
+    },
+    onUpdateDescription: async (description) => {
+      setErrorMessage(null);
 
-        if (!isOnline) {
-          setErrorMessage(OFFLINE_ACTION_MESSAGE);
-          throw new Error(OFFLINE_ACTION_MESSAGE);
-        }
+      if (!isOnline) {
+        setErrorMessage(t.common.offlineAction);
+        throw new Error(t.common.offlineAction);
+      }
 
-        try {
-          await updateDescription({ todoId: detail.todo._id, description });
-        } catch (error) {
-          setErrorMessage(getAppErrorMessage(error) ?? "Something went wrong.");
-          throw error;
-        }
-      }}
-      presentation={presentation}
+      try {
+        await updateDescription({ todoId: detail.todo._id, description });
+      } catch (error) {
+        setErrorMessage(
+          translateAppError(error, t) ?? t.common.somethingWentWrong,
+        );
+        throw error;
+      }
+    },
+    presentation,
+  } satisfies TodoDetailViewProps;
+
+  return detail.recipe ? (
+    <RecipeDetailView
+      key={detail.todo._id}
+      {...viewProps}
+      recipe={detail.recipe}
     />
+  ) : (
+    <TodoDetailView {...viewProps} />
   );
 }
 
@@ -124,15 +140,19 @@ function TodoDetailUnavailable({
   onClose,
   presentation,
 }: TodoDetailUnavailableProps) {
+  const t = useT();
+
   return (
     <main className="flex h-full w-full items-center justify-center bg-background p-6 text-foreground">
       <div className="flex max-w-sm flex-col items-center gap-4 text-center">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold">Todo unavailable</h1>
+          <h1 className="text-xl font-semibold">{t.todos.unavailable}</h1>
           <p className="text-sm text-muted-foreground">{message}</p>
         </div>
         <Button type="button" variant="secondary" onClick={onClose}>
-          {presentation === "panel" ? "Close details" : "Back to workspace"}
+          {presentation === "panel"
+            ? t.todos.closeDetails
+            : t.todos.backToWorkspace}
         </Button>
       </div>
     </main>

@@ -14,6 +14,5 @@ export type ThemeSnapshot = {
 
 export type ThemeOption = {
   value: ThemePreference;
-  label: string;
   icon: LucideIcon;
 };

@@ -3,6 +3,7 @@ import { ArrowLeft, X } from "lucide-react";
 import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 import type { TodoDetailViewProps } from "@/types";
 
@@ -16,6 +17,7 @@ export function TodoDetailView({
 }: TodoDetailViewProps) {
   const { todo, list } = detail;
   const isPanel = presentation === "panel";
+  const t = useT();
 
   return (
     <main className="h-full w-full overflow-y-auto bg-background text-foreground">
@@ -51,7 +53,7 @@ export function TodoDetailView({
               variant="ghost"
               size="mobile-lg"
               onClick={onClose}
-              aria-label="Back to todo workspace"
+              aria-label={t.todos.backToWorkspace}
               className="flex w-fit items-center gap-2 px-2"
             >
               <ArrowLeft className="size-5" />
@@ -75,7 +77,7 @@ export function TodoDetailView({
               variant="ghost"
               size="icon-mobile-sm"
               onClick={onClose}
-              aria-label="Close todo details"
+              aria-label={t.todos.closeDetails}
               className="shrink-0 text-muted-foreground hover:text-foreground"
             >
               <X className="size-5" />
@@ -101,7 +103,7 @@ export function TodoDetailView({
               htmlFor="todo-description"
               className="text-sm font-medium text-muted-foreground"
             >
-              Note
+              {t.todos.note}
             </label>
             <TodoNoteEditor
               key={`${todo._id}-${JSON.stringify(todo.description ?? null)}`}

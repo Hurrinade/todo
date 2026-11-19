@@ -7,7 +7,7 @@ import { SortableTodoTaskItem } from "@/components/todo/SortableTodoTaskItem";
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { TodoPaginationErrorBoundary } from "@/components/todo/TodoPaginationErrorBoundary";
 import { TodoTaskItem } from "@/components/todo/TodoTaskItem";
-import { useCompletedTodos } from "@/hooks";
+import { useCompletedTodos, useT } from "@/hooks";
 import type { TodoListItem, TodoTaskListProps, TodoVirtualRow } from "@/types";
 import { todoDragSensors } from "@/utils";
 
@@ -15,13 +15,14 @@ const LOAD_MORE_THRESHOLD = 8;
 
 export function TodoTaskList(props: TodoTaskListProps) {
   const [isCompletedExpanded, setIsCompletedExpanded] = useState(false);
+  const t = useT();
 
   if (props.openTodos.length === 0 && props.completedTodoCount === 0) {
     return (
       <TodoEmptyState
         icon={ClipboardList}
-        title="No todos here"
-        description="Add a todo to start shaping this list."
+        title={t.todos.empty}
+        description={t.todos.emptyDescription}
       />
     );
   }
@@ -59,6 +60,7 @@ function TodoVirtualTaskRows({
   // Local order while a drag is in progress; server order the rest of the time.
   // The reposition optimistic update takes over as soon as the drag ends.
   const [dragOrder, setDragOrder] = useState<TodoListItem[] | null>(null);
+  const t = useT();
   const [draggedTodo, setDraggedTodo] = useState<TodoListItem | null>(null);
   const orderedOpenTodos = dragOrder ?? openTodos;
 
@@ -248,7 +250,7 @@ function TodoVirtualTaskRows({
                       onCompletedExpandedChange(!isCompletedExpanded);
                     }}
                   >
-                    <span>Completed ({completedTodoCount})</span>
+                    <span>{t.todos.completedCount(completedTodoCount)}</span>
                     {shouldLoadCompleted ? (
                       <ChevronUp className="size-4" />
                     ) : (
@@ -258,7 +260,7 @@ function TodoVirtualTaskRows({
                 </div>
               ) : (
                 <div className="flex min-h-16 items-center justify-center px-4 text-sm text-muted-foreground">
-                  Loading completed todos
+                  {t.todos.loadingCompleted}
                 </div>
               )}
             </div>

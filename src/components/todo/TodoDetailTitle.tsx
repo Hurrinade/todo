@@ -2,16 +2,22 @@ import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import { useEffect, useRef, useState, type KeyboardEvent } from "react";
 
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useNetworkStore } from "@/stores";
 import type { TodoDetailTitleProps, TodoTitleContent } from "@/types";
 import { getTodoTitleText } from "@/utils";
 
-export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
+export function TodoDetailTitle({
+  todo,
+  onRenameTodo,
+  className,
+}: TodoDetailTitleProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const isDirtyRef = useRef(false);
+  const t = useT();
   const shouldSkipBlurSaveRef = useRef(false);
   const lastSavedTitleRef = useRef({
     title: todo.title,
@@ -70,7 +76,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
     ],
     editorProps: {
       attributes: {
-        "aria-label": "Todo title",
+        "aria-label": t.todos.title,
         class:
           "min-h-12 whitespace-pre-wrap text-2xl font-semibold leading-tight wrap-anywhere outline-none [word-break:break-word] [&_a]:cursor-pointer [&_a]:text-primary [&_a]:underline [&_a]:underline-offset-4",
       },
@@ -206,7 +212,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
     <div
       role={isEditing ? undefined : "button"}
       tabIndex={isEditing ? -1 : 0}
-      aria-label={isEditing ? undefined : "Edit todo title"}
+      aria-label={isEditing ? undefined : t.todos.editTitle}
       aria-disabled={!isOnline}
       aria-busy={isSaving}
       data-editing={isEditing}
@@ -224,6 +230,7 @@ export function TodoDetailTitle({ todo, onRenameTodo }: TodoDetailTitleProps) {
         todo.isCompleted
           ? "text-muted-foreground line-through"
           : "text-foreground",
+        className,
       )}
     >
       <EditorContent editor={editor} />

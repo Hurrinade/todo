@@ -28,7 +28,7 @@ export async function resolveAppUserId(ctx: AuthContext, betterAuthId: string) {
 export async function requireAppUserId(ctx: AuthContext) {
   const userId = await getAppUserId(ctx);
   if (!userId) {
-    throw appError("unauthenticated", "You must be signed in.");
+    throw appError("unauthenticated", "You must be signed in.", "signedOut");
   }
   return userId;
 }
@@ -63,7 +63,11 @@ export async function requireOwnerListAccess(
   const list = await ctx.db.get(listId);
 
   if (!list || list.userId !== appUserId) {
-    throw appError("forbidden", "Only the list owner can do this.");
+    throw appError(
+      "forbidden",
+      "Only the list owner can do this.",
+      "ownerOnly",
+    );
   }
 
   return list;

@@ -64,12 +64,16 @@ export const accept = mutation({
       .unique();
 
     if (!invite) {
-      throw appError("not_found", "Invite link is not valid.");
+      throw appError("not_found", "Invite link is not valid.", "inviteInvalid");
     }
 
     if (invite.expiresAt <= Date.now()) {
       await ctx.db.delete(invite._id);
-      throw appError("invalid_input", "Invite link has expired.");
+      throw appError(
+        "invalid_input",
+        "Invite link has expired.",
+        "inviteExpired",
+      );
     }
 
     const list = await ctx.db.get(invite.listId);

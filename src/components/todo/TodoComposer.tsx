@@ -1,8 +1,10 @@
-import { Plus } from "lucide-react";
+import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
+import { ClipboardPaste, Plus } from "lucide-react";
 import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { MAX_TODO_TITLE_LENGTH } from "@/utils";
 
@@ -14,7 +16,21 @@ type TodoComposerProps = {
   /** Returns whether the todo was submitted. */
   onCreateTodo: (event: React.SubmitEvent) => boolean;
   onSubmitted?: () => void;
+  /** Recipe lists take a link or a recipe name instead of a todo title. */
+  variant?: "todo" | "recipe";
 };
+
+// Text for each variant comes from t.composer.
+const COMPOSER_MAX_LENGTHS = {
+  todo: MAX_TODO_TITLE_LENGTH,
+  recipe: MAX_RECIPE_URL_LENGTH,
+} as const;
+
+// Reading the clipboard needs a secure context; older browsers lack it.
+const canPaste =
+  typeof navigator !== "undefined" &&
+  "clipboard" in navigator &&
+  "readText" in navigator.clipboard;
 
 export function TodoComposer({
   title,
@@ -23,13 +39,36 @@ export function TodoComposer({
   onTitleChange,
   onCreateTodo,
   onSubmitted,
+  variant = "todo",
 }: TodoComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const t = useT();
+  const { placeholder, inputLabel, submitLabel, reconnectLabel, tooLong } =
+    t.composer[variant];
+  const maxLength = COMPOSER_MAX_LENGTHS[variant];
   const titleLength = title.trim().length;
-  const isTitleTooLong = titleLength > MAX_TODO_TITLE_LENGTH;
+  const isTitleTooLong = titleLength > maxLength;
+  const showsCount = variant === "todo" && titleLength >= 200;
   const feedback = isTitleTooLong
-    ? `Title is too long (${titleLength}/${MAX_TODO_TITLE_LENGTH}).`
+    ? tooLong(titleLength, maxLength)
     : createError;
+  const showsPaste = variant === "recipe" && canPaste && !title;
+
+  // On phones a Paste button beats long-pressing the field. The browser may
+  // ask for permission first; a refusal leaves the field as it was.
+  const handlePaste = async () => {
+    try {
+      const text = (await navigator.clipboard.readText()).trim();
+
+      if (text) {
+        onTitleChange(text);
+      }
+    } catch {
+      // Permission denied or nothing to read.
+    }
+
+    inputRef.current?.focus();
+  };
 
   return (
     <form
@@ -46,31 +85,42 @@ export function TodoComposer({
       <div className="flex items-center gap-2">
         <Input
           ref={inputRef}
-          aria-label="New todo title"
+          aria-label={inputLabel}
           aria-invalid={isTitleTooLong}
           aria-describedby={
-            feedback || titleLength >= 200
-              ? "new-todo-title-feedback"
-              : undefined
+            feedback || showsCount ? "new-todo-title-feedback" : undefined
           }
           value={title}
           onChange={(event) => {
             onTitleChange(event.target.value);
           }}
-          placeholder="Add the next thing"
+          placeholder={placeholder}
           className="h-11 min-w-0 flex-1 py-2 pointer-fine:h-8"
         />
+        {showsPaste ? (
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={() => {
+              void handlePaste();
+            }}
+            className="h-11 rounded-full pointer-fine:h-8"
+          >
+            <ClipboardPaste />
+            {t.composer.paste}
+          </Button>
+        ) : null}
         <Button
           type="submit"
           size="icon-mobile"
           disabled={!isOnline || !title.trim() || isTitleTooLong}
           className="rounded-full bg-card text-muted-foreground"
-          aria-label={isOnline ? "Add todo" : "Reconnect to add todo"}
+          aria-label={isOnline ? submitLabel : reconnectLabel}
         >
           <Plus />
         </Button>
       </div>
-      {(feedback || titleLength >= 200) && (
+      {(feedback || showsCount) && (
         <p
           id="new-todo-title-feedback"
           role={feedback ? "alert" : undefined}
@@ -79,7 +129,7 @@ export function TodoComposer({
             feedback ? "text-destructive" : "text-muted-foreground",
           )}
         >
-          {feedback ?? `${titleLength}/${MAX_TODO_TITLE_LENGTH}`}
+          {feedback ?? `${titleLength}/${maxLength}`}
         </p>
       )}
     </form>
