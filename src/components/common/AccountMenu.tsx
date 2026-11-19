@@ -1,5 +1,5 @@
 import { useRef, useState } from "react";
-import { LogOut, Settings } from "lucide-react";
+import { Languages, LogOut, Settings } from "lucide-react";
 import AccountSettingsDialog from "@/components/auth/AccountSettingsDialog";
 
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,11 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useT } from "@/hooks";
+import { LANGUAGES } from "@/i18n";
 import { authClient } from "@/lib/auth-client";
+import { cn } from "@/lib/utils";
+import { useLanguageStore } from "@/stores";
 
 // Same padding and icon size on every row so icons and labels line up.
 const menuItemClassName =
@@ -21,6 +25,7 @@ export default function AccountMenu() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  const t = useT();
 
   async function signOut() {
     setPending(true);
@@ -28,13 +33,13 @@ export default function AccountMenu() {
     try {
       const result = await authClient.signOut();
       if (result.error) {
-        setError("Could not sign out. Try again.");
+        setError(t.account.signOutFailed);
       } else {
         setMenuOpen(false);
         setSettingsOpen(false);
       }
     } catch {
-      setError("Could not sign out. Try again.");
+      setError(t.account.signOutFailed);
     } finally {
       setPending(false);
     }
@@ -53,7 +58,7 @@ export default function AccountMenu() {
             variant="ghost"
             size="mobile"
             className="max-w-full truncate"
-            aria-label="Account menu"
+            aria-label={t.account.menu}
           >
             <span className="truncate">
               {session.user.name || session.user.email}
@@ -90,7 +95,7 @@ export default function AccountMenu() {
             }}
           >
             <Settings />
-            Settings
+            {t.settings.title}
           </Button>
           <Button
             variant="ghost"
@@ -99,8 +104,10 @@ export default function AccountMenu() {
             onClick={() => void signOut()}
           >
             <LogOut />
-            {pending ? "Signing out..." : "Sign out"}
+            {pending ? t.account.signingOut : t.account.signOut}
           </Button>
+          <div className="mx-1 my-1 h-px bg-border/50" />
+          <LanguagePicker />
           {error && (
             <p role="alert" className="px-2.5 py-2 text-sm text-destructive">
               {error}
@@ -116,5 +123,49 @@ export default function AccountMenu() {
         onReturnFocus={() => triggerRef.current?.focus()}
       />
     </>
+  );
+}
+
+// Each language is named in its own language, so it can be found either way.
+const LANGUAGE_NAMES = { en: "English", hr: "Hrvatski" } as const;
+
+function LanguagePicker() {
+  const t = useT();
+  const language = useLanguageStore((state) => state.language);
+  const setLanguage = useLanguageStore((state) => state.setLanguage);
+
+  return (
+    <div className="flex flex-col gap-1.5 px-2.5 py-2">
+      <p className="flex items-center gap-2.5 text-sm [&_svg]:size-4">
+        <Languages aria-hidden="true" />
+        {t.account.language}
+      </p>
+      <div
+        role="group"
+        aria-label={t.account.language}
+        className="grid grid-cols-2 gap-1 rounded-lg bg-muted p-1"
+      >
+        {LANGUAGES.map((option) => (
+          <Button
+            key={option}
+            type="button"
+            size="sm"
+            variant="ghost"
+            lang={option}
+            aria-pressed={language === option}
+            onClick={() => {
+              setLanguage(option);
+            }}
+            className={cn(
+              "h-9 pointer-fine:h-7",
+              language === option &&
+                "bg-card text-card-foreground shadow-sm hover:bg-card",
+            )}
+          >
+            {LANGUAGE_NAMES[option]}
+          </Button>
+        ))}
+      </div>
+    </div>
   );
 }

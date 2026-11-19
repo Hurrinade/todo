@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 
 import { SwipeAction } from "@/components/common/SwipeAction";
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 import type { TodoListItem } from "@/types";
 import { getTodoTitleText, isOptimisticTodo } from "@/utils";
@@ -24,6 +25,7 @@ export function TodoTaskItem({
 }: TodoTaskItemProps) {
   const navigate = useNavigate();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   // An unconfirmed todo has no server id yet, so it can't be opened or changed.
   const isPending = isOptimisticTodo(todo);
 
@@ -38,7 +40,7 @@ export function TodoTaskItem({
           onClick={() => {
             onDeleteTodo(todo._id);
           }}
-          aria-label="Delete todo"
+          aria-label={t.todos.delete}
           className="h-full flex-1 rounded-none bg-destructive/10 text-destructive hover:bg-destructive/15 hover:text-destructive dark:hover:bg-destructive/25! dark:hover:text-destructive/80!"
         >
           <Trash2 />
@@ -47,7 +49,7 @@ export function TodoTaskItem({
       actionWidth={56}
       className="w-full min-w-0 max-w-full"
       contentClassName="md:p-2 p-1"
-      ariaLabel="Todo actions"
+      ariaLabel={t.todos.actions}
     >
       <div className="flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden">
         {isReorderEnabled && (
@@ -55,7 +57,7 @@ export function TodoTaskItem({
             type="button"
             variant="ghost"
             size="icon-mobile-sm"
-            aria-label="Reorder todo"
+            aria-label={t.todos.reorder}
             data-swipe-ignore
             className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground disabled:cursor-default disabled:opacity-45"
             ref={(element) => {
@@ -75,7 +77,7 @@ export function TodoTaskItem({
             onToggleTodo(todo._id);
           }}
           className="mt-0.5 shrink-0 text-muted-foreground hover:text-primary"
-          aria-label={todo.isCompleted ? "Mark todo open" : "Complete todo"}
+          aria-label={todo.isCompleted ? t.todos.markOpen : t.todos.complete}
         >
           {todo.isCompleted ? (
             <CheckCircle2 className="size-5 text-success" />
@@ -94,7 +96,7 @@ export function TodoTaskItem({
               });
             }}
             className="min-w-0 max-w-full flex-1 overflow-hidden rounded-md bg-transparent p-0 text-left outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-            aria-label="Open todo"
+            aria-label={t.todos.open}
           >
             <p
               className={

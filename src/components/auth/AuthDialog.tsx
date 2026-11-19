@@ -17,6 +17,8 @@ import {
 } from "@/components/ui/input-otp";
 import { authClient } from "@/lib/auth-client";
 import { getLastUsedEmail } from "@/lib/last-used-email";
+import { useT } from "@/hooks";
+import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
 type AuthMode = "sign-in" | "sign-up";
@@ -69,6 +71,7 @@ function AuthForm({
   const [error, setError] = useState<string | null>(null);
   const [resent, setResent] = useState(false);
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const pending = pendingAction != null;
   const disabled = pending || !isOnline;
 
@@ -83,12 +86,14 @@ function AuthForm({
         type: "sign-in",
       });
       if (result.error) {
-        setError(result.error.message ?? "The code could not be sent.");
+        setError(
+          translateServerMessage(t, result.error.message, t.auth.codeNotSent),
+        );
         return false;
       }
       return true;
     } catch {
-      setError("Could not connect. Please try again.");
+      setError(t.auth.couldNotConnect);
       return false;
     } finally {
       setPendingAction(null);
@@ -130,13 +135,19 @@ function AuthForm({
         ...(mode === "sign-up" ? { name: name.trim() } : {}),
       });
       if (result.error) {
-        setError(result.error.message ?? "The code could not be verified.");
+        setError(
+          translateServerMessage(
+            t,
+            result.error.message,
+            t.auth.codeNotVerified,
+          ),
+        );
         setOtp("");
         return;
       }
       onSignedIn();
     } catch {
-      setError("Could not connect. Please try again.");
+      setError(t.auth.couldNotConnect);
     } finally {
       setPendingAction(null);
     }
@@ -155,10 +166,16 @@ function AuthForm({
         callbackURL: window.location.href,
       });
       if (result.error) {
-        setError(result.error.message ?? "Google sign-in could not start.");
+        setError(
+          translateServerMessage(
+            t,
+            result.error.message,
+            t.auth.googleNotStarted,
+          ),
+        );
       }
     } catch {
-      setError("Could not connect. Please try again.");
+      setError(t.auth.couldNotConnect);
     } finally {
       setPendingAction(null);
     }
@@ -171,16 +188,16 @@ function AuthForm({
           {error}
         </p>
       )}
-      {!isOnline && <p role="status">You are offline.</p>}
+      {!isOnline && <p role="status">{t.common.offline}</p>}
     </>
   );
 
   if (codeSent) {
     return (
       <>
-        <DialogTitle className="pr-8">Enter code</DialogTitle>
+        <DialogTitle className="pr-8">{t.auth.enterCode}</DialogTitle>
         <DialogDescription className="text-foreground">
-          Sent to <span className="break-all">{email.trim()}</span>.{" "}
+          {t.auth.sentTo} <span className="break-all">{email.trim()}</span>.{" "}
           <button
             type="button"
             className={textLinkClassName}
@@ -192,11 +209,11 @@ function AuthForm({
               setResent(false);
             }}
           >
-            Change
+            {t.auth.change}
           </button>
         </DialogDescription>
         <InputOTP
-          aria-label="6-digit code"
+          aria-label={t.auth.codeLabel}
           autoFocus
           maxLength={CODE_LENGTH}
           pattern={REGEXP_ONLY_DIGITS}
@@ -220,8 +237,8 @@ function AuthForm({
           </InputOTPGroup>
         </InputOTP>
         {feedback}
-        {pendingAction === "verify" && <p role="status">Checking...</p>}
-        {resent && <p role="status">New code sent.</p>}
+        {pendingAction === "verify" && <p role="status">{t.auth.checking}</p>}
+        {resent && <p role="status">{t.auth.codeResent}</p>}
         <div className="flex items-center justify-between gap-3 text-xs">
           <button
             type="button"
@@ -229,9 +246,9 @@ function AuthForm({
             disabled={disabled}
             onClick={() => void resendCode()}
           >
-            Send a new code
+            {t.auth.sendNewCode}
           </button>
-          <span className="text-muted-foreground">Expires in 5 min</span>
+          <span className="text-muted-foreground">{t.auth.codeExpires}</span>
         </div>
       </>
     );
@@ -240,10 +257,10 @@ function AuthForm({
   return (
     <>
       <DialogTitle className="pr-8">
-        {mode === "sign-in" ? "Sign in to RiTodo" : "Create account"}
+        {mode === "sign-in" ? t.auth.signInTitle : t.auth.createAccount}
       </DialogTitle>
       <DialogDescription className="sr-only">
-        Continue with Google or get a code by email.
+        {t.auth.description}
       </DialogDescription>
       <Button
         type="button"
@@ -260,13 +277,11 @@ function AuthForm({
           height={20}
           className="size-5 shrink-0"
         />
-        {pendingAction === "google"
-          ? "Opening Google..."
-          : "Continue with Google"}
+        {pendingAction === "google" ? t.auth.openingGoogle : t.auth.google}
       </Button>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border/50" />
-        or
+        {t.auth.or}
         <span className="h-px flex-1 bg-border/50" />
       </div>
       <form
@@ -276,8 +291,8 @@ function AuthForm({
       >
         {mode === "sign-up" && (
           <Input
-            aria-label="Name"
-            placeholder="Your name"
+            aria-label={t.auth.name}
+            placeholder={t.auth.namePlaceholder}
             autoComplete="name"
             value={name}
             maxLength={100}
@@ -290,7 +305,7 @@ function AuthForm({
         )}
         <div className="flex gap-2">
           <Input
-            aria-label="Email"
+            aria-label={t.auth.email}
             type="email"
             placeholder="you@example.com"
             autoComplete="email"
@@ -303,13 +318,13 @@ function AuthForm({
             className="h-11 min-w-0 flex-1 rounded-md"
           />
           <Button type="submit" disabled={disabled} className="h-11 px-4">
-            {pendingAction === "send" ? "Sending..." : "Send code"}
+            {pendingAction === "send" ? t.auth.sending : t.auth.sendCode}
           </Button>
         </div>
       </form>
       {feedback}
       <p className="text-xs text-muted-foreground">
-        {mode === "sign-in" ? "New here?" : "Have an account?"}{" "}
+        {mode === "sign-in" ? t.auth.newHere : t.auth.haveAccount}{" "}
         <button
           type="button"
           className={textLinkClassName}
@@ -319,7 +334,7 @@ function AuthForm({
             setError(null);
           }}
         >
-          {mode === "sign-in" ? "Create an account" : "Sign in"}
+          {mode === "sign-in" ? t.auth.createAnAccount : t.auth.signIn}
         </button>
       </p>
     </>

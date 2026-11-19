@@ -113,6 +113,19 @@ list is rejected. On Android the installed app appears in the share menu
 list. The recipe page can keep the screen on (Wake Lock API), scale ingredient
 amounts to a different number of servings, and mark the current step.
 
+## Languages
+
+The web app speaks English and Croatian. Text lives in `src/i18n/en.ts`, and
+`src/i18n/hr.ts` is typed against it, so a missing translation fails the
+typecheck. Components read it with `const t = useT()`. The language follows
+the device until someone picks one in the account menu; the choice is kept
+per device in local storage, like the theme.
+
+Server errors a person can hit carry a key (`appError(code, message, key)` in
+`convex/shared/errors.ts`), which the app translates with `translateAppError`.
+MCP and errors without a key keep the English `message`. Recipe import
+failures are stored as keys for the same reason.
+
 ## RiTodo MCP Server
 
 The Convex deployment exposes a stateless Streamable HTTP MCP server at

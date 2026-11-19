@@ -6,6 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 type TodoListEmojiPickerProps = {
@@ -35,6 +36,7 @@ export function TodoListEmojiPicker({
   className,
 }: TodoListEmojiPickerProps) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const visibleEmoji = value?.trim() || DEFAULT_LIST_EMOJI;
 
   const handleEmojiSelect = (selectedEmoji: EmojiMartSelection) => {
@@ -72,7 +74,7 @@ export function TodoListEmojiPicker({
               className="flex h-80 w-full items-center justify-center rounded-lg bg-popover text-sm text-muted-foreground"
               role="status"
             >
-              Loading emoji picker
+              {t.lists.loadingEmoji}
             </div>
           }
         >

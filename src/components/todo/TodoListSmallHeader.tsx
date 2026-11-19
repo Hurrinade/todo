@@ -4,12 +4,13 @@ import { useState } from "react";
 
 import { TodoListEmojiPicker } from "@/components/todo/TodoListEmojiPicker";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/hooks";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type { TodoListSummary } from "@/types";
-import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [listTitleDraft, setListTitleDraft] = useState<{
     listId: TodoListSummary["_id"];
     title: string;
@@ -37,7 +38,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       setListTitleDraft(null);
       return;
     }
@@ -71,7 +72,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       setListEmojiDraft(null);
       return;
     }
@@ -119,7 +120,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
     <div className="flex items-center gap-2 px-4 py-2">
       <TodoListEmojiPicker
         value={visibleListEmoji}
-        ariaLabel="Todo list emoji"
+        ariaLabel={t.lists.emoji}
         onEmojiChange={(emoji) => {
           void handleUpdateListEmoji(emoji);
         }}
@@ -135,7 +136,7 @@ export function TodoListSmallHeader({ list }: { list: TodoListSummary }) {
         className="min-w-0 flex-1"
       >
         <Input
-          aria-label="Todo list title"
+          aria-label={t.lists.name}
           value={visibleListTitle}
           disabled={!isOnline || isLoading}
           onBlur={handleRenameList}

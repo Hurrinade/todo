@@ -4,6 +4,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import type { TodoWorkspaceSplitViewProps } from "@/types";
+import { useT } from "@/hooks";
 
 // The detail panel opens at its widest so recipes and notes have room.
 const DETAIL_PANEL_MAX_SIZE = "55%";
@@ -15,6 +16,8 @@ export function TodoWorkspaceSplitView({
   children,
   detailPanel,
 }: TodoWorkspaceSplitViewProps) {
+  const t = useT();
+
   return (
     <div className="relative min-h-0 flex-1 overflow-hidden">
       <ResizablePanelGroup orientation="horizontal">
@@ -27,7 +30,7 @@ export function TodoWorkspaceSplitView({
             <ResizableHandle
               id="todo-detail-resize-handle"
               withHandle
-              aria-label="Resize todo detail panel"
+              aria-label={t.todos.resizePanel}
               className="z-30"
             />
 

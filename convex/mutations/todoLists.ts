@@ -112,7 +112,11 @@ export const reorder = mutation({
       .collect();
 
     if (todoListUsers.length !== args.listIds.length) {
-      throw appError("conflict", "Todo list order is out of date.");
+      throw appError(
+        "conflict",
+        "Todo list order is out of date.",
+        "listOrderStale",
+      );
     }
 
     const todoListIds = new Set(

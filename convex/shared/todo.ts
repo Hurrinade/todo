@@ -2,9 +2,9 @@ import { v, type Infer } from "convex/values";
 
 import { appError } from "./errors";
 
-const MAX_TITLE_LENGTH = 240;
+export const MAX_TITLE_LENGTH = 240;
 const MAX_TITLE_CONTENT_LENGTH = 10000;
-const MAX_DESCRIPTION_LENGTH = 10000;
+export const MAX_DESCRIPTION_LENGTH = 10000;
 const MAX_LIST_EMOJI_LENGTH = 16;
 export const MAX_TODOS_PER_BATCH = 50;
 export const DEFAULT_TODO_SECTION_TITLE = "Other";
@@ -149,13 +149,14 @@ export function normalizeTodoTitleContent(
   }
 
   if (!titleText.trim()) {
-    throw appError("invalid_input", "Title is required.");
+    throw appError("invalid_input", "Title is required.", "titleRequired");
   }
 
   if (titleText.length > MAX_TITLE_LENGTH) {
     throw appError(
       "invalid_input",
       `Title must be ${MAX_TITLE_LENGTH} characters or less.`,
+      "titleTooLong",
     );
   }
 
@@ -175,6 +176,7 @@ export function normalizeTodoDescription(
     throw appError(
       "invalid_input",
       `Description must be ${MAX_DESCRIPTION_LENGTH} characters or less.`,
+      "descriptionTooLong",
     );
   }
 
@@ -202,13 +204,14 @@ function normalizeTitle(title: string, label: string) {
   const normalizedTitle = title.trim();
 
   if (!normalizedTitle) {
-    throw appError("invalid_input", `${label} is required.`);
+    throw appError("invalid_input", `${label} is required.`, "titleRequired");
   }
 
   if (normalizedTitle.length > MAX_TITLE_LENGTH) {
     throw appError(
       "invalid_input",
       `${label} must be ${MAX_TITLE_LENGTH} characters or less.`,
+      "titleTooLong",
     );
   }
 

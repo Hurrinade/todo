@@ -1,6 +1,5 @@
 import AuthDialog from "@/components/auth/AuthDialog";
 import { api } from "@convex/_generated/api";
-import { getAppErrorMessage } from "@convex/shared/errors";
 import {
   AuthLoading,
   useConvexAuth,
@@ -14,8 +13,9 @@ import { Link, useNavigate, useParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/hooks";
+import { translateAppError } from "@/i18n";
 import { useNetworkStore } from "@/stores";
-import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 export default function Invite() {
   const navigate = useNavigate();
@@ -28,6 +28,7 @@ export default function Invite() {
     params.token ? { token: params.token } : "skip",
   );
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const t = useT();
   const [isAcceptingInvite, setIsAcceptingInvite] = useState(false);
   const invite = useMemo(() => inviteResult ?? null, [inviteResult]);
   const isExpired = invite ? invite.expiresAt <= dayjs().valueOf() : false;
@@ -38,7 +39,7 @@ export default function Invite() {
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -55,7 +56,7 @@ export default function Invite() {
       });
     } catch (error) {
       setErrorMessage(
-        getAppErrorMessage(error) ?? "Something went wrong. Please try again.",
+        translateAppError(error, t) ?? t.common.somethingWentWrongRetry,
       );
     } finally {
       setIsAcceptingInvite(false);
@@ -70,7 +71,7 @@ export default function Invite() {
     return (
       <main className="flex h-full items-center justify-center p-6">
         <div className="rounded-3xl border border-border bg-card px-6 py-5 text-sm text-muted-foreground shadow-sm">
-          Invite link is not valid.
+          {t.errors.inviteInvalid}
         </div>
       </main>
     );
@@ -81,7 +82,7 @@ export default function Invite() {
       <main className="flex h-full items-center justify-center p-6">
         <div className="flex items-center gap-3 rounded-3xl border border-border bg-card px-6 py-5 text-sm text-muted-foreground shadow-sm">
           <Spinner />
-          Loading invite
+          {t.invite.loading}
         </div>
       </main>
     );
@@ -96,15 +97,15 @@ export default function Invite() {
           <div className="border-b border-border/70 bg-[linear-gradient(145deg,rgba(31,92,91,0.12),rgba(200,137,47,0.12))] p-8 md:border-r md:border-b-0">
             <div className="inline-flex items-center gap-2 rounded-full border border-foreground/10 bg-background/80 px-3 py-1 text-[0.72rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
               <Link2 className="size-3.5" />
-              Shared list invite
+              {t.invite.eyebrow}
             </div>
 
             <div className="mt-6 space-y-4">
               <h1 className="max-w-md text-3xl font-semibold tracking-tight text-foreground">
-                {invite ? invite.listTitle : "Invite link unavailable"}
+                {invite ? invite.listTitle : t.invite.unavailable}
               </h1>
               <p className="max-w-lg text-sm leading-6 text-muted-foreground">
-                Join this shared todo list.
+                {t.invite.description}
               </p>
             </div>
 
@@ -114,10 +115,10 @@ export default function Invite() {
                   <Users className="size-4 text-primary" />
                   <div>
                     <p className="text-sm font-medium text-foreground">
-                      Shared access
+                      {t.invite.sharedAccess}
                     </p>
                     <p className="text-sm text-muted-foreground">
-                      Members can manage the list and all todos together.
+                      {t.invite.sharedAccessDescription}
                     </p>
                   </div>
                 </div>
@@ -129,31 +130,31 @@ export default function Invite() {
             <div className="space-y-4">
               <div>
                 <p className="text-[0.7rem] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
-                  Join decision
+                  {t.invite.decision}
                 </p>
                 <h2 className="mt-2 text-2xl font-semibold text-foreground">
                   {invite && !isExpired
-                    ? "Open this list in your workspace"
-                    : "This invite cannot be used"}
+                    ? t.invite.openTitle
+                    : t.invite.unusableTitle}
                 </h2>
               </div>
 
               {!invite ? (
                 <StatusCard
-                  title="Invite link is not valid."
-                  description="It may have been replaced by a newer invite or already removed."
+                  title={t.errors.inviteInvalid}
+                  description={t.invite.invalidDescription}
                   tone="warning"
                 />
               ) : isExpired ? (
                 <StatusCard
-                  title="Invite link has expired."
-                  description="Ask a current list member to generate a new invite link."
+                  title={t.errors.inviteExpired}
+                  description={t.invite.expiredDescription}
                   tone="warning"
                 />
               ) : invite.isCurrentUserMember ? (
                 <StatusCard
-                  title="You already have access."
-                  description="You can open the shared list directly in your workspace."
+                  title={t.invite.memberTitle}
+                  description={t.invite.memberDescription}
                   tone="success"
                 />
               ) : null}
@@ -169,7 +170,7 @@ export default function Invite() {
               <AuthLoading>
                 <div className="flex items-center gap-2 rounded-2xl border border-border bg-background/80 px-4 py-3 text-sm text-muted-foreground">
                   <Spinner />
-                  Checking your session
+                  {t.invite.checkingSession}
                 </div>
               </AuthLoading>
 
@@ -196,10 +197,10 @@ export default function Invite() {
                     >
                       <CheckCircle2 data-icon="inline-start" />
                       {invite.isCurrentUserMember
-                        ? "Open shared list"
+                        ? t.invite.open
                         : isAcceptingInvite
-                          ? "Joining..."
-                          : "Join list"}
+                          ? t.invite.joining
+                          : t.invite.join}
                     </Button>
                     <Button
                       type="button"
@@ -207,7 +208,7 @@ export default function Invite() {
                       className="h-11 w-full"
                       onClick={handleCancel}
                     >
-                      Cancel
+                      {t.common.cancel}
                     </Button>
                   </>
                 ) : (
@@ -218,7 +219,7 @@ export default function Invite() {
                         className="h-11 w-full"
                         disabled={!isOnline}
                       >
-                        Sign in to join
+                        {t.invite.signInToJoin}
                       </Button>
                     </AuthDialog>
                     <Button
@@ -227,7 +228,7 @@ export default function Invite() {
                       className="h-11 w-full"
                       onClick={handleCancel}
                     >
-                      Cancel
+                      {t.common.cancel}
                     </Button>
                   </>
                 )
@@ -239,7 +240,7 @@ export default function Invite() {
                   asChild
                 >
                   <Link to={isAuthenticated ? "/home" : "/"} replace>
-                    Go back
+                    {t.invite.goBack}
                   </Link>
                 </Button>
               )}

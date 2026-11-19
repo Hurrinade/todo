@@ -1,8 +1,6 @@
 import { api } from "@convex/_generated/api";
-import { getAppErrorMessage } from "@convex/shared/errors";
 import { getRecipeHost, getRecipeLinkLabel } from "@convex/shared/recipe";
 import { useMutation } from "convex/react";
-import dayjs from "dayjs";
 import {
   ArrowLeft,
   ArrowUpRight,
@@ -25,16 +23,14 @@ import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useModal, useWakeLock } from "@/hooks";
+import { useModal, useT, useWakeLock } from "@/hooks";
+import { translateAppError } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useNetworkStore } from "@/stores";
 import type { RecipeDetailViewProps, TodoRecipe } from "@/types";
 import {
-  formatRecipeMinutes,
-  formatRecipeServings,
   getServingCount,
   getTodoTitleText,
-  OFFLINE_ACTION_MESSAGE,
   scaleIngredientQuantity,
   splitIngredientQuantity,
 } from "@/utils";
@@ -56,6 +52,7 @@ export function RecipeDetailView({
   presentation,
 }: RecipeDetailViewProps) {
   const { todo } = detail;
+  const t = useT();
   const hasPhoto = Boolean(recipe.imageUrl);
   const isEmpty = recipe.ingredients.length === 0 && recipe.steps.length === 0;
   const [isEditing, setIsEditing] = useState(
@@ -175,14 +172,14 @@ export function RecipeDetailView({
             />
             {recipe.status === "ready" && isEmpty ? (
               <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm text-muted-foreground">
-                <p>No ingredients or steps yet.</p>
+                <p>{t.recipe.noContent}</p>
                 <Button
                   type="button"
                   size="sm"
                   variant="secondary"
                   onClick={handleEdit}
                 >
-                  Write them in
+                  {t.recipe.writeIn}
                 </Button>
               </div>
             ) : null}
@@ -198,7 +195,7 @@ export function RecipeDetailView({
 
         <section className="flex min-w-0 flex-col gap-2.5">
           <label htmlFor="todo-description" className={RECIPE_SECTION_HEADING}>
-            Notes
+            {t.recipe.notes}
           </label>
           <TodoNoteEditor
             key={`${todo._id}-${JSON.stringify(todo.description ?? null)}`}
@@ -209,9 +206,10 @@ export function RecipeDetailView({
 
         {recipe.importedAt && recipe.sourceUrl ? (
           <p className="text-xs text-muted-foreground">
-            Saved {dayjs(recipe.importedAt).format("D MMM YYYY")} from{" "}
-            {getRecipeHost(recipe.sourceUrl)}. This copy stays even if the page
-            goes away.
+            {t.recipe.savedFrom(
+              recipe.importedAt,
+              getRecipeHost(recipe.sourceUrl),
+            )}
           </p>
         ) : null}
       </div>
@@ -243,6 +241,7 @@ function RecipeHeader({
   const { openModal } = useModal();
   const isOnline = useNetworkStore((state) => state.isOnline);
   const removeTodo = useMutation(api.mutations.todos.remove);
+  const t = useT();
   const { todo, list } = detail;
   const isPanel = presentation === "panel";
   const iconButtonClassName = cn(
@@ -254,10 +253,10 @@ function RecipeHeader({
 
   const handleDelete = () => {
     openModal("confirm", {
-      title: "Delete recipe",
-      message: "Delete this recipe and its saved copy?",
-      confirmText: "Delete recipe",
-      cancelText: "Keep recipe",
+      title: t.recipe.delete,
+      message: t.recipe.deleteMessage,
+      confirmText: t.recipe.delete,
+      cancelText: t.recipe.keep,
       variant: "danger",
       onConfirm: async () => {
         await removeTodo({ todoId: todo._id });
@@ -280,7 +279,7 @@ function RecipeHeader({
           variant="ghost"
           size="icon-mobile-sm"
           disabled={!isOnline}
-          aria-label="Save recipe"
+          aria-label={t.recipe.save}
           className={iconButtonClassName}
         >
           <Save className="size-4.5" />
@@ -290,7 +289,7 @@ function RecipeHeader({
           variant="ghost"
           size="icon-mobile-sm"
           onClick={onCancelEdit}
-          aria-label="Cancel editing"
+          aria-label={t.recipe.cancelEdit}
           className={iconButtonClassName}
         >
           <X className="size-5" />
@@ -324,7 +323,7 @@ function RecipeHeader({
           variant="ghost"
           size="icon-mobile-sm"
           onClick={onClose}
-          aria-label="Back to recipes"
+          aria-label={t.recipe.back}
           className={iconButtonClassName}
         >
           <ArrowLeft className="size-5" />
@@ -338,7 +337,7 @@ function RecipeHeader({
             variant="ghost"
             size="icon-mobile-sm"
             onClick={onEdit}
-            aria-label="Edit recipe"
+            aria-label={t.recipe.edit}
             className={iconButtonClassName}
           >
             <Pencil className="size-4.5" />
@@ -350,7 +349,7 @@ function RecipeHeader({
           size="icon-mobile-sm"
           disabled={!isOnline}
           onClick={handleDelete}
-          aria-label="Delete recipe"
+          aria-label={t.recipe.delete}
           className={iconButtonClassName}
         >
           <Trash2 className="size-4.5" />
@@ -361,7 +360,7 @@ function RecipeHeader({
             variant="ghost"
             size="icon-mobile-sm"
             onClick={onClose}
-            aria-label="Close recipe"
+            aria-label={t.recipe.close}
             className={iconButtonClassName}
           >
             <X className="size-5" />
@@ -415,12 +414,11 @@ function RecipeStatus({
   const isOnline = useNetworkStore((state) => state.isOnline);
   const retryImport = useMutation(api.mutations.recipes.retryImport);
   const [retryError, setRetryError] = useState<string | null>(null);
+  const t = useT();
 
   if (recipe.status === "importing") {
     return (
-      <p className="text-sm text-muted-foreground">
-        Saving a copy of this page.
-      </p>
+      <p className="text-sm text-muted-foreground">{t.recipe.savingPage}</p>
     );
   }
 
@@ -430,7 +428,7 @@ function RecipeStatus({
 
   const handleRetry = async () => {
     if (!isOnline) {
-      setRetryError(OFFLINE_ACTION_MESSAGE);
+      setRetryError(t.common.offlineAction);
       return;
     }
 
@@ -439,14 +437,15 @@ function RecipeStatus({
     try {
       await retryImport({ todoId });
     } catch (error) {
-      setRetryError(getAppErrorMessage(error) ?? "Something went wrong.");
+      setRetryError(translateAppError(error, t) ?? t.common.somethingWentWrong);
     }
   };
 
   return (
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
       <p className="text-destructive">
-        {retryError ?? recipe.errorMessage ?? "The copy could not be saved."}
+        {retryError ??
+          t.recipe.importErrors[recipe.importError ?? "unexpected"]}
       </p>
       <Button
         type="button"
@@ -455,11 +454,11 @@ function RecipeStatus({
         disabled={!isOnline}
         onClick={handleRetry}
       >
-        Try again
+        {t.recipe.tryAgain}
       </Button>
       {onEdit ? (
         <Button type="button" size="sm" variant="ghost" onClick={onEdit}>
-          Type it in
+          {t.recipe.typeIn}
         </Button>
       ) : null}
     </div>
@@ -470,19 +469,26 @@ function RecipeStatus({
 // cooking from the phone.
 function RecipeOverview({ recipe }: { recipe: TodoRecipe }) {
   const servingCount = getServingCount(recipe.servings);
+  const t = useT();
   const stats = [
     recipe.totalMinutes
-      ? { label: "Total time", value: formatRecipeMinutes(recipe.totalMinutes) }
+      ? {
+          label: t.recipe.totalTime,
+          value: t.recipe.minutes(recipe.totalMinutes),
+        }
       : null,
     // A yield with a number shows just the number, so the label stays in
     // the app's language; one without, like "1 loaf", keeps the site's text.
     servingCount
-      ? { label: "Servings", value: String(servingCount) }
+      ? { label: t.recipe.servingsLabel, value: String(servingCount) }
       : recipe.servings
-        ? { label: "Yield", value: recipe.servings }
+        ? { label: t.recipe.yield, value: recipe.servings }
         : null,
     recipe.ingredients.length > 0
-      ? { label: "Ingredients", value: String(recipe.ingredients.length) }
+      ? {
+          label: t.recipe.ingredients,
+          value: String(recipe.ingredients.length),
+        }
       : null,
   ].filter((stat) => stat != null);
   const hasContent = recipe.ingredients.length > 0 || recipe.steps.length > 0;
@@ -512,6 +518,7 @@ function RecipeOverview({ recipe }: { recipe: TodoRecipe }) {
 
 function KeepScreenOnButton() {
   const { isSupported, isOn, setIsOn } = useWakeLock();
+  const t = useT();
 
   if (!isSupported) {
     return null;
@@ -528,7 +535,7 @@ function KeepScreenOnButton() {
       }}
     >
       <Sun />
-      {isOn ? "Screen stays on" : "Keep screen on"}
+      {isOn ? t.recipe.screenOn : t.recipe.keepScreenOn}
     </Button>
   );
 }
@@ -539,6 +546,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
   const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const baseCount = getServingCount(recipe.servings);
   const [count, setCount] = useState(baseCount ?? 1);
+  const t = useT();
   const factor = count / (baseCount ?? 1);
   const lines = recipe.ingredients.map(splitIngredientQuantity);
 
@@ -562,11 +570,11 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
     <section className="flex min-w-0 flex-col gap-2">
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <h2 className={RECIPE_SECTION_HEADING}>
-          Ingredients
+          {t.recipe.ingredients}
           {checked.size > 0 ? (
             <span className="font-normal tracking-normal normal-case tabular-nums">
               {" "}
-              · {checked.size} of {lines.length} ready
+              · {t.recipe.ready(checked.size, lines.length)}
             </span>
           ) : null}
         </h2>
@@ -580,7 +588,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
               onClick={() => {
                 setCount(count - 1);
               }}
-              aria-label="Fewer servings"
+              aria-label={t.recipe.fewerServings}
               className="rounded-full"
             >
               <Minus />
@@ -592,7 +600,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
                 factor !== 1 && "text-primary",
               )}
             >
-              {baseCount ? formatRecipeServings(count) : `${count}× recipe`}
+              {baseCount ? t.recipe.servings(count) : t.recipe.batches(count)}
             </span>
             <Button
               type="button"
@@ -602,7 +610,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
               onClick={() => {
                 setCount(count + 1);
               }}
-              aria-label="More servings"
+              aria-label={t.recipe.moreServings}
               className="rounded-full"
             >
               <Plus />
@@ -658,6 +666,7 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
 // so the cook keeps their place after looking away.
 function RecipeMethod({ recipe }: { recipe: TodoRecipe }) {
   const [currentStep, setCurrentStep] = useState<number | null>(null);
+  const t = useT();
 
   if (recipe.steps.length === 0) {
     return null;
@@ -666,10 +675,10 @@ function RecipeMethod({ recipe }: { recipe: TodoRecipe }) {
   return (
     <section className="flex min-w-0 flex-col gap-1">
       <div className="flex flex-wrap items-baseline justify-between gap-x-4">
-        <h2 className={RECIPE_SECTION_HEADING}>Method</h2>
+        <h2 className={RECIPE_SECTION_HEADING}>{t.recipe.method}</h2>
         {currentStep == null ? (
           <span className="text-xs text-muted-foreground">
-            Tap a step to mark your place
+            {t.recipe.markStepHint}
           </span>
         ) : null}
       </div>

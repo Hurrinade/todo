@@ -4,6 +4,7 @@ import { Navigate, Outlet, Route, Routes } from "react-router";
 
 import OfflineBanner from "@/components/common/OfflineBanner";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/hooks";
 import Root from "@/pages/Root";
 
 const Home = lazy(() => import("@/pages/authenticated/home/Home"));
@@ -58,11 +59,13 @@ function App() {
 }
 
 function RouteLoading() {
+  const t = useT();
+
   return (
     <div
       className="flex h-full min-h-40 items-center justify-center bg-background"
       role="status"
-      aria-label="Loading page"
+      aria-label={t.common.loadingPage}
     >
       <Spinner />
     </div>

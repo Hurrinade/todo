@@ -8,7 +8,7 @@ import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { Accordion } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { useCompletedTodos } from "@/hooks";
+import { useCompletedTodos, useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 import type { TodoListItem, TodoSection } from "@/types";
 import { todoDragSensors } from "@/utils";
@@ -63,6 +63,7 @@ export function TodoSectionedTaskList({
   onDeleteTodo,
 }: TodoSectionedTaskListProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const completedTodos = useCompletedTodos(listId);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isCreatingSection, setIsCreatingSection] = useState(false);
@@ -115,8 +116,8 @@ export function TodoSectionedTaskList({
     return (
       <TodoEmptyState
         icon={FolderTree}
-        title="No sections yet"
-        description="Create a section to start organizing this list."
+        title={t.todos.noSections}
+        description={t.todos.noSectionsDescription}
       />
     );
   }
@@ -126,12 +127,12 @@ export function TodoSectionedTaskList({
       <form className="p-2" onSubmit={handleCreateSection}>
         <div className="flex flex-col gap-2 sm:flex-row">
           <Input
-            aria-label="New section title"
+            aria-label={t.todos.newSectionLabel}
             value={newSectionTitle}
             onChange={(event) => {
               setNewSectionTitle(event.target.value);
             }}
-            placeholder="Add a new section"
+            placeholder={t.todos.newSection}
             disabled={!isOnline}
             className="h-11 min-w-0 flex-1 pointer-fine:h-10"
           />
@@ -141,7 +142,7 @@ export function TodoSectionedTaskList({
             className="h-11 shrink-0 pointer-fine:h-10"
           >
             <Plus data-icon="inline-start" />
-            Add section
+            {t.todos.addSection}
           </Button>
         </div>
       </form>
@@ -350,8 +351,8 @@ export function TodoSectionedTaskList({
           className="h-11 self-center text-muted-foreground pointer-fine:h-9"
         >
           {completedTodos.status === "LoadingMore"
-            ? "Loading completed todos"
-            : "Show more completed"}
+            ? t.todos.loadingCompleted
+            : t.todos.showMoreCompleted}
         </Button>
       )}
     </div>

@@ -10,6 +10,7 @@ import {
   getRecipeHost,
   getRecipeLinkLabel,
   recipeContentFields,
+  recipeImportErrorValidator,
 } from "../shared/recipe";
 import { createTodoTitleContent, getTodoTitleText } from "../shared/todo";
 
@@ -70,7 +71,7 @@ export const completeImport = internalMutation({
 export const failImport = internalMutation({
   args: {
     recipeId: v.id("recipes"),
-    errorMessage: v.string(),
+    error: recipeImportErrorValidator,
     pageTitle: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -85,7 +86,7 @@ export const failImport = internalMutation({
 
     await ctx.db.patch(recipe._id, {
       status: "failed",
-      errorMessage: args.errorMessage,
+      errorMessage: args.error,
       updatedAt: now,
     });
 

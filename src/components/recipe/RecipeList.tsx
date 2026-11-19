@@ -7,11 +7,11 @@ import { useNavigate } from "react-router";
 
 import { TodoEmptyState } from "@/components/todo/TodoEmptyState";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/hooks";
+import type { Messages } from "@/i18n";
 import { cn } from "@/lib/utils";
 import type { RecipeListItem, TodoListSummary } from "@/types";
 import {
-  formatRecipeMinutes,
-  formatRecipeServings,
   getServingCount,
   getTodoTitleText,
   normalizeRecipeSearch,
@@ -29,11 +29,12 @@ type RecipeListProps = {
 export function RecipeList({ listId }: RecipeListProps) {
   const recipes = useQuery(api.queries.recipes.list, { listId });
   const [search, setSearch] = useState("");
+  const t = useT();
 
   if (recipes === undefined) {
     return (
       <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-        Loading recipes
+        {t.recipe.loadingList}
       </div>
     );
   }
@@ -42,8 +43,8 @@ export function RecipeList({ listId }: RecipeListProps) {
     return (
       <TodoEmptyState
         icon={ChefHat}
-        title="No recipes yet"
-        description="Paste a recipe link below and a copy is saved here, so it stays readable even if the site goes away. Or type a name to write a recipe in yourself."
+        title={t.recipe.empty}
+        description={t.recipe.emptyDescription}
       />
     );
   }
@@ -64,8 +65,8 @@ export function RecipeList({ listId }: RecipeListProps) {
           <Search className="pointer-events-none absolute top-1/2 left-4 size-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             type="search"
-            aria-label="Search recipes"
-            placeholder="Search recipes"
+            aria-label={t.recipe.search}
+            placeholder={t.recipe.search}
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
@@ -76,7 +77,7 @@ export function RecipeList({ listId }: RecipeListProps) {
       ) : null}
       {matches.length === 0 ? (
         <p className="px-1 py-6 text-center text-sm text-muted-foreground">
-          No recipes match “{search.trim()}”.
+          {t.recipe.noMatch(search.trim())}
         </p>
       ) : (
         <ul className="grid grid-cols-2 gap-3 px-1 @xl:grid-cols-3 @4xl:grid-cols-4">
@@ -94,6 +95,7 @@ export function RecipeList({ listId }: RecipeListProps) {
 function RecipeCard({ item }: { item: RecipeListItem }) {
   const navigate = useNavigate();
   const title = getTodoTitleText(item.title);
+  const t = useT();
   const { recipe } = item;
 
   return (
@@ -105,7 +107,7 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
         });
       }}
       className="group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-card text-left text-card-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
-      aria-label={`Open ${title}`}
+      aria-label={t.recipe.open(title)}
     >
       <div className="flex aspect-4/3 w-full items-center justify-center overflow-hidden bg-muted text-muted-foreground">
         {recipe?.imageUrl ? (
@@ -116,7 +118,7 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
             className="size-full object-cover transition-transform duration-300 group-hover:scale-[1.03]"
           />
         ) : recipe?.status === "importing" ? (
-          <span className="text-sm">Saving a copy</span>
+          <span className="text-sm">{t.recipe.savingCopy}</span>
         ) : recipe?.status === "failed" ? (
           <Link2 className="size-6" />
         ) : (
@@ -142,7 +144,7 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
                 : "text-muted-foreground",
             )}
           >
-            {getRecipeCardDetails(recipe)}
+            {getRecipeCardDetails(recipe, t)}
           </p>
         ) : null}
       </div>
@@ -150,31 +152,31 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
   );
 }
 
-// Yields with a number read in the app's words ("4 osobe" -> "4 servings");
-// ones without, like "1 loaf", keep the site's text.
-function getServings(servings: string | undefined) {
-  const count = getServingCount(servings);
-
-  return count ? formatRecipeServings(count) : servings;
-}
-
-function getRecipeCardDetails(recipe: NonNullable<RecipeListItem["recipe"]>) {
+function getRecipeCardDetails(
+  recipe: NonNullable<RecipeListItem["recipe"]>,
+  t: Messages,
+) {
   if (recipe.status === "importing") {
-    return "Just added";
+    return t.recipe.justAdded;
   }
 
   if (recipe.status === "failed") {
-    return "Couldn't save a copy. Link kept";
+    return t.recipe.cardFailed;
   }
 
+  // Yields with a number read in the app's words ("4 osobe" -> "4 servings");
+  // ones without, like "1 loaf", keep the site's text.
+  const servingCount = getServingCount(recipe.servings);
   const facts = [
-    recipe.totalMinutes && formatRecipeMinutes(recipe.totalMinutes),
-    getServings(recipe.servings),
+    recipe.totalMinutes && t.recipe.minutes(recipe.totalMinutes),
+    servingCount ? t.recipe.servings(servingCount) : recipe.servings,
   ].filter(Boolean);
 
   if (facts.length > 0) {
     return facts.join(" · ");
   }
 
-  return recipe.sourceUrl ? getRecipeHost(recipe.sourceUrl) : "Typed by hand";
+  return recipe.sourceUrl
+    ? getRecipeHost(recipe.sourceUrl)
+    : t.recipe.typedByHand;
 }

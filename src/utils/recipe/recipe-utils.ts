@@ -1,24 +1,4 @@
-// Formatting for the saved recipe fields shown in rows and on the recipe page.
-
-/** 45 -> "45 min", 70 -> "1 h 10 min", 120 -> "2 h". */
-export function formatRecipeMinutes(minutes: number) {
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-
-  if (hours === 0) {
-    return `${rest} min`;
-  }
-
-  return rest === 0 ? `${hours} h` : `${hours} h ${rest} min`;
-}
-
-/**
- * Servings in the app's own words, whatever language the site used:
- * 4 -> "4 servings". Pair with getServingCount for a saved yield.
- */
-export function formatRecipeServings(count: number) {
-  return `${count} ${count === 1 ? "serving" : "servings"}`;
-}
+// Reading and scaling saved recipe fields. Their wording lives in t.recipe.
 
 const INGREDIENT_QUANTITY_PATTERN =
   /^((?:\d+(?:[.,/]\d+)?|[½¼¾⅓⅔⅛])(?:\s*[½¼¾⅓⅔⅛])?(?:\s*[-–]\s*\d+(?:[.,/]\d+)?)?(?:\s*(?:kg|g|mg|ml|dl|cl|l|oz|lbs?|tsp|tbsp|cups?)\b\.?)?)\s+(\S.*)$/i;

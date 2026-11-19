@@ -32,7 +32,7 @@ export const run = internalAction({
       console.error("Recipe import failed", error);
       await ctx.runMutation(internal.system.recipes.failImport, {
         recipeId: args.recipeId,
-        errorMessage: "Something went wrong while saving the copy.",
+        error: "unexpected",
       });
     }
   },
@@ -52,7 +52,7 @@ async function importRecipe(ctx: ActionCtx, recipeId: Id<"recipes">) {
   if (html === null) {
     await ctx.runMutation(internal.system.recipes.failImport, {
       recipeId,
-      errorMessage: "The page could not be opened.",
+      error: "pageUnavailable",
     });
     return;
   }
@@ -60,7 +60,7 @@ async function importRecipe(ctx: ActionCtx, recipeId: Id<"recipes">) {
   if (!recipe) {
     await ctx.runMutation(internal.system.recipes.failImport, {
       recipeId,
-      errorMessage: "No recipe was found on this page.",
+      error: "noRecipe",
       pageTitle: parsePageTitle(html),
     });
     return;

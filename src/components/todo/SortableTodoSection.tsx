@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { useNetworkStore } from "@/stores";
 import type { TodoListItem, TodoSection } from "@/types";
@@ -41,6 +42,7 @@ export function SortableTodoSection({
   onRenameSection,
 }: SortableTodoSectionProps) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [draftTitle, setDraftTitle] = useState(section.title);
   const {
     ref: sectionRef,
@@ -73,7 +75,11 @@ export function SortableTodoSection({
   const handleSubmit = async (event: React.SyntheticEvent) => {
     event.preventDefault();
 
-    if (!draftTitle.trim() || draftTitle.trim() === section.title) {
+    if (
+      section.isDefault ||
+      !draftTitle.trim() ||
+      draftTitle.trim() === section.title
+    ) {
       return;
     }
 
@@ -100,7 +106,7 @@ export function SortableTodoSection({
             variant="ghost"
             size="icon-mobile-sm"
             disabled={!isOnline}
-            aria-label="Reorder section"
+            aria-label={t.todos.reorderSection}
             className="mt-0.5 shrink-0 cursor-grab touch-none text-muted-foreground hover:text-foreground"
             ref={(element) => {
               sectionHandleRef(element);
@@ -112,8 +118,10 @@ export function SortableTodoSection({
           <div className="min-w-0 flex-1">
             <AccordionTrigger className="flex items-center min-w-0 gap-3 px-0 py-1 hover:no-underline focus-visible:border-transparent focus-visible:ring-0">
               <Input
-                aria-label="Section title"
-                value={draftTitle}
+                aria-label={t.todos.sectionTitle}
+                // The default section is named by the app, in its language.
+                value={section.isDefault ? t.todos.otherSection : draftTitle}
+                readOnly={section.isDefault}
                 disabled={!isOnline}
                 onChange={(event) => {
                   setDraftTitle(event.target.value);
@@ -132,7 +140,7 @@ export function SortableTodoSection({
           <div ref={dropRef} className={cn("rounded-xl bg-background/35")}>
             {todos.length === 0 && completedTodos.length === 0 ? (
               <div className="px-2 py-6 text-center text-sm text-muted-foreground">
-                No todos in this section yet.
+                {t.todos.sectionEmpty}
               </div>
             ) : (
               <div role="list" className="flex flex-col gap-1">

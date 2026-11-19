@@ -22,10 +22,10 @@ import {
   SidebarMenu,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useT } from "@/hooks";
 import { useModal } from "@/hooks/modals/use-modal";
 import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type { CreateTodoListModalValues, TodoListSummary } from "@/types";
-import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 type TodoListSidebarProps = {
   lists: TodoListSummary[];
@@ -41,6 +41,7 @@ export function TodoListSidebar({
   const { openModal } = useModal();
   const { isMobile, setOpenMobile } = useSidebar();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
 
   // Store lists
 
@@ -88,7 +89,7 @@ export function TodoListSidebar({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return false;
     }
 
@@ -118,7 +119,7 @@ export function TodoListSidebar({
 
   const handleReorderLists = async (listIds: TodoListSummary["_id"][]) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -138,10 +139,10 @@ export function TodoListSidebar({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold tracking-[0.22em] text-sidebar-primary uppercase">
-              Lists
+              {t.lists.eyebrow}
             </p>
             <h2 className="mt-1 truncate text-lg font-semibold text-sidebar-foreground">
-              Your boards
+              {t.lists.title}
             </h2>
           </div>
           <div className="flex items-center gap-2">
@@ -149,7 +150,7 @@ export function TodoListSidebar({
               type="button"
               variant="outline"
               size="icon-mobile-sm"
-              aria-label="Create a new list"
+              aria-label={t.lists.createTitle}
               disabled={!isOnline || isLoading}
               onClick={() => {
                 openModal("createTodoList", {
@@ -167,12 +168,12 @@ export function TodoListSidebar({
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
             <SidebarInput
-              aria-label="Search lists by title"
+              aria-label={t.lists.searchLabel}
               value={searchQuery}
               onChange={(event) => {
                 setSearchQuery(event.target.value);
               }}
-              placeholder="Search lists"
+              placeholder={t.lists.search}
               className="h-11 pl-8 pointer-fine:h-8"
             />
           </div>
@@ -184,11 +185,11 @@ export function TodoListSidebar({
           {lists.length === 0 ? (
             <div className="flex items-center gap-3 rounded-lg border border-dashed border-sidebar-border bg-background/35 p-3 text-sm text-muted-foreground">
               <ListChecks className="size-4 text-sidebar-primary" />
-              Create your first list.
+              {t.lists.empty}
             </div>
           ) : visibleLists.length === 0 ? (
             <div className="rounded-lg border border-dashed border-sidebar-border bg-background/35 p-3 text-sm text-muted-foreground">
-              No lists match this search.
+              {t.lists.noMatch}
             </div>
           ) : (
             <ScrollArea className="min-h-0 flex-1">

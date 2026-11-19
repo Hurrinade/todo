@@ -9,6 +9,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useT } from "@/hooks";
 import type { TodoListMember } from "@/types";
 
 type TodoListMembersPopoverProps = {
@@ -21,6 +22,7 @@ export function TodoListMembersPopover({
   memberCount,
 }: TodoListMembersPopoverProps) {
   const [open, setOpen] = useState(false);
+  const t = useT();
   const members = useQuery(
     api.queries.todoLists.members,
     open ? { listId } : "skip",
@@ -32,7 +34,7 @@ export function TodoListMembersPopover({
         <button
           type="button"
           className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-full border border-border/80 bg-card/90 px-3 text-xs font-medium text-foreground shadow-sm transition-colors pointer-fine:h-6 pointer-fine:px-2.5 hover:bg-accent/60"
-          aria-label={`Show ${memberCount} list members`}
+          aria-label={t.lists.showMembers(memberCount)}
         >
           <Users className="size-4 text-primary" />
           <span>{memberCount}</span>
@@ -46,11 +48,11 @@ export function TodoListMembersPopover({
       >
         {members === undefined ? (
           <div className="px-4 py-4 text-sm text-muted-foreground">
-            Loading members
+            {t.lists.loadingMembers}
           </div>
         ) : members.length === 0 ? (
           <div className="px-4 py-4 text-sm text-muted-foreground">
-            No members found
+            {t.lists.noMembers}
           </div>
         ) : (
           <div className="flex flex-col gap-1 px-3 py-3">

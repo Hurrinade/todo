@@ -1,6 +1,7 @@
-import { getAppErrorMessage } from "@convex/shared/errors";
 import { create } from "zustand";
 
+import { translateAppError } from "@/i18n";
+import { getT } from "@/stores/language/language-store";
 import type { TodoErrorStoreState } from "@/types";
 
 export const useTodoErrorStore = create<TodoErrorStoreState>((set) => ({
@@ -13,6 +14,10 @@ export const useTodoErrorStore = create<TodoErrorStoreState>((set) => ({
   },
   setUnknownErrorMessage: (error) => {
     // Server errors without an app message are internal, so keep them generic.
-    set({ errorMessage: getAppErrorMessage(error) ?? "Something went wrong." });
+    const t = getT();
+
+    set({
+      errorMessage: translateAppError(error, t) ?? t.common.somethingWentWrong,
+    });
   },
 }));

@@ -5,10 +5,10 @@ import type { QueryCtx } from "../_generated/server";
 import { appError } from "./errors";
 
 export const MAX_RECIPE_URL_LENGTH = 2048;
-const MAX_RECIPE_NAME_LENGTH = 240;
-const MAX_RECIPE_LINES = 200;
-const MAX_RECIPE_LINE_LENGTH = 2000;
-const MAX_RECIPE_SERVINGS_LENGTH = 100;
+export const MAX_RECIPE_NAME_LENGTH = 240;
+export const MAX_RECIPE_LINES = 200;
+export const MAX_RECIPE_LINE_LENGTH = 2000;
+export const MAX_RECIPE_SERVINGS_LENGTH = 100;
 const MAX_RECIPE_MINUTES = 7 * 24 * 60;
 
 export const recipeStatusValidator = v.union(
@@ -16,6 +16,21 @@ export const recipeStatusValidator = v.union(
   v.literal("ready"),
   v.literal("failed"),
 );
+
+// Why a copy could not be saved. The web app shows a translation of each.
+export const recipeImportErrorValidator = v.union(
+  v.literal("pageUnavailable"),
+  v.literal("noRecipe"),
+  v.literal("unexpected"),
+);
+
+export type RecipeImportError = Infer<typeof recipeImportErrorValidator>;
+
+const RECIPE_IMPORT_ERRORS: readonly RecipeImportError[] = [
+  "pageUnavailable",
+  "noRecipe",
+  "unexpected",
+];
 
 // The page content copied into a recipe. Shared by the schema and the import.
 export const recipeContentFields = {
@@ -51,13 +66,18 @@ export function parseRecipeInput(
   }
 
   if (!trimmed) {
-    throw appError("invalid_input", "Paste a link or type a recipe name.");
+    throw appError(
+      "invalid_input",
+      "Paste a link or type a recipe name.",
+      "recipeInputEmpty",
+    );
   }
 
   if (trimmed.length > MAX_RECIPE_NAME_LENGTH) {
     throw appError(
       "invalid_input",
       `Recipe names can be up to ${MAX_RECIPE_NAME_LENGTH} characters.`,
+      "recipeNameTooLong",
     );
   }
 
@@ -78,6 +98,7 @@ export function cleanRecipeContent(content: RecipeContent): RecipeContent {
     throw appError(
       "invalid_input",
       `Servings can be up to ${MAX_RECIPE_SERVINGS_LENGTH} characters.`,
+      "recipeServingsTooLong",
     );
   }
 
@@ -87,7 +108,11 @@ export function cleanRecipeContent(content: RecipeContent): RecipeContent {
       totalMinutes < 0 ||
       totalMinutes > MAX_RECIPE_MINUTES)
   ) {
-    throw appError("invalid_input", "Enter the total time in whole minutes.");
+    throw appError(
+      "invalid_input",
+      "Enter the total time in whole minutes.",
+      "recipeMinutesInvalid",
+    );
   }
 
   return {
@@ -105,6 +130,7 @@ function cleanTypedLines(lines: string[]) {
     throw appError(
       "invalid_input",
       `A recipe can have up to ${MAX_RECIPE_LINES} ingredients and ${MAX_RECIPE_LINES} steps.`,
+      "recipeTooManyLines",
     );
   }
 
@@ -112,6 +138,7 @@ function cleanTypedLines(lines: string[]) {
     throw appError(
       "invalid_input",
       `Each line can be up to ${MAX_RECIPE_LINE_LENGTH} characters.`,
+      "recipeLineTooLong",
     );
   }
 
@@ -132,7 +159,11 @@ export function normalizeRecipeUrl(input: string) {
     !url.hostname.includes(".") ||
     url.href.length > MAX_RECIPE_URL_LENGTH
   ) {
-    throw appError("invalid_input", "Paste a full recipe link.");
+    throw appError(
+      "invalid_input",
+      "Paste a full recipe link.",
+      "recipeLinkInvalid",
+    );
   }
 
   return url.href;
@@ -172,7 +203,10 @@ export async function getRecipeView(
   return {
     _id: recipe._id,
     status: recipe.status,
-    errorMessage: recipe.errorMessage,
+    importError: recipe.errorMessage
+      ? (RECIPE_IMPORT_ERRORS.find((error) => error === recipe.errorMessage) ??
+        "unexpected")
+      : undefined,
     sourceUrl: recipe.sourceUrl,
     imageUrl: recipe.imageId ? await ctx.storage.getUrl(recipe.imageId) : null,
     totalMinutes: recipe.totalMinutes,

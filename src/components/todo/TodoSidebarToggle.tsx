@@ -2,6 +2,7 @@ import { Menu } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { useSidebar } from "@/components/ui/sidebar";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 
 type TodoSidebarTogglePlacement = "floating" | "sidebar";
@@ -17,6 +18,7 @@ export function TodoSidebarToggle({
 }: TodoSidebarToggleProps) {
   const { isMobile, open, openMobile, toggleSidebar } = useSidebar();
   const isOpen = isMobile ? openMobile : open;
+  const t = useT();
   const shouldShow = placement === "sidebar" ? isOpen : !isOpen;
 
   if (!shouldShow) {
@@ -29,9 +31,7 @@ export function TodoSidebarToggle({
       variant={placement === "floating" ? "outline" : "ghost"}
       size={placement === "floating" ? "icon-mobile-lg" : "icon-mobile"}
       onClick={toggleSidebar}
-      aria-label={
-        isOpen ? "Close todo lists sidebar" : "Open todo lists sidebar"
-      }
+      aria-label={isOpen ? t.lists.closeSidebar : t.lists.openSidebar}
       className={cn(
         "text-muted-foreground hover:text-foreground",
         placement === "floating" &&

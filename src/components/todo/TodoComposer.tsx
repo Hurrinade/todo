@@ -4,6 +4,7 @@ import { useRef } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useT } from "@/hooks";
 import { cn } from "@/lib/utils";
 import { MAX_TODO_TITLE_LENGTH } from "@/utils";
 
@@ -19,19 +20,10 @@ type TodoComposerProps = {
   variant?: "todo" | "recipe";
 };
 
-const COMPOSER_VARIANTS = {
-  todo: {
-    placeholder: "Add the next thing",
-    inputLabel: "New todo title",
-    submitLabel: "Add todo",
-    maxLength: MAX_TODO_TITLE_LENGTH,
-  },
-  recipe: {
-    placeholder: "Paste a link or type a recipe name",
-    inputLabel: "Recipe link or name",
-    submitLabel: "Save recipe",
-    maxLength: MAX_RECIPE_URL_LENGTH,
-  },
+// Text for each variant comes from t.composer.
+const COMPOSER_MAX_LENGTHS = {
+  todo: MAX_TODO_TITLE_LENGTH,
+  recipe: MAX_RECIPE_URL_LENGTH,
 } as const;
 
 // Reading the clipboard needs a secure context; older browsers lack it.
@@ -50,13 +42,15 @@ export function TodoComposer({
   variant = "todo",
 }: TodoComposerProps) {
   const inputRef = useRef<HTMLInputElement>(null);
-  const { placeholder, inputLabel, submitLabel, maxLength } =
-    COMPOSER_VARIANTS[variant];
+  const t = useT();
+  const { placeholder, inputLabel, submitLabel, reconnectLabel, tooLong } =
+    t.composer[variant];
+  const maxLength = COMPOSER_MAX_LENGTHS[variant];
   const titleLength = title.trim().length;
   const isTitleTooLong = titleLength > maxLength;
   const showsCount = variant === "todo" && titleLength >= 200;
   const feedback = isTitleTooLong
-    ? `${variant === "todo" ? "Title" : "Link"} is too long (${titleLength}/${maxLength}).`
+    ? tooLong(titleLength, maxLength)
     : createError;
   const showsPaste = variant === "recipe" && canPaste && !title;
 
@@ -113,7 +107,7 @@ export function TodoComposer({
             className="h-11 rounded-full pointer-fine:h-8"
           >
             <ClipboardPaste />
-            Paste
+            {t.composer.paste}
           </Button>
         ) : null}
         <Button
@@ -121,9 +115,7 @@ export function TodoComposer({
           size="icon-mobile"
           disabled={!isOnline || !title.trim() || isTitleTooLong}
           className="rounded-full bg-card text-muted-foreground"
-          aria-label={
-            isOnline ? submitLabel : `Reconnect to ${submitLabel.toLowerCase()}`
-          }
+          aria-label={isOnline ? submitLabel : reconnectLabel}
         >
           <Plus />
         </Button>

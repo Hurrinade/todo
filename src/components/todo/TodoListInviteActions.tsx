@@ -1,5 +1,6 @@
 import { api } from "@convex/_generated/api";
 import { Link2 } from "lucide-react";
+import { useT } from "@/hooks";
 import type { TodoListSummary } from "@/types";
 import { useMutation } from "convex/react";
 import { useState } from "react";
@@ -14,6 +15,7 @@ import { useNetworkStore } from "@/stores";
 
 export function TodoListInviteActions({ list }: { list: TodoListSummary }) {
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [isGeneratingInvite, setIsGeneratingInvite] = useState(false);
 
   const createInvite = useMutation(api.mutations.todoInvites.create);
@@ -52,7 +54,7 @@ export function TodoListInviteActions({ list }: { list: TodoListSummary }) {
             void handleGenerateInvite();
           }}
           aria-label={
-            isGeneratingInvite ? "Generating invite link" : "Copy invite link"
+            isGeneratingInvite ? t.lists.generatingInvite : t.lists.copyInvite
           }
           className="shrink-0 bg-card"
         >
@@ -60,7 +62,7 @@ export function TodoListInviteActions({ list }: { list: TodoListSummary }) {
         </Button>
       </TooltipTrigger>
       <TooltipContent sideOffset={8}>
-        {isGeneratingInvite ? "Generating invite link" : "Copy invite link"}
+        {isGeneratingInvite ? t.lists.generatingInvite : t.lists.copyInvite}
       </TooltipContent>
     </Tooltip>
   );

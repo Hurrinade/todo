@@ -38,6 +38,7 @@ export const create = mutation({
       throw appError(
         "invalid_input",
         "Recipes can only be saved to recipe lists.",
+        "recipeWrongList",
       );
     }
 
@@ -55,7 +56,11 @@ export const create = mutation({
         .first();
 
       if (existing) {
-        throw appError("conflict", "This recipe is already in this list.");
+        throw appError(
+          "conflict",
+          "This recipe is already in this list.",
+          "recipeExists",
+        );
       }
     }
 
@@ -133,7 +138,11 @@ export const updateContent = mutation({
     const recipe = await requireRecipeForTodo(ctx, todoId);
 
     if (recipe.status === "importing") {
-      throw appError("conflict", "Wait until the copy is saved, then edit it.");
+      throw appError(
+        "conflict",
+        "Wait until the copy is saved, then edit it.",
+        "recipeImporting",
+      );
     }
 
     await ctx.db.patch(recipe._id, {
@@ -160,7 +169,7 @@ async function requireRecipeForTodo(ctx: MutationCtx, todoId: Id<"todos">) {
     .unique();
 
   if (!recipe) {
-    throw appError("not_found", "Recipe was not found.");
+    throw appError("not_found", "Recipe was not found.", "recipeNotFound");
   }
 
   return recipe;

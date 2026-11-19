@@ -100,6 +100,8 @@ export default defineSchema({
     // Missing for recipes typed by hand.
     sourceUrl: v.optional(v.string()),
     status: recipeStatusValidator,
+    // A RecipeImportError. Rows saved before these keys hold English text,
+    // which getRecipeView reports as "unexpected".
     errorMessage: v.optional(v.string()),
     imageId: v.optional(v.id("_storage")),
     ...recipeContentFields,

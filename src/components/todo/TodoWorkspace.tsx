@@ -1,6 +1,5 @@
 import { api } from "@convex/_generated/api";
 import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
-import { getAppErrorMessage } from "@convex/shared/errors";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -23,6 +22,8 @@ import {
   SidebarProvider,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useT } from "@/hooks";
+import { translateAppError } from "@/i18n";
 import { cn } from "@/lib/utils";
 import { useNetworkStore, useTodoErrorStore, useTodoStore } from "@/stores";
 import type {
@@ -37,7 +38,6 @@ import {
   createTodoTitleContent,
   MAX_TODO_TITLE_LENGTH,
   moveTodoOptimistically,
-  OFFLINE_ACTION_MESSAGE,
   removeTodoOptimistically,
   repositionTodoOptimistically,
   toggleTodoOptimistically,
@@ -74,6 +74,7 @@ export function TodoWorkspace({
 
   const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [createTodoError, setCreateTodoError] = useState<string | null>(null);
   const titleEditVersion = useRef(0);
@@ -133,7 +134,7 @@ export function TodoWorkspace({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return false;
     }
 
@@ -163,8 +164,8 @@ export function TodoWorkspace({
         setNewTodoTitle(submittedTitle);
         setCreateTodoError(
           isRecipeList
-            ? (getAppErrorMessage(error) ?? "Couldn't save recipe. Try again.")
-            : "Couldn't add todo. Try again.",
+            ? (translateAppError(error, t) ?? t.recipe.saveFailed)
+            : t.todos.addFailed,
         );
       }
     });
@@ -181,7 +182,7 @@ export function TodoWorkspace({
 
   const handleToggleTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -196,7 +197,7 @@ export function TodoWorkspace({
 
   const handleDeleteTodo = async (todoId: TodoListItem["_id"]) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -215,7 +216,7 @@ export function TodoWorkspace({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -234,7 +235,7 @@ export function TodoWorkspace({
     title: string,
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -254,7 +255,7 @@ export function TodoWorkspace({
     }
 
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -274,7 +275,7 @@ export function TodoWorkspace({
     targetIndex: number,
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
       return;
     }
 
@@ -294,8 +295,8 @@ export function TodoWorkspace({
     placement: TodoRepositionArgs["placement"],
   ) => {
     if (!isOnline) {
-      setErrorMessage(OFFLINE_ACTION_MESSAGE);
-      throw new Error(OFFLINE_ACTION_MESSAGE);
+      setErrorMessage(t.common.offlineAction);
+      throw new Error(t.common.offlineAction);
     }
 
     clearErrorMessage();
@@ -402,6 +403,7 @@ function TodoWorkspaceContent({
   const { isMobile, open, openMobile } = useSidebar();
   const todoListViewportRef = useRef<HTMLDivElement>(null);
   const isSidebarOpen = isMobile ? openMobile : open;
+  const t = useT();
 
   return (
     <>
@@ -427,12 +429,12 @@ function TodoWorkspaceContent({
                   <RecipeList listId={activeList._id} />
                 ) : openTodoResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                    Loading todos
+                    {t.todos.loading}
                   </div>
                 ) : activeList.kind === "sectioned" &&
                   sectionResult === undefined ? (
                   <div className="flex min-h-40 items-center justify-center rounded-lg border border-border bg-card/55 text-sm text-muted-foreground">
-                    Loading sections
+                    {t.todos.loadingSections}
                   </div>
                 ) : activeList.kind === "sectioned" ? (
                   <TodoPaginationErrorBoundary key={activeList._id}>
@@ -488,8 +490,8 @@ function TodoWorkspaceContent({
             >
               <TodoEmptyState
                 icon={CircleSlash}
-                title="No list selected"
-                description="Create a list in the left rail to start collecting todos."
+                title={t.todos.noList}
+                description={t.todos.noListDescription}
               />
             </div>
           </div>

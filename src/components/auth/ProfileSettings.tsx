@@ -4,6 +4,8 @@ import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { useT } from "@/hooks";
+import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
 /** Name editing for account settings. `onSaved` runs only after a successful save. */
@@ -19,11 +21,18 @@ export default function ProfileSettings({
   const id = useId();
   const [draftName, setDraftName] = useState(name);
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const save = useMutation({
     mutationFn: async (nextName: string) => {
       const result = await authClient.updateUser({ name: nextName });
       if (result.error) {
-        throw new Error(result.error.message ?? "Could not save your profile.");
+        throw new Error(
+          translateServerMessage(
+            t,
+            result.error.message,
+            t.settings.profileNotSaved,
+          ),
+        );
       }
     },
     onSuccess: onSaved,
@@ -42,7 +51,7 @@ export default function ProfileSettings({
   return (
     <form onSubmit={submit} className="space-y-4" aria-busy={save.isPending}>
       <div className="space-y-2">
-        <label htmlFor={`${id}-name`}>Name</label>
+        <label htmlFor={`${id}-name`}>{t.auth.name}</label>
         <Input
           id={`${id}-name`}
           autoComplete="name"
@@ -58,10 +67,10 @@ export default function ProfileSettings({
         />
       </div>
       <div className="space-y-2">
-        <p>Email</p>
+        <p>{t.auth.email}</p>
         <p className="break-all text-muted-foreground">{email}</p>
       </div>
-      {!isOnline && <p role="status">You are offline.</p>}
+      {!isOnline && <p role="status">{t.common.offline}</p>}
       {save.isError && (
         <p role="alert" className="text-destructive">
           {save.error.message}
@@ -77,7 +86,7 @@ export default function ProfileSettings({
           draftName.trim() === name
         }
       >
-        {save.isPending ? "Saving..." : "Save"}
+        {save.isPending ? t.common.saving : t.common.save}
       </Button>
     </form>
   );

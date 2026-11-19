@@ -6,6 +6,7 @@ import { Outlet, useLocation, useMatch, useNavigate } from "react-router";
 
 import { TodoWorkspace } from "@/components/todo/TodoWorkspace";
 import { Spinner } from "@/components/ui/spinner";
+import { useT } from "@/hooks";
 import { useIsMobile } from "@/hooks/use-mobile";
 import type {
   TodoDetailRouteContext,
@@ -92,11 +93,13 @@ export default function Home() {
 }
 
 function TodoDetailRouteLoading() {
+  const t = useT();
+
   return (
     <div
       className="flex h-full min-h-40 w-full items-center justify-center bg-background"
       role="status"
-      aria-label="Loading todo details"
+      aria-label={t.todos.loadingDetails}
     >
       <Spinner />
     </div>

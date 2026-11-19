@@ -1,5 +1,4 @@
 import { api } from "@convex/_generated/api";
-import { getAppErrorMessage } from "@convex/shared/errors";
 import { getRecipeLinkLabel, normalizeRecipeUrl } from "@convex/shared/recipe";
 import { useMutation, useQuery } from "convex/react";
 import { ChefHat } from "lucide-react";
@@ -7,9 +6,10 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 
 import { Button } from "@/components/ui/button";
+import { useT } from "@/hooks";
+import { translateAppError } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 import type { TodoListSummary } from "@/types";
-import { OFFLINE_ACTION_MESSAGE } from "@/utils";
 
 /**
  * Where the installed app lands when a page is shared to RiTodo (Android).
@@ -20,6 +20,7 @@ export default function ShareRecipe() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isOnline = useNetworkStore((state) => state.isOnline);
+  const t = useT();
   const lists = useQuery(api.queries.todoLists.list);
   const createRecipe = useMutation(api.mutations.recipes.create);
   const [savingListId, setSavingListId] = useState<
@@ -42,7 +43,7 @@ export default function ShareRecipe() {
     }
 
     if (!isOnline) {
-      setError(OFFLINE_ACTION_MESSAGE);
+      setError(t.common.offlineAction);
       return;
     }
 
@@ -53,7 +54,7 @@ export default function ShareRecipe() {
       await createRecipe({ listId, text: sharedUrl });
       openList(listId);
     } catch (saveError) {
-      setError(getAppErrorMessage(saveError) ?? "Couldn't save recipe.");
+      setError(translateAppError(saveError, t) ?? t.recipe.saveFailed);
       setSavingListId(null);
     }
   };
@@ -61,7 +62,7 @@ export default function ShareRecipe() {
   return (
     <div className="mx-auto flex min-h-full w-full max-w-md flex-col gap-6 px-5 py-8 pb-[calc(2rem+env(safe-area-inset-bottom))]">
       <header className="flex flex-col gap-1.5">
-        <h1 className="text-2xl font-bold tracking-tight">Save recipe</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t.share.title}</h1>
         {sharedUrl ? (
           <p className="text-sm break-all text-muted-foreground">
             {getRecipeLinkLabel(sharedUrl)}
@@ -70,19 +71,15 @@ export default function ShareRecipe() {
       </header>
 
       {!sharedUrl ? (
-        <p className="text-sm text-muted-foreground">
-          No link came with this share. Open the recipe page and share it again.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.share.noLink}</p>
       ) : recipeLists === undefined ? (
-        <p className="text-sm text-muted-foreground">Loading lists</p>
+        <p className="text-sm text-muted-foreground">{t.share.loading}</p>
       ) : recipeLists.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          Make a recipe list in RiTodo first, then share the page again.
-        </p>
+        <p className="text-sm text-muted-foreground">{t.share.noRecipeLists}</p>
       ) : (
         <section className="flex flex-col gap-2">
           <h2 className="text-xs font-semibold tracking-widest text-muted-foreground uppercase">
-            Save to
+            {t.share.saveTo}
           </h2>
           <ul className="flex flex-col gap-2">
             {recipeLists.map((list) => (
@@ -101,7 +98,7 @@ export default function ShareRecipe() {
                   <span className="min-w-0 flex-1 truncate">{list.title}</span>
                   {savingListId === list._id ? (
                     <span className="text-sm font-normal text-muted-foreground">
-                      Saving
+                      {t.share.saving}
                     </span>
                   ) : null}
                 </button>
@@ -126,7 +123,7 @@ export default function ShareRecipe() {
           openList();
         }}
       >
-        Open RiTodo
+        {t.share.openApp}
       </Button>
     </div>
   );
