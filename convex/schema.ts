@@ -13,6 +13,8 @@ export default defineSchema({
     // Legacy ownership IDs stay unchanged. Linking requires a verified backfill.
     clerkId: v.optional(v.string()),
     betterAuthId: v.optional(v.string()),
+    // Native Google stores this profile's document ID in its account record.
+    nativeGoogleLinked: v.optional(v.boolean()),
     email: v.string(),
     imageUrl: v.optional(v.string()),
     firstName: v.optional(v.string()),

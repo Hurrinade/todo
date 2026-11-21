@@ -4,6 +4,7 @@
     "deploymentEnabled": {
       "auth/better-auth-migration": false,
       "design/auth-account-ui": false,
+      "feat/convex-auth-v2-migration": false,
       "feat/remember-last-email": false
     }
   },

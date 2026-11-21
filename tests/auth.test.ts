@@ -1,6 +1,8 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
 import { Resend, type EmailId } from "@convex-dev/resend";
 import { convexTest } from "convex-test";
+import { componentsGeneric, type FunctionReference } from "convex/server";
+import { dirname, join } from "node:path";
 import { Webhook } from "svix";
 import { z } from "zod";
 
@@ -14,6 +16,8 @@ import { modulesIn } from "./convex-modules";
 // Test-process values only. No environment files or external services are used.
 process.env.SITE_URL = "http://localhost:5174";
 process.env.CONVEX_SITE_URL = "https://auth.example.test";
+process.env.CONVEX_CLOUD_URL = "https://auth.example.test";
+process.env.AUTH_V2_GOOGLE_ENABLED = "true";
 process.env.BETTER_AUTH_SECRET =
   "test-only-secret-not-for-use-outside-tests-123456789";
 process.env.GOOGLE_CLIENT_ID = "test-only-client";
@@ -117,6 +121,258 @@ function authRequest(body?: object, token = "test-session") {
     ...(body ? { body: JSON.stringify(body) } : {}),
   };
 }
+
+describe("Convex Auth Google transition", () => {
+  const authSource = join(
+    dirname(Bun.resolveSync("@convex-dev/auth/package.json", import.meta.dir)),
+    "src",
+  );
+  const maxAge = 90 * 86400000;
+
+  async function setupNative() {
+    const fixture = await setup();
+    for (const [name, directory] of [
+      ["auth", "component"],
+      ["authGoogle", "components/google"],
+    ]) {
+      const source = join(authSource, directory);
+      const { default: schema } = await import(join(source, "schema.ts"));
+      fixture.t.registerComponent(name, schema, modulesIn(source));
+    }
+    const now = Date.now();
+    await fixture.t.run((ctx) =>
+      ctx.runMutation(components.betterAuth.adapter.create, {
+        input: {
+          model: "account",
+          data: {
+            accountId: "existing-google-subject",
+            providerId: "google",
+            userId: fixture.authUser._id,
+            createdAt: now,
+            updatedAt: now,
+          },
+        },
+      }),
+    );
+    return fixture;
+  }
+
+  // Seed the verified output of Google's callback. The actual app redemption,
+  // purpose-bound state checks and native session component run in memory.
+  async function ticket(
+    t: Awaited<ReturnType<typeof setup>>["t"],
+    subject: string,
+  ) {
+    const { encryptTicketPayload } = await import(
+      join(authSource, "lib/oauth/crypto.ts")
+    );
+    const { sha256Hex } = await import(join(authSource, "lib/crypto.ts"));
+    const code = crypto.randomUUID();
+    const state = crypto.randomUUID();
+    const createTicket = componentsGeneric().authGoogle.provider
+      .createTicket as FunctionReference<
+      "mutation",
+      "internal",
+      { ticketCodeHash: string; stateHash: string; encryptedPayload: string },
+      null
+    >;
+    await t.mutation(createTicket, {
+      ticketCodeHash: await sha256Hex(code),
+      stateHash: await sha256Hex(state),
+      encryptedPayload: await encryptTicketPayload(
+        code,
+        JSON.stringify({
+          claims: {
+            sub: subject,
+            email: "marko@example.test",
+            email_verified: true,
+          },
+        }),
+      ),
+    });
+    return { code, state };
+  }
+
+  async function nativeSignIn(t: Awaited<ReturnType<typeof setup>>["t"]) {
+    const result = await t.mutation(
+      api.nativeAuth.completeSignInWithGoogle,
+      await ticket(t, "existing-google-subject"),
+    );
+    if (result.status !== "complete")
+      throw new Error("Fixture sign-in failed.");
+    const { sub, iss, exp, iat } = JSON.parse(
+      atob(
+        result.tokens.accessToken
+          .split(".")[1]
+          .replaceAll("-", "+")
+          .replaceAll("_", "/"),
+      ),
+    );
+    return {
+      tokens: result.tokens,
+      sub,
+      iss,
+      exp,
+      iat,
+      native: t.withIdentity({ subject: sub, issuer: iss }),
+    };
+  }
+
+  test("only a bound Google subject can keep the same profile and owned or shared lists", async () => {
+    const { t, userId, owned, shared, invite } = await setupNative();
+    const foreign = await ticket(t, "another-google-subject");
+    expect(
+      await t.mutation(api.nativeAuth.completeSignInWithGoogle, {
+        ...foreign,
+        state: "foreign",
+      }),
+    ).toMatchObject({ status: "error" });
+    await expect(
+      t.mutation(api.nativeAuth.completeSignInWithGoogle, foreign),
+    ).rejects.toThrow("LEGACY_GOOGLE_REQUIRED");
+
+    const { tokens, native, sub, iss } = await nativeSignIn(t);
+    expect(tokens.userId).toBe(userId);
+    expect((await nativeSignIn(t)).tokens.userId).toBe(userId);
+    expect(iss).toBe(`${process.env.CONVEX_CLOUD_URL}/components/auth`);
+    expect(
+      (await native.query(api.queries.todoLists.list, {}))
+        .map((list) => list._id)
+        .sort(),
+    ).toEqual([owned, shared].sort());
+    expect(
+      await native.query(api.queries.todoInvites.getByToken, {
+        token: "test-invite",
+      }),
+    ).toMatchObject({ isCurrentUserMember: true });
+    expect(
+      (await t.run((ctx) => ctx.db.get("todoListInvites", invite)))
+        ?.createdByUserId,
+    ).toBe("user_legacy_marko");
+    expect(
+      await t
+        .withIdentity({ subject: sub, issuer: process.env.CONVEX_SITE_URL })
+        .query(api.nativeAccount.me, {}),
+    ).toBeNull();
+
+    await native.mutation(api.nativeAccount.updateName, { name: "New Name" });
+    expect(await native.query(api.nativeAccount.me, {})).toMatchObject({
+      id: userId,
+      name: "New Name",
+    });
+    const legacy = await t.fetch("/api/auth/get-session", authRequest());
+    expect(await legacy.json()).toMatchObject({ user: { name: "New Name" } });
+  });
+
+  test("native sessions refresh after 45 days and stop at the 90-day creation deadline", async () => {
+    const { t } = await setupNative();
+    const start = Date.now();
+    const { tokens, iat, exp } = await nativeSignIn(t);
+    expect(exp - iat).toBe(60);
+    expect(
+      Math.abs(tokens.refreshTokenExpiresAt - start - maxAge),
+    ).toBeLessThan(1000);
+    const clock = spyOn(Date, "now");
+    try {
+      clock.mockReturnValue(start + 45 * 86400000);
+      const rotated = await t.mutation(api.nativeAuth.refreshSession, {
+        refreshToken: tokens.refreshToken,
+      });
+      if (rotated.kind !== "rotated")
+        throw new Error("Fixture refresh failed.");
+      expect(
+        Math.abs(
+          rotated.tokens.refreshTokenExpiresAt - tokens.refreshTokenExpiresAt,
+        ),
+      ).toBeLessThan(1);
+      clock.mockReturnValue(start + maxAge + 1000);
+      expect(
+        await t.mutation(api.nativeAuth.refreshSession, {
+          refreshToken: rotated.tokens.refreshToken,
+        }),
+      ).toEqual({ kind: "noSession" });
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  test("native settings manage the same keys while enforcing session and owner checks", async () => {
+    const { t, authUser } = await setupNative();
+    const legacy = await t.fetch(
+      "/api/auth/api-key/create",
+      authRequest({ name: "Existing key" }),
+    );
+    expect(legacy.status).toBe(200);
+    const old = z
+      .object({ id: z.string(), key: z.string() })
+      .parse(await legacy.json());
+    const { native, tokens } = await nativeSignIn(t);
+    const listArgs = { limit: 20, offset: 0 };
+    expect(
+      await native.action(api.nativeAccount.listKeys, listArgs),
+    ).toMatchObject({ total: 1, apiKeys: [{ id: old.id }] });
+    await expect(
+      t.mutation(api.nativeAccount.revokeKey, { keyId: old.id }),
+    ).rejects.toThrow("signed in");
+
+    const foreign = await t.run((ctx) =>
+      ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "apikey",
+          where: [{ field: "_id", value: old.id }],
+          update: { referenceId: "another-account" },
+        },
+      }),
+    );
+    await expect(
+      native.mutation(api.nativeAccount.revokeKey, { keyId: foreign._id }),
+    ).rejects.toThrow("API key not found");
+    await t.run((ctx) =>
+      ctx.runMutation(components.betterAuth.adapter.updateOne, {
+        input: {
+          model: "apikey",
+          where: [{ field: "_id", value: old.id }],
+          update: { referenceId: authUser._id },
+        },
+      }),
+    );
+
+    const mcp = (token: string) =>
+      t.fetch("/mcp", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json, text/event-stream",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          jsonrpc: "2.0",
+          id: 1,
+          method: "tools/call",
+          params: { name: "list_todo_lists", arguments: {} },
+        }),
+      });
+    const { key } = await native.mutation(api.nativeAccount.createKey, {
+      name: "Native key",
+    });
+    for (const secret of [old.key, key]) {
+      const response = await mcp(secret);
+      expect(response.status).toBe(200);
+      const result = await response.json();
+      expect(JSON.parse(result.result.content[0].text).lists).toHaveLength(2);
+    }
+    await native.mutation(api.nativeAccount.revokeKey, { keyId: old.id });
+    expect((await mcp(old.key)).status).toBe(401);
+    await t.mutation(api.nativeAuth.signOut, {
+      refreshToken: tokens.refreshToken,
+    });
+    expect(await native.query(api.nativeAuth.isAuthenticated, {})).toBe(false);
+    await expect(
+      native.action(api.nativeAccount.listKeys, listArgs),
+    ).rejects.toThrow("signed in");
+    expect((await mcp(key)).status).toBe(200);
+  });
+});
 
 describe("MCP keys", () => {
   test("another user cannot manage a key, and an expired key cannot authenticate", async () => {

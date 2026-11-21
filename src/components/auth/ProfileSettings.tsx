@@ -1,9 +1,12 @@
 import { useId, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useMutation as useConvexMutation } from "convex/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { authClient } from "@/lib/auth-client";
+import { useNativeAccount } from "@/lib/auth-mode";
+import { api } from "@convex/_generated/api";
 import { useT } from "@/hooks";
 import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
@@ -22,8 +25,18 @@ export default function ProfileSettings({
   const [draftName, setDraftName] = useState(name);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
+  const native = useNativeAccount();
+  const updateName = useConvexMutation(api.nativeAccount.updateName);
   const save = useMutation({
     mutationFn: async (nextName: string) => {
+      if (native) {
+        try {
+          await updateName({ name: nextName });
+        } catch {
+          throw new Error(t.settings.profileNotSaved);
+        }
+        return;
+      }
       const result = await authClient.updateUser({ name: nextName });
       if (result.error) {
         throw new Error(
