@@ -17,6 +17,7 @@
   "dependencies": {
     "@better-auth/api-key": "1.6.34",
     "@clerk/backend": "^3.26.5",
+    "@convex-dev/auth": "2.1.0",
     "@convex-dev/better-auth": "^0.12.6",
     "@convex-dev/resend": "^0.2.10",
     "@dnd-kit/abstract": "^0.5.3",
