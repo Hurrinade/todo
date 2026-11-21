@@ -1,4 +1,4 @@
-import { useState, type FormEvent, type ReactElement } from "react";
+import { useContext, useState, type FormEvent, type ReactElement } from "react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 
 import { Button } from "@/components/ui/button";
@@ -15,7 +15,8 @@ import {
   InputOTPGroup,
   InputOTPSlot,
 } from "@/components/ui/input-otp";
-import { authClient } from "@/lib/auth-client";
+import { authClient, signInWithLegacyGoogle } from "@/lib/auth-client";
+import { GoogleSignInContext } from "@/lib/auth-mode";
 import { getLastUsedEmail } from "@/lib/last-used-email";
 import { useT } from "@/hooks";
 import { translateServerMessage } from "@/i18n";
@@ -72,6 +73,8 @@ function AuthForm({
   const [resent, setResent] = useState(false);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
+  const googleSignIn =
+    useContext(GoogleSignInContext) ?? signInWithLegacyGoogle;
   const pending = pendingAction != null;
   const disabled = pending || !isOnline;
 
@@ -160,11 +163,7 @@ function AuthForm({
     setPendingAction("google");
     setError(null);
     try {
-      const result = await authClient.signIn.social({
-        provider: "google",
-        // Return to the invite or page that opened this dialog.
-        callbackURL: window.location.href,
-      });
+      const result = await googleSignIn();
       if (result.error) {
         setError(
           translateServerMessage(

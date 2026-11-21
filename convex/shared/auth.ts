@@ -1,3 +1,4 @@
+import { convexAuthProvider, getAuthUserId } from "@convex-dev/auth/server";
 import { authComponent } from "../auth";
 import type { Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
@@ -5,8 +6,32 @@ import { appError, notFoundError } from "./errors";
 
 type AuthContext = QueryCtx | MutationCtx;
 
+function isNativeIssuer(issuer: string) {
+  if (!process.env.CONVEX_CLOUD_URL) return false;
+  const provider = convexAuthProvider();
+  return "issuer" in provider && issuer === provider.issuer;
+}
+
+export async function getNativeProfile(ctx: AuthContext) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (!identity || !isNativeIssuer(identity.issuer)) return null;
+  const userId = await getAuthUserId(ctx);
+  const profile = userId && (await ctx.db.get("users", userId));
+  if (!profile?.nativeGoogleLinked || !profile.betterAuthId) return null;
+
+  const owner = await authComponent.getAnyUserById(ctx, profile.betterAuthId);
+  return owner ? { ...profile, betterAuthId: profile.betterAuthId } : null;
+}
+
 // Keep persisted Clerk IDs for linked users. New identities cannot collide with them.
 export async function getAppUserId(ctx: AuthContext) {
+  const identity = await ctx.auth.getUserIdentity();
+  if (identity && isNativeIssuer(identity.issuer)) {
+    const profile = await getNativeProfile(ctx);
+    return profile
+      ? (profile.clerkId ?? `better-auth:${profile.betterAuthId}`)
+      : null;
+  }
   const authUser = await authComponent.safeGetAuthUser(ctx);
   if (!authUser) {
     return null;

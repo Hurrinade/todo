@@ -4,6 +4,7 @@ import {
   type GenericCtx,
 } from "@convex-dev/better-auth";
 import { convex, crossDomain } from "@convex-dev/better-auth/plugins";
+import { getAuthConfigProvider } from "@convex-dev/better-auth/auth-config";
 import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { Resend } from "@convex-dev/resend";
 import { apiKey } from "@better-auth/api-key";
@@ -13,7 +14,6 @@ import { emailOTP } from "better-auth/plugins/email-otp";
 
 import { components, internal } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
-import authConfig from "./auth.config";
 import { syncBetterAuthUser } from "./system/users";
 import authSchema from "./betterAuth/schema";
 
@@ -121,7 +121,7 @@ export function createAuthOptions(ctx: GenericCtx<DataModel>) {
         },
       }),
       crossDomain({ siteUrl: siteUrl ?? "" }),
-      convex({ authConfig }),
+      convex({ authConfig: { providers: [getAuthConfigProvider()] } }),
     ],
   } satisfies BetterAuthOptions;
 }

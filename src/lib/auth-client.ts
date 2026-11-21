@@ -17,3 +17,18 @@ export const authClient = createAuthClient({
     apiKeyClient(),
   ],
 });
+
+export function signInWithLegacyGoogle() {
+  return authClient.signIn.social({
+    provider: "google",
+    // Return to the invite or page that opened the dialog.
+    callbackURL: window.location.href,
+  });
+}
+
+export async function signOutLegacy() {
+  const result = await authClient.signOut();
+  if (result.error) {
+    throw new Error(result.error.message);
+  }
+}

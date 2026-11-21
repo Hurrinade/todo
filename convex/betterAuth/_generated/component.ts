@@ -2177,4 +2177,48 @@ export type ComponentApi<Name extends string | undefined = string | undefined> =
         Name
       >;
     };
+    transition: {
+      googleOwner: FunctionReference<
+        "query",
+        "internal",
+        { subject: string },
+        string | null,
+        Name
+      >;
+      listKeys: FunctionReference<
+        "query",
+        "internal",
+        {
+          owner: string;
+          paginationOpts: {
+            cursor: string | null;
+            endCursor?: string | null;
+            id?: number;
+            maximumBytesRead?: number;
+            maximumRowsRead?: number;
+            numItems: number;
+          };
+        },
+        {
+          continueCursor: string;
+          isDone: boolean;
+          page: Array<{
+            expiresAt: number | null;
+            id: string;
+            name: string | null;
+            start: string | null;
+          }>;
+          pageStatus?: "SplitRecommended" | "SplitRequired" | null;
+          splitCursor?: string | null;
+        },
+        Name
+      >;
+      revokeKey: FunctionReference<
+        "mutation",
+        "internal",
+        { keyId: string; owner: string },
+        boolean,
+        Name
+      >;
+    };
   };

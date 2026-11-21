@@ -97,6 +97,10 @@ async function inspect(
     return blocked(
       "An audit exists without its mapping. Review before retrying.",
     );
+  if (target?.nativeGoogleLinked)
+    return blocked(
+      "Convex Auth uses the target profile. Review both account mappings before linking.",
+    );
 
   const newOwner = `better-auth:${pair.betterAuthId}`;
   const [list, membership, invite] = await Promise.all([
