@@ -39,6 +39,61 @@ export const create = mutation({
   },
 });
 
+// Adds a recipe ingredient to a regular or sectioned list, linked back to its
+// recipe line. `title` is the line at the cook's serving count. When the line
+// is already open in that list, returns that todo so a double tap adds it once.
+export const createFromRecipe = mutation({
+  args: {
+    recipeId: v.id("recipes"),
+    ingredient: v.string(),
+    listId: v.id("todoLists"),
+    title: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const userId = await requireAppUserId(ctx);
+    const recipe = await ctx.db.get(args.recipeId);
+
+    if (!recipe) {
+      throw notFoundError("recipes");
+    }
+
+    // Check the target list before looking for an existing link, so the
+    // answer never reveals what is on a list the caller cannot open.
+    await requireListAccess(ctx, recipe.listId, userId);
+    await requireListAccess(ctx, args.listId, userId);
+
+    if (!recipe.ingredients.includes(args.ingredient)) {
+      throw appError("invalid_input", "This line is not in the recipe.");
+    }
+
+    const linkedTodos = await ctx.db
+      .query("todos")
+      .withIndex("by_from_recipe_and_completed", (q) =>
+        q.eq("fromRecipe.recipeId", recipe._id).eq("isCompleted", false),
+      )
+      .collect();
+    const existing = linkedTodos.find(
+      (todo) =>
+        todo.listId === args.listId &&
+        todo.fromRecipe?.ingredient === args.ingredient,
+    );
+
+    if (existing) {
+      return existing._id;
+    }
+
+    const [todoId] = await createTodosForUser(ctx, userId, [
+      {
+        listId: args.listId,
+        title: createTodoTitleContent(args.title),
+        fromRecipe: { recipeId: recipe._id, ingredient: args.ingredient },
+      },
+    ]);
+
+    return todoId;
+  },
+});
+
 // Creates plain-text todos for MCP in one transaction and returns them in input order.
 export const createManyForUser = internalMutation({
   args: {
@@ -354,6 +409,7 @@ type CreateTodoInput = {
   sectionId?: Id<"todoSections">;
   title: Doc<"todos">["title"];
   description?: Doc<"todos">["description"];
+  fromRecipe?: Doc<"todos">["fromRecipe"];
 };
 
 // Creates todos in one transaction, updating each list's stats once.
@@ -425,6 +481,7 @@ async function insertTodoForUser(
     sectionId,
     title: normalizeTodoTitleContent(args.title),
     description: normalizeTodoDescription(args.description),
+    fromRecipe: args.fromRecipe,
     isCompleted: false,
     order: await getFirstOrder(ctx, {
       listId: args.listId,

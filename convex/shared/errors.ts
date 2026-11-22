@@ -63,6 +63,7 @@ const NOT_FOUND_ERRORS = {
   todos: { message: "Todo was not found.", key: "todoNotFound" },
   todoLists: { message: "Todo list was not found.", key: "listNotFound" },
   todoSections: { message: "Section was not found.", key: "sectionNotFound" },
+  recipes: { message: "Recipe was not found.", key: "recipeNotFound" },
 } as const satisfies Partial<
   Record<TableNames, { message: string; key: AppErrorKey }>
 >;

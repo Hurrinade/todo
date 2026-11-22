@@ -77,6 +77,12 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
     order: v.number(),
     updatedAt: v.number(),
+    // Set when the todo was added from a recipe ingredient, so the recipe can
+    // show which lines are still on a shopping list. `ingredient` is the
+    // recipe's own line, so the link survives reordering but not rewording.
+    fromRecipe: v.optional(
+      v.object({ recipeId: v.id("recipes"), ingredient: v.string() }),
+    ),
   })
     // The order indexes also serve listId and sectionId prefix lookups.
     .index("by_list_id_completed_and_order", ["listId", "isCompleted", "order"])
@@ -91,7 +97,11 @@ export default defineSchema({
       "order",
     ])
     // Finds expired completed todos across all lists for the retention cron.
-    .index("by_completed_and_completed_at", ["isCompleted", "completedAt"]),
+    .index("by_completed_and_completed_at", ["isCompleted", "completedAt"])
+    .index("by_from_recipe_and_completed", [
+      "fromRecipe.recipeId",
+      "isCompleted",
+    ]),
   // The saved copy of a recipe list todo. The todo title is the recipe name
   // and its description holds the family's own notes.
   recipes: defineTable({

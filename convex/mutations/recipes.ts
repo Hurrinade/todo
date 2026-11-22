@@ -169,7 +169,7 @@ async function requireRecipeForTodo(ctx: MutationCtx, todoId: Id<"todos">) {
     .unique();
 
   if (!recipe) {
-    throw appError("not_found", "Recipe was not found.", "recipeNotFound");
+    throw notFoundError("recipes");
   }
 
   return recipe;
