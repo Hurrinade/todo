@@ -45,12 +45,12 @@ magic links in this release. [Convex Auth 2.1.0 release](https://ship.convex.dev
    ownership links using the existing maintenance workflow before cutover.
    Complete links backed by independent evidence. Existing profiles referenced
    by a native identity cannot be merged by the old Clerk linker.
-2. Configure Convex with `SITE_URL` as the exact frontend origin, plus
-   `AUTH_GOOGLE_CLIENT_ID`, `AUTH_GOOGLE_CLIENT_SECRET`, `AUTH_EMAIL_FROM` and
-   `RESEND_API_KEY`. Use the existing Google OAuth application to retain its
-   provider subjects. Register `https://<convex-site>/oauth/google/callback`
-   and keep the old `/api/auth/callback/google` registration and Better Auth
-   variables through the rollback window. Keep the existing `CLERK_SECRET_KEY`
+2. Convex Auth uses the existing `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET`
+   for the same Google OAuth application. Confirm `SITE_URL` is the exact
+   frontend origin and `AUTH_EMAIL_FROM` and `RESEND_API_KEY` are configured.
+   Register `https://<convex-site>/oauth/google/callback` and keep the old
+   `/api/auth/callback/google` registration and `BETTER_AUTH_SECRET` through
+   the rollback window. Keep the existing `CLERK_SECRET_KEY`
    and `CLERK_WEBHOOK_SECRET` where legacy MCP keys and webhook sync are used.
    Retain the frontend's `VITE_CONVEX_URL` and `VITE_CONVEX_SITE_URL`.
    [Convex Google configuration](https://docs.convex.dev/auth/convex-auth/methods/oauth)
@@ -71,12 +71,12 @@ settings with fixture mail delivery and a fake Google callback:
 
 ```dotenv
 SITE_URL=http://localhost:5174
-AUTH_GOOGLE_CLIENT_ID=fixture-google-id
-AUTH_GOOGLE_CLIENT_SECRET=fixture-google-secret
+GOOGLE_CLIENT_ID=fixture-google-id
+GOOGLE_CLIENT_SECRET=fixture-google-secret
 AUTH_EMAIL_FROM=RiTodo <fixture@example.test>
 RESEND_API_KEY=re_fixture_no_outbound_mail
 ```
 
 The PR branch disables automatic Vercel deployment. After the rollback window,
-archive the old credentials and callbacks through the release process. Keep the
-data mount until the app has a separate verified identity and MCP key migration.
+retire `BETTER_AUTH_SECRET` and the old Google callback. Keep the data mount
+until the app has a separate verified identity and MCP key migration.

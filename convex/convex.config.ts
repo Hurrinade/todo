@@ -8,8 +8,8 @@ import authEmail from "@convex-dev/auth/components/email/convex.config.js";
 
 const app = defineApp({
   env: {
-    AUTH_GOOGLE_CLIENT_ID: v.string(),
-    AUTH_GOOGLE_CLIENT_SECRET: v.string(),
+    GOOGLE_CLIENT_ID: v.string(),
+    GOOGLE_CLIENT_SECRET: v.string(),
     SITE_URL: v.string(),
     AUTH_EMAIL_FROM: v.string(),
     RESEND_API_KEY: v.string(),
@@ -23,8 +23,8 @@ app.use(authEmail);
 app.use(authGoogle, {
   httpPrefix: "/oauth/google",
   env: {
-    CLIENT_ID: app.env.AUTH_GOOGLE_CLIENT_ID,
-    CLIENT_SECRET: app.env.AUTH_GOOGLE_CLIENT_SECRET,
+    CLIENT_ID: app.env.GOOGLE_CLIENT_ID,
+    CLIENT_SECRET: app.env.GOOGLE_CLIENT_SECRET,
   },
 });
 
