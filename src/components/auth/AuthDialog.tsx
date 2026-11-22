@@ -1,6 +1,13 @@
-import { useContext, useState, type FormEvent, type ReactElement } from "react";
-import { REGEXP_ONLY_DIGITS } from "input-otp";
+import { useState, type FormEvent, type ReactElement } from "react";
+import { useSendEmailMagicLink } from "@convex-dev/auth/methods/email-magic-link/react";
+import {
+  useOauth,
+  useSignInWithGoogle,
+} from "@convex-dev/auth/methods/google/react";
+import { ConvexError } from "convex/values";
 
+import { api } from "@convex/_generated/api";
+import { USE_EMAIL_LINK } from "@convex/shared/googleSignIn";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -10,44 +17,61 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
-import {
-  InputOTP,
-  InputOTPGroup,
-  InputOTPSlot,
-} from "@/components/ui/input-otp";
-import { authClient, signInWithLegacyGoogle } from "@/lib/auth-client";
-import { GoogleSignInContext } from "@/lib/auth-mode";
 import { getLastUsedEmail } from "@/lib/last-used-email";
+import { saveEmailSignInReturn } from "@/lib/auth-return";
 import { useT } from "@/hooks";
-import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
-type AuthMode = "sign-in" | "sign-up";
-type PendingAction = "send" | "verify" | "google";
-
-const CODE_LENGTH = 6;
 const textLinkClassName =
   "inline-flex min-h-11 items-center text-foreground underline underline-offset-3 pointer-fine:min-h-6 focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:opacity-50";
 
-/** Wraps a trigger element and opens the Google or email-code sign-in dialog. */
 export default function AuthDialog({
   children,
   initialMode = "sign-in",
+  openOnGoogleError = false,
 }: {
   children: ReactElement;
-  initialMode?: AuthMode;
+  initialMode?: "sign-in" | "sign-up";
+  openOnGoogleError?: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const { flowError } = useOauth();
+  const [dismissed, setDismissed] = useState<typeof flowError>(null);
+  const googleError =
+    flowError !== dismissed && flowError?.error !== "ACCESS_DENIED"
+      ? flowError
+      : null;
+  const t = useT();
+
+  function onOpenChange(value: boolean) {
+    setOpen(value);
+    if (!value) {
+      setDismissed(flowError);
+    }
+  }
+
+  const googleMessage = googleError
+    ? googleError.error === "OTHER_ERROR" &&
+      googleError.cause instanceof ConvexError &&
+      googleError.cause.data === USE_EMAIL_LINK
+      ? t.auth.useEmailLink
+      : t.auth.googleNotStarted
+    : null;
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog
+      open={open || (openOnGoogleError && googleError != null)}
+      onOpenChange={onOpenChange}
+    >
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-md rounded-lg">
         <AuthForm
-          initialMode={initialMode}
-          onSignedIn={() => {
-            setOpen(false);
-          }}
+          title={
+            initialMode === "sign-up"
+              ? t.auth.createAccount
+              : t.auth.signInTitle
+          }
+          googleMessage={googleMessage}
         />
       </DialogContent>
     </Dialog>
@@ -55,128 +79,59 @@ export default function AuthDialog({
 }
 
 function AuthForm({
-  initialMode,
-  onSignedIn,
+  title,
+  googleMessage,
 }: {
-  initialMode: AuthMode;
-  onSignedIn: () => void;
+  title: string;
+  googleMessage: string | null;
 }) {
-  const [mode, setMode] = useState(initialMode);
   const [email, setEmail] = useState(getLastUsedEmail);
-  const [name, setName] = useState("");
-  const [otp, setOtp] = useState("");
-  const [codeSent, setCodeSent] = useState(false);
-  const [pendingAction, setPendingAction] = useState<PendingAction | null>(
-    null,
-  );
-  const [error, setError] = useState<string | null>(null);
+  const [linkSent, setLinkSent] = useState(false);
   const [resent, setResent] = useState(false);
+  const [error, setError] = useState<string | null>(googleMessage);
+  const [openingGoogle, setOpeningGoogle] = useState(false);
+  const { sendMagicLink, pending } = useSendEmailMagicLink(api.nativeAuth);
+  const { signIn } = useSignInWithGoogle(api.nativeAuth);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
-  const googleSignIn =
-    useContext(GoogleSignInContext) ?? signInWithLegacyGoogle;
-  const pending = pendingAction != null;
-  const disabled = pending || !isOnline;
+  const disabled = pending || openingGoogle || !isOnline;
 
-  // Shared by the first send and "Send a new code". Returns true when sent.
-  async function sendCode() {
-    setPendingAction("send");
+  async function sendLink(resend: boolean) {
+    if (disabled) {
+      return;
+    }
     setError(null);
     setResent(false);
-    try {
-      const result = await authClient.emailOtp.sendVerificationOtp({
-        email: email.trim(),
-        type: "sign-in",
-      });
-      if (result.error) {
-        setError(
-          translateServerMessage(t, result.error.message, t.auth.codeNotSent),
-        );
-        return false;
-      }
-      return true;
-    } catch {
-      setError(t.auth.couldNotConnect);
-      return false;
-    } finally {
-      setPendingAction(null);
+    const result = await sendMagicLink({ email: email.trim() });
+    if (!result.success) {
+      setError(t.auth.linkNotSent);
+      return;
     }
+    saveEmailSignInReturn();
+    setLinkSent(true);
+    setResent(resend);
   }
 
-  async function submitEmail(event: FormEvent<HTMLFormElement>) {
+  function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (disabled) {
-      return;
-    }
-    if (await sendCode()) {
-      setCodeSent(true);
-    }
-  }
-
-  async function resendCode() {
-    if (disabled) {
-      return;
-    }
-    if (await sendCode()) {
-      setOtp("");
-      setResent(true);
-    }
-  }
-
-  async function verifyCode(code: string) {
-    if (disabled) {
-      return;
-    }
-    setPendingAction("verify");
-    setError(null);
-    setResent(false);
-    try {
-      // Email OTP creates a persistent session by default. It has no rememberMe toggle.
-      const result = await authClient.signIn.emailOtp({
-        email: email.trim(),
-        otp: code,
-        ...(mode === "sign-up" ? { name: name.trim() } : {}),
-      });
-      if (result.error) {
-        setError(
-          translateServerMessage(
-            t,
-            result.error.message,
-            t.auth.codeNotVerified,
-          ),
-        );
-        setOtp("");
-        return;
-      }
-      onSignedIn();
-    } catch {
-      setError(t.auth.couldNotConnect);
-    } finally {
-      setPendingAction(null);
-    }
+    void sendLink(false);
   }
 
   async function signInWithGoogle() {
     if (disabled) {
       return;
     }
-    setPendingAction("google");
+    setOpeningGoogle(true);
     setError(null);
     try {
-      const result = await googleSignIn();
-      if (result.error) {
-        setError(
-          translateServerMessage(
-            t,
-            result.error.message,
-            t.auth.googleNotStarted,
-          ),
-        );
+      const result = await signIn();
+      if (result.status === "error") {
+        setError(t.auth.googleNotStarted);
+        setOpeningGoogle(false);
       }
     } catch {
-      setError(t.auth.couldNotConnect);
-    } finally {
-      setPendingAction(null);
+      setError(t.auth.googleNotStarted);
+      setOpeningGoogle(false);
     }
   }
 
@@ -191,63 +146,37 @@ function AuthForm({
     </>
   );
 
-  if (codeSent) {
+  if (linkSent) {
     return (
       <>
-        <DialogTitle className="pr-8">{t.auth.enterCode}</DialogTitle>
-        <DialogDescription className="text-foreground">
-          {t.auth.sentTo} <span className="break-all">{email.trim()}</span>.{" "}
+        <DialogTitle className="pr-8">{t.auth.checkEmail}</DialogTitle>
+        <DialogDescription className="break-words text-foreground">
+          {t.auth.linkSentTo(email.trim())}
+        </DialogDescription>
+        <p className="text-muted-foreground">{t.auth.openLinkHere}</p>
+        {feedback}
+        {resent && <p role="status">{t.auth.linkResent}</p>}
+        <div className="flex flex-wrap items-center gap-x-4">
+          <button
+            type="button"
+            className={textLinkClassName}
+            disabled={disabled}
+            onClick={() => void sendLink(true)}
+          >
+            {pending ? t.auth.sending : t.auth.sendNewLink}
+          </button>
           <button
             type="button"
             className={textLinkClassName}
             disabled={pending}
             onClick={() => {
-              setCodeSent(false);
-              setOtp("");
+              setLinkSent(false);
               setError(null);
               setResent(false);
             }}
           >
-            {t.auth.change}
+            {t.auth.changeEmail}
           </button>
-        </DialogDescription>
-        <InputOTP
-          aria-label={t.auth.codeLabel}
-          autoFocus
-          maxLength={CODE_LENGTH}
-          pattern={REGEXP_ONLY_DIGITS}
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          value={otp}
-          onChange={setOtp}
-          onComplete={(code: string) => void verifyCode(code)}
-          readOnly={pending}
-          aria-busy={pending}
-          containerClassName="w-full"
-        >
-          <InputOTPGroup className="w-full gap-2">
-            {Array.from({ length: CODE_LENGTH }, (_, index) => (
-              <InputOTPSlot
-                key={index}
-                index={index}
-                className="h-13 min-w-0 flex-1 rounded-md border font-mono text-xl first:rounded-md last:rounded-md bg-card dark:bg-card"
-              />
-            ))}
-          </InputOTPGroup>
-        </InputOTP>
-        {feedback}
-        {pendingAction === "verify" && <p role="status">{t.auth.checking}</p>}
-        {resent && <p role="status">{t.auth.codeResent}</p>}
-        <div className="flex items-center justify-between gap-3 text-xs">
-          <button
-            type="button"
-            className={textLinkClassName}
-            disabled={disabled}
-            onClick={() => void resendCode()}
-          >
-            {t.auth.sendNewCode}
-          </button>
-          <span className="text-muted-foreground">{t.auth.codeExpires}</span>
         </div>
       </>
     );
@@ -255,9 +184,7 @@ function AuthForm({
 
   return (
     <>
-      <DialogTitle className="pr-8">
-        {mode === "sign-in" ? t.auth.signInTitle : t.auth.createAccount}
-      </DialogTitle>
+      <DialogTitle className="pr-8">{title}</DialogTitle>
       <DialogDescription className="sr-only">
         {t.auth.description}
       </DialogDescription>
@@ -266,76 +193,43 @@ function AuthForm({
         variant="outline"
         className="h-11 w-full"
         disabled={disabled}
-        onClick={() => void signInWithGoogle()}
+        onClick={() => {
+          void signInWithGoogle();
+        }}
       >
         <img
           src="/google-g.svg"
           alt=""
-          aria-hidden="true"
           width={20}
           height={20}
           className="size-5 shrink-0"
         />
-        {pendingAction === "google" ? t.auth.openingGoogle : t.auth.google}
+        {openingGoogle ? t.auth.openingGoogle : t.auth.google}
       </Button>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border/50" />
         {t.auth.or}
         <span className="h-px flex-1 bg-border/50" />
       </div>
-      <form
-        onSubmit={(event) => void submitEmail(event)}
-        className="space-y-3"
-        aria-busy={pending}
-      >
-        {mode === "sign-up" && (
-          <Input
-            aria-label={t.auth.name}
-            placeholder={t.auth.namePlaceholder}
-            autoComplete="name"
-            value={name}
-            maxLength={100}
-            onChange={(event) => {
-              setName(event.target.value);
-            }}
-            disabled={pending}
-            className="h-11 rounded-md"
-          />
-        )}
-        <div className="flex gap-2">
-          <Input
-            aria-label={t.auth.email}
-            type="email"
-            placeholder="you@example.com"
-            autoComplete="email"
-            required
-            value={email}
-            onChange={(event) => {
-              setEmail(event.target.value);
-            }}
-            disabled={pending}
-            className="h-11 min-w-0 flex-1 rounded-md"
-          />
-          <Button type="submit" disabled={disabled} className="h-11 px-4">
-            {pendingAction === "send" ? t.auth.sending : t.auth.sendCode}
-          </Button>
-        </div>
+      <form onSubmit={submitEmail} className="flex gap-2" aria-busy={pending}>
+        <Input
+          aria-label={t.auth.email}
+          type="email"
+          placeholder="you@example.com"
+          autoComplete="email"
+          required
+          value={email}
+          onChange={(event) => {
+            setEmail(event.target.value);
+          }}
+          disabled={disabled}
+          className="h-11 min-w-0 flex-1 rounded-md"
+        />
+        <Button type="submit" disabled={disabled} className="h-11 px-4">
+          {pending ? t.auth.sending : t.auth.sendLink}
+        </Button>
       </form>
       {feedback}
-      <p className="text-xs text-muted-foreground">
-        {mode === "sign-in" ? t.auth.newHere : t.auth.haveAccount}{" "}
-        <button
-          type="button"
-          className={textLinkClassName}
-          disabled={pending}
-          onClick={() => {
-            setMode(mode === "sign-in" ? "sign-up" : "sign-in");
-            setError(null);
-          }}
-        >
-          {mode === "sign-in" ? t.auth.createAnAccount : t.auth.signIn}
-        </button>
-      </p>
     </>
   );
 }

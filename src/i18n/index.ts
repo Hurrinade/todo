@@ -25,15 +25,3 @@ export function translateAppError(error: unknown, t: Messages) {
 
   return t.language === "en" ? getAppErrorMessage(error) : null;
 }
-
-/**
- * Messages from services that only speak English, such as sign-in: shown in
- * English, replaced by the app's own fallback in other languages.
- */
-export function translateServerMessage(
-  t: Messages,
-  message: string | undefined,
-  fallback: string,
-) {
-  return t.language === "en" ? (message ?? fallback) : fallback;
-}

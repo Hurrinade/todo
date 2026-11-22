@@ -1,16 +1,9 @@
-import { createFunctionHandle } from "convex/server";
 import { v, type Infer } from "convex/values";
 import { components, internal } from "./_generated/api";
-import {
-  action,
-  internalQuery,
-  mutation,
-  query,
-  type MutationCtx,
-  type QueryCtx,
-} from "./_generated/server";
-import { createAuth } from "./auth";
-import { getNativeProfile } from "./shared/auth";
+import { action, internalQuery, mutation, query } from "./_generated/server";
+import { CONVEX_OWNER_PREFIX, getProfile, requireProfile } from "./shared/auth";
+import type { Doc } from "./_generated/dataModel";
+import { profileNameFields } from "./system/users";
 import { appError } from "./shared/errors";
 import { mcpKeySummary } from "./shared/mcpKeys";
 
@@ -28,7 +21,7 @@ export const me = query({
     v.object({ id: v.id("users"), name: v.string(), email: v.string() }),
   ),
   handler: async (ctx) => {
-    const profile = await getNativeProfile(ctx);
+    const profile = await getProfile(ctx);
     if (!profile) return null;
     return {
       id: profile._id,
@@ -38,30 +31,22 @@ export const me = query({
   },
 });
 
-async function requireNativeOwner(ctx: QueryCtx | MutationCtx) {
-  const profile = await getNativeProfile(ctx);
-  if (!profile?.betterAuthId) {
-    throw appError("unauthenticated", "You must be signed in.", "signedOut");
-  }
-  return profile.betterAuthId;
+function keyOwner(profile: Doc<"users">) {
+  return profile.betterAuthId ?? `${CONVEX_OWNER_PREFIX}${profile._id}`;
 }
 
 export const updateName = mutation({
   args: { name: v.string() },
   returns: v.null(),
   handler: async (ctx, { name }) => {
-    const owner = await requireNativeOwner(ctx);
+    const profile = await requireProfile(ctx);
     const normalized = name.trim();
     if (!normalized || normalized.length > 100) {
       throw appError("invalid_input", "Enter a name of up to 100 characters.");
     }
-    await ctx.runMutation(components.betterAuth.adapter.updateOne, {
-      input: {
-        model: "user",
-        where: [{ field: "_id", value: owner }],
-        update: { name: normalized, updatedAt: Date.now() },
-      },
-      onUpdateHandle: await createFunctionHandle(internal.auth.onUpdate),
+    await ctx.db.patch("users", profile._id, {
+      ...profileNameFields(normalized),
+      updatedAt: Date.now(),
     });
     return null;
   },
@@ -71,11 +56,15 @@ export const createKey = mutation({
   args: { name: v.string() },
   returns: v.object({ key: v.string() }),
   handler: async (ctx, { name }) => {
-    const owner = await requireNativeOwner(ctx);
-    const { key } = await createAuth(ctx).api.createApiKey({
-      body: { userId: owner, name: name.trim() },
+    const owner = keyOwner(await requireProfile(ctx));
+    name = name.trim();
+    if (!name || name.length > 100) {
+      throw appError("invalid_input", "Enter a name of up to 100 characters.");
+    }
+    return ctx.runMutation(components.betterAuth.keys.createKey, {
+      owner,
+      name,
     });
-    return { key };
   },
 });
 
@@ -83,9 +72,9 @@ export const revokeKey = mutation({
   args: { keyId: v.string() },
   returns: v.null(),
   handler: async (ctx, { keyId }) => {
-    const owner = await requireNativeOwner(ctx);
+    const owner = keyOwner(await requireProfile(ctx));
     if (
-      !(await ctx.runMutation(components.betterAuth.transition.revokeKey, {
+      !(await ctx.runMutation(components.betterAuth.keys.revokeKey, {
         owner,
         keyId,
       }))
@@ -100,9 +89,9 @@ export const keyPage = internalQuery({
   args: { cursor: v.union(v.string(), v.null()) },
   returns: keyPageResult,
   handler: async (ctx, { cursor }) => {
-    const owner = await requireNativeOwner(ctx);
+    const owner = keyOwner(await requireProfile(ctx));
     const { page, isDone, continueCursor } = await ctx.runQuery(
-      components.betterAuth.transition.listKeys,
+      components.betterAuth.keys.listKeys,
       { owner, paginationOpts: { cursor, numItems: 100 } },
     );
     return { page, isDone, continueCursor };

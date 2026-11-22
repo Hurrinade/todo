@@ -26,7 +26,7 @@ export default function Root() {
         <nav className="flex items-center justify-between gap-4">
           <span className="font-semibold text-xl">RiTodo</span>
           <Unauthenticated>
-            <AuthDialog>
+            <AuthDialog openOnGoogleError>
               <button
                 className="-mr-2 inline-flex min-h-11 items-center px-2 text-muted-foreground transition-colors pointer-fine:min-h-6 hover:text-foreground focus-visible:ring-3 focus-visible:ring-ring/40 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50"
                 disabled={!isOnline}

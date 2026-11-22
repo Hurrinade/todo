@@ -1,12 +1,12 @@
 # Todo Workspace
 
 This project is an authenticated todo list workspace built with React, Vite,
-Clerk, Convex, TanStack Virtual, Tailwind CSS 4, and shadcn UI.
+Convex Auth, TanStack Virtual, Tailwind CSS 4, and shadcn UI.
 
 ## What is included
 
 - React 19 + Vite 8 + TypeScript 6
-- Clerk authentication
+- Convex Auth with Google and email sign-in links
 - Convex client wiring and todo schema/functions
 - TanStack Virtual for bounded regular-list DOM rendering
 - Vite-native PWA baseline via `vite-plugin-pwa`
@@ -26,9 +26,10 @@ bun install
 
 Required frontend env keys:
 
-- `VITE_CLERK_PUBLISHABLE_KEY`: Clerk publishable key from the Clerk dashboard
 - `VITE_CONVEX_URL`: Convex client URL for the current deployment
-- `VITE_CONVEX_SITE_URL`: Public site URL used for auth/callback configuration
+- `VITE_CONVEX_SITE_URL`: Convex HTTP actions URL, used to display the MCP endpoint
+
+Backend setup is covered in the [Convex Auth cutover notes](docs/convex-auth-v2-migration.md).
 
 Optional local workflow key:
 
@@ -129,44 +130,25 @@ failures are stored as keys for the same reason.
 ## RiTodo MCP Server
 
 The Convex deployment exposes a stateless Streamable HTTP MCP server at
-`/mcp`. It uses revocable Clerk user API keys and applies the same list
-membership rules as the web app, including access to shared lists.
-
-### Backend setup
-
-1. Open [Clerk Platform API Keys](https://dashboard.clerk.com/~/platform/api-keys)
-   and enable **User API keys** in every Clerk instance that should support MCP
-   access. Keep Organization API keys disabled for RiTodo.
-2. Set `CLERK_SECRET_KEY` in the matching Convex deployment environment. Keep
-   this backend secret out of Vite environment files and client code.
-3. Deploy the Convex functions. The production MCP URL is:
-
-```text
-https://expert-guineapig-443.eu-west-1.convex.site/mcp
-```
-
-The development endpoint uses the development `VITE_CONVEX_SITE_URL` with the
-same `/mcp` path.
+`/mcp`. It applies the same list membership rules as the web app. Existing Clerk
+user keys continue to work when the deployment has `CLERK_SECRET_KEY` configured.
 
 ### Codex setup
 
-In RiTodo, open the account menu in the sidebar, choose **Manage account**, and
-use the **API Keys** page to create or revoke a user-scoped key. Copy the
-`ak_live_...` secret when it is created because Clerk displays it only once.
+In RiTodo, open **Settings**, choose **MCP keys**, and create a key. Copy the
+`ritodo_...` key and the endpoint from that tab. The key is shown once.
 
 On macOS, store that user API key in the GUI launch environment used by the
 Codex app without putting the secret in shell history:
 
 ```bash
-read -s "RITODO_KEY?Clerk API key: "
+read -s "RITODO_KEY?RiTodo MCP key: "
 echo
 launchctl setenv RITODO_API_KEY "$RITODO_KEY"
 unset RITODO_KEY
 ```
 
-`RITODO_API_KEY` must contain the user-scoped `ak_live_...` key, not Clerk's
-frontend `pk_live_...` key or backend `sk_live_...` key. The backend
-`CLERK_SECRET_KEY` remains only in the matching Convex environment.
+`RITODO_API_KEY` holds the RiTodo key or an existing user-scoped Clerk key.
 
 Add the following to the global `~/.codex/config.toml`. Do not place the key
 itself in TOML or commit it to the repository.
@@ -238,9 +220,7 @@ Examples:
 
 ## Provider Pattern
 
-- `src/context/ConvexClerkProvider.tsx` is the canonical Convex + Clerk wrapper.
-- `src/main.tsx` should compose app-level providers using that wrapper instead of
-  duplicating the Convex provider setup inline.
+- `src/context/convex/AuthProvider.tsx` configures Convex Auth for the app.
 
 ### Commands to check package.json versions
 

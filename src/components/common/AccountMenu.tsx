@@ -12,8 +12,6 @@ import {
 } from "@/components/ui/popover";
 import { useT } from "@/hooks";
 import { LANGUAGES } from "@/i18n";
-import { authClient, signOutLegacy } from "@/lib/auth-client";
-import { useNativeAccount } from "@/lib/auth-mode";
 import { api } from "@convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useLanguageStore } from "@/stores";
@@ -23,45 +21,8 @@ const menuItemClassName =
   "h-11 w-full justify-start gap-2.5 px-2.5 pointer-fine:h-9 [&_svg]:size-4";
 
 export default function AccountMenu() {
-  return useNativeAccount() ? <NativeAccountMenu /> : <LegacyAccountMenu />;
-}
-
-function NativeAccountMenu() {
   const user = useQuery(api.nativeAccount.me, {});
   const { signOut } = useAuthActions();
-
-  return (
-    user && (
-      <AccountMenuContent
-        user={user}
-        signOut={async () => {
-          // The legacy client may have signed in on another tab while native auth was active.
-          if (authClient.getCookie()) {
-            await signOutLegacy();
-          }
-          await signOut();
-        }}
-      />
-    )
-  );
-}
-
-function LegacyAccountMenu() {
-  const { data: session } = authClient.useSession();
-  return (
-    session && (
-      <AccountMenuContent user={session.user} signOut={signOutLegacy} />
-    )
-  );
-}
-
-function AccountMenuContent({
-  user,
-  signOut,
-}: {
-  user: { id: string; name: string; email: string };
-  signOut: () => Promise<void>;
-}) {
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -81,6 +42,10 @@ function AccountMenuContent({
     } finally {
       setPending(false);
     }
+  }
+
+  if (!user) {
+    return null;
   }
 
   return (

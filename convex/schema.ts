@@ -13,7 +13,7 @@ export default defineSchema({
     // Legacy ownership IDs stay unchanged. Linking requires a verified backfill.
     clerkId: v.optional(v.string()),
     betterAuthId: v.optional(v.string()),
-    // Native Google stores this profile's document ID in its account record.
+    // Optional field from the staged Google rollout.
     nativeGoogleLinked: v.optional(v.boolean()),
     email: v.string(),
     imageUrl: v.optional(v.string()),
@@ -23,6 +23,14 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_better_auth_id", ["betterAuthId"]),
+  authIdentities: defineTable({
+    // Magic-link signup assigns the profile in its verified onSignIn callback.
+    profileId: v.optional(v.id("users")),
+  }).index("by_profile_id", ["profileId"]),
+  verifiedLoginEmails: defineTable({
+    email: v.string(),
+    profileId: v.id("users"),
+  }).index("by_email", ["email"]),
   identityLinks: defineTable({
     clerkId: v.string(),
     betterAuthId: v.string(),

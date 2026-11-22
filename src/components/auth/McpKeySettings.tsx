@@ -12,11 +12,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { envConfig } from "@/config/env";
 import { useAction, useMutation as useConvexMutation } from "convex/react";
-import { authClient } from "@/lib/auth-client";
-import { useNativeAccount } from "@/lib/auth-mode";
 import { api } from "@convex/_generated/api";
 import { useT } from "@/hooks";
-import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
 const PAGE_SIZE = 20;
@@ -41,53 +38,30 @@ export default function McpKeySettings({ userId }: { userId: string }) {
     id: string;
     name: string;
   } | null>(null);
-  const native = useNativeAccount();
   const listKeys = useAction(api.nativeAccount.listKeys);
   const createKey = useConvexMutation(api.nativeAccount.createKey);
   const revokeKey = useConvexMutation(api.nativeAccount.revokeKey);
-  const queryKey = ["mcp-keys", userId, native];
+  const queryKey = ["mcp-keys", userId];
   const keys = useQuery({
     queryKey: [...queryKey, page],
     enabled: isOnline,
-    queryFn: async ({ signal }) => {
-      if (native) {
-        try {
-          return await listKeys({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
-        } catch {
-          throw new Error(t.mcp.loadFailed);
-        }
+    queryFn: async () => {
+      try {
+        return await listKeys({ limit: PAGE_SIZE, offset: page * PAGE_SIZE });
+      } catch {
+        throw new Error(t.mcp.loadFailed);
       }
-      const result = await authClient.apiKey.list({
-        query: { limit: PAGE_SIZE, offset: page * PAGE_SIZE },
-        fetchOptions: { signal },
-      });
-      if (result.error) {
-        throw new Error(
-          translateServerMessage(t, result.error.message, t.mcp.loadFailed),
-        );
-      }
-      return result.data;
     },
   });
   const create = useMutation({
     mutationFn: async (keyName: string) => {
-      if (native) {
-        try {
-          const { key } = await createKey({ name: keyName });
-          setCreatedKey(key);
-        } catch {
-          throw new Error(t.mcp.createFailed);
-        }
-        return;
+      try {
+        // The one-time secret stays out of the query cache.
+        const { key } = await createKey({ name: keyName });
+        setCreatedKey(key);
+      } catch {
+        throw new Error(t.mcp.createFailed);
       }
-      const result = await authClient.apiKey.create({ name: keyName });
-      if (result.error) {
-        throw new Error(
-          translateServerMessage(t, result.error.message, t.mcp.createFailed),
-        );
-      }
-      // Keep the one-time secret out of TanStack Query's mutation cache.
-      setCreatedKey(result.data.key);
     },
     onSuccess: () => {
       setName("");
@@ -97,19 +71,10 @@ export default function McpKeySettings({ userId }: { userId: string }) {
   });
   const revoke = useMutation({
     mutationFn: async (keyId: string) => {
-      if (native) {
-        try {
-          await revokeKey({ keyId });
-        } catch {
-          throw new Error(t.mcp.revokeFailed);
-        }
-        return;
-      }
-      const result = await authClient.apiKey.delete({ keyId });
-      if (result.error) {
-        throw new Error(
-          translateServerMessage(t, result.error.message, t.mcp.revokeFailed),
-        );
+      try {
+        await revokeKey({ keyId });
+      } catch {
+        throw new Error(t.mcp.revokeFailed);
       }
     },
     onSuccess: () => {

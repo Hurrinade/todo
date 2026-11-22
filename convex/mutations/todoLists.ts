@@ -6,7 +6,7 @@ import {
   requireAppUserId,
   requireListAccess,
   requireOwnerListAccess,
-  resolveAppUserId,
+  resolveLegacyOwner,
 } from "../shared/auth";
 import { appError, requireId } from "../shared/errors";
 import {
@@ -158,7 +158,7 @@ async function createTodoList(
   // Read the mapping in this transaction so that request cannot create hidden data.
   if (
     userId.startsWith("better-auth:") &&
-    (await resolveAppUserId(ctx, userId.slice("better-auth:".length))) !==
+    (await resolveLegacyOwner(ctx, userId.slice("better-auth:".length))) !==
       userId
   ) {
     throw appError(

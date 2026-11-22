@@ -1,2 +1,2 @@
-// Sent only after Convex Auth has verified the Google account and found no legacy binding.
-export const LEGACY_GOOGLE_REQUIRED = "LEGACY_GOOGLE_REQUIRED";
+// An unrecognized Google subject needs email recovery before it can use an existing account.
+export const USE_EMAIL_LINK = "USE_EMAIL_LINK";

@@ -1,7 +1,7 @@
 import { createClerkClient } from "@clerk/backend";
-import { createAuth } from "../auth";
-import { internal } from "../_generated/api";
+import { components, internal } from "../_generated/api";
 import type { ActionCtx } from "../_generated/server";
+import { hashMcpKey, KEY_PREFIX } from "../shared/mcpKeys";
 
 export function getBearerToken(request: Request) {
   const authorization = request.headers.get("authorization");
@@ -33,17 +33,19 @@ export async function authenticateMcpRequest(
   }
 
   // Never send a RiTodo key to Clerk, including when it is invalid or revoked.
-  if (token.startsWith("ritodo_")) {
+  if (token.startsWith(KEY_PREFIX)) {
     try {
-      const result = await createAuth(ctx).api.verifyApiKey({
-        body: { key: token },
-      });
+      const referenceId = await ctx.runMutation(
+        components.betterAuth.keys.claimKey,
+        {
+          hash: await hashMcpKey(token),
+        },
+      );
       const userId =
-        result.valid && result.key
-          ? await ctx.runQuery(internal.system.users.resolveMcpOwner, {
-              betterAuthId: result.key.referenceId,
-            })
-          : null;
+        referenceId &&
+        (await ctx.runQuery(internal.system.users.resolveMcpOwner, {
+          referenceId,
+        }));
       if (userId) {
         return { authenticated: true as const, userId };
       }

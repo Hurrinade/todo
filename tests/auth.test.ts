@@ -1,72 +1,83 @@
 import { describe, expect, mock, spyOn, test } from "bun:test";
-import { Resend, type EmailId } from "@convex-dev/resend";
-import { convexTest } from "convex-test";
 import { componentsGeneric, type FunctionReference } from "convex/server";
+import { convexTest } from "convex-test";
 import { dirname, join } from "node:path";
 import { Webhook } from "svix";
-import { z } from "zod";
 
-import { api, components, internal } from "../convex/_generated/api";
+import { api, internal } from "../convex/_generated/api";
 import schema from "../convex/schema";
-import { syncBetterAuthUser } from "../convex/system/users";
 import betterAuthSchema from "../convex/betterAuth/schema";
 import { authenticateMcpRequest } from "../convex/mcp/auth";
+import {
+  latestMail,
+  legacyKey,
+  legacyModules,
+  resendFixtureSchema,
+  resendModules,
+  seedLegacyRef,
+} from "./auth-fixtures";
 import { modulesIn } from "./convex-modules";
 
-// Test-process values only. No environment files or external services are used.
 process.env.SITE_URL = "http://localhost:5174";
 process.env.CONVEX_SITE_URL = "https://auth.example.test";
 process.env.CONVEX_CLOUD_URL = "https://auth.example.test";
-process.env.AUTH_V2_GOOGLE_ENABLED = "true";
-process.env.BETTER_AUTH_SECRET =
-  "test-only-secret-not-for-use-outside-tests-123456789";
-process.env.GOOGLE_CLIENT_ID = "test-only-client";
-process.env.GOOGLE_CLIENT_SECRET = "test-only-secret";
-process.env.RESEND_API_KEY = "re_test_only_not_a_real_key";
-process.env.AUTH_EMAIL_FROM = "RiTodo <login@rinadely.com>";
-const { requireAppUserId } = await import("../convex/shared/auth");
+process.env.RESEND_API_KEY = "re_local_fixture_no_outbound_mail";
+process.env.AUTH_EMAIL_FROM = "RiTodo <fixture@example.test>";
 
-async function setup({ linked = true, expired = false, age = 0 } = {}) {
+const testEmail = "legacy@gmail.com";
+const day = 86400000;
+const authDir = dirname(
+  Bun.resolveSync("@convex-dev/auth/package.json", import.meta.dir),
+);
+const authSource = join(authDir, "src");
+
+async function registerPackageComponents(
+  t: ReturnType<typeof convexTest<typeof schema>>,
+  directory: string,
+  mount: string,
+) {
+  const { default: componentSchema } = await import(
+    join(directory, "schema.ts")
+  );
+  t.registerComponent(mount, componentSchema, modulesIn(directory));
+}
+
+async function setup({ linked = true, verified = true } = {}) {
   const t = convexTest(schema, modulesIn("convex"));
-  t.registerComponent(
-    "betterAuth",
-    betterAuthSchema,
-    modulesIn("convex/betterAuth"),
-  );
-  const now = Date.now();
-  const authUser = await t.run((ctx) =>
-    ctx.runMutation(components.betterAuth.adapter.create, {
-      input: {
-        model: "user",
-        data: {
-          email: "marko@example.test",
-          name: "Marko",
-          emailVerified: true,
-          createdAt: now,
-          updatedAt: now,
-        },
-      },
-    }),
-  );
-  const session = await t.run((ctx) =>
-    ctx.runMutation(components.betterAuth.adapter.create, {
-      input: {
-        model: "session",
-        data: {
-          userId: authUser._id,
-          token: "test-session",
-          expiresAt: expired ? now - 1 : now + 86400000 * 90 - age,
-          createdAt: now - age,
-          updatedAt: now - age,
-        },
-      },
-    }),
-  );
+  t.registerComponent("betterAuth", betterAuthSchema, {
+    ...modulesIn("convex/betterAuth"),
+    ...legacyModules,
+  });
+  t.registerComponent("resend", resendFixtureSchema, resendModules);
+  for (const [mount, source] of [
+    ["auth", "component"],
+    ["authGoogle", "components/google"],
+    ["authEmail", "components/email"],
+  ]) {
+    await registerPackageComponents(t, join(authSource, source), mount);
+  }
+  for (const name of ["rate-limiter", "batch-worker"]) {
+    const directory = dirname(
+      Bun.resolveSync(`@convex-dev/${name}/package.json`, authDir),
+    );
+    const mount = name === "rate-limiter" ? "rateLimiter" : "batchWorker";
+    await registerPackageComponents(
+      t,
+      join(directory, "src/component"),
+      `authEmail/${mount}`,
+    );
+  }
+  const { owner, keyId } = await t.mutation(seedLegacyRef, {
+    email: testEmail,
+    verified,
+    seedGoogle: true,
+  });
   const ids = await t.run(async (ctx) => {
+    const now = Date.now();
     const userId = await ctx.db.insert("users", {
       clerkId: "user_legacy_marko",
-      ...(linked ? { betterAuthId: authUser._id } : {}),
-      email: "marko@example.test",
+      ...(linked ? { betterAuthId: owner } : {}),
+      email: testEmail,
       updatedAt: now,
     });
     const owned = await ctx.db.insert("todoLists", {
@@ -81,10 +92,10 @@ async function setup({ linked = true, expired = false, age = 0 } = {}) {
     const shared = await ctx.db.insert("todoLists", {
       title: "Legacy shared",
       kind: "regular",
-      userId: "user_someone_else",
+      userId: "user_other",
       openTodoCount: 0,
       completedTodoCount: 0,
-      memberCount: 2,
+      memberCount: 1,
       updatedAt: now,
     });
     for (const listId of [owned, shared]) {
@@ -97,151 +108,129 @@ async function setup({ linked = true, expired = false, age = 0 } = {}) {
       listId: shared,
       token: "test-invite",
       createdByUserId: "user_legacy_marko",
-      expiresAt: now + 86400000,
+      expiresAt: now + day,
     });
     return { userId, owned, shared, invite };
   });
+  return { t, authUser: { _id: owner }, keyId, ...ids };
+}
+
+type Fixture = Awaited<ReturnType<typeof setup>>["t"];
+
+function signedIn(
+  t: Fixture,
+  tokens: {
+    accessToken: string;
+    refreshToken: string;
+    refreshTokenExpiresAt: number;
+  },
+) {
+  const jwt = Buffer.from(tokens.accessToken.split(".")[1], "base64url");
+  const { sub, iss, iat, exp } = JSON.parse(jwt.toString());
   return {
-    t,
-    signedIn: t.withIdentity({ subject: authUser._id, sessionId: session._id }),
-    authUser,
-    ...ids,
+    actor: t.withIdentity({ subject: sub, issuer: iss }),
+    tokens,
+    iat,
+    exp,
   };
 }
 
-function authRequest(body?: object, token = "test-session") {
-  return {
-    method: body ? "POST" : "GET",
-    headers: {
-      "Content-Type": "application/json",
-      Origin: "http://localhost:5174",
-      "Better-Auth-Cookie": "",
-      Authorization: `Bearer ${token}`,
-    },
-    ...(body ? { body: JSON.stringify(body) } : {}),
-  };
+async function getEmailLink(t: Fixture, email: string) {
+  const result = await t
+    .withRequestMetadata({ ip: "192.0.2.10" })
+    .mutation(api.nativeAuth.sendEmailMagicLink, { email });
+  if (!result.success) throw new Error(JSON.stringify(result.userError));
+  const mail = await t.query(latestMail, {});
+  const link = mail?.match(/https?:\/\/\S+\/sign-in-with-link\?code=\S+/)?.[0];
+  if (!link) throw new Error("No sign-in link was sent.");
+  const emailCode = new URL(link).searchParams.get("code");
+  if (!emailCode) throw new Error("No sign-in code was sent.");
+  return { browserSecret: result.browserSecret, emailCode };
 }
 
-describe("Convex Auth Google transition", () => {
-  const authSource = join(
-    dirname(Bun.resolveSync("@convex-dev/auth/package.json", import.meta.dir)),
-    "src",
+async function finishEmail(t: Fixture, email = testEmail) {
+  const proof = await getEmailLink(t, email);
+  const result = await t.mutation(
+    api.nativeAuth.signInWithEmailMagicLink,
+    proof,
   );
-  const maxAge = 90 * 86400000;
+  if (result.status !== "complete")
+    throw new Error("Fixture email sign-in failed.");
+  return signedIn(t, result.tokens);
+}
 
-  async function setupNative() {
-    const fixture = await setup();
-    for (const [name, directory] of [
-      ["auth", "component"],
-      ["authGoogle", "components/google"],
-    ]) {
-      const source = join(authSource, directory);
-      const { default: schema } = await import(join(source, "schema.ts"));
-      fixture.t.registerComponent(name, schema, modulesIn(source));
-    }
-    const now = Date.now();
-    await fixture.t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "account",
-          data: {
-            accountId: "existing-google-subject",
-            providerId: "google",
-            userId: fixture.authUser._id,
-            createdAt: now,
-            updatedAt: now,
-          },
-        },
+async function googleTicket(t: Fixture, sub: string, email = testEmail) {
+  const { encryptTicketPayload } = await import(
+    join(authSource, "lib/oauth/crypto.ts")
+  );
+  const { sha256Hex } = await import(join(authSource, "lib/crypto.ts"));
+  const code = crypto.randomUUID();
+  const state = crypto.randomUUID();
+  const createTicket = componentsGeneric().authGoogle.provider
+    .createTicket as FunctionReference<
+    "mutation",
+    "internal",
+    { ticketCodeHash: string; stateHash: string; encryptedPayload: string },
+    null
+  >;
+  await t.mutation(createTicket, {
+    ticketCodeHash: await sha256Hex(code),
+    stateHash: await sha256Hex(state),
+    encryptedPayload: await encryptTicketPayload(
+      code,
+      JSON.stringify({
+        claims: { sub, email, email_verified: true },
       }),
-    );
-    return fixture;
-  }
+    ),
+  });
+  return { code, state };
+}
 
-  // Seed the verified output of Google's callback. The actual app redemption,
-  // purpose-bound state checks and native session component run in memory.
-  async function ticket(
-    t: Awaited<ReturnType<typeof setup>>["t"],
-    subject: string,
-  ) {
-    const { encryptTicketPayload } = await import(
-      join(authSource, "lib/oauth/crypto.ts")
-    );
-    const { sha256Hex } = await import(join(authSource, "lib/crypto.ts"));
-    const code = crypto.randomUUID();
-    const state = crypto.randomUUID();
-    const createTicket = componentsGeneric().authGoogle.provider
-      .createTicket as FunctionReference<
-      "mutation",
-      "internal",
-      { ticketCodeHash: string; stateHash: string; encryptedPayload: string },
-      null
-    >;
-    await t.mutation(createTicket, {
-      ticketCodeHash: await sha256Hex(code),
-      stateHash: await sha256Hex(state),
-      encryptedPayload: await encryptTicketPayload(
-        code,
-        JSON.stringify({
-          claims: {
-            sub: subject,
-            email: "marko@example.test",
-            email_verified: true,
-          },
-        }),
-      ),
-    });
-    return { code, state };
-  }
+function callMcp(t: Fixture, token: string) {
+  return t.fetch("/mcp", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+      "Content-Type": "application/json",
+      Accept: "application/json, text/event-stream",
+    },
+    body: JSON.stringify({
+      jsonrpc: "2.0",
+      id: 1,
+      method: "tools/call",
+      params: { name: "list_todo_lists", arguments: {} },
+    }),
+  });
+}
 
-  async function nativeSignIn(t: Awaited<ReturnType<typeof setup>>["t"]) {
-    const result = await t.mutation(
-      api.nativeAuth.completeSignInWithGoogle,
-      await ticket(t, "existing-google-subject"),
-    );
-    if (result.status !== "complete")
-      throw new Error("Fixture sign-in failed.");
-    const { sub, iss, exp, iat } = JSON.parse(
-      atob(
-        result.tokens.accessToken
-          .split(".")[1]
-          .replaceAll("-", "+")
-          .replaceAll("_", "/"),
-      ),
-    );
-    return {
-      tokens: result.tokens,
-      sub,
-      iss,
-      exp,
-      iat,
-      native: t.withIdentity({ subject: sub, issuer: iss }),
-    };
-  }
-
-  test("only a bound Google subject can keep the same profile and owned or shared lists", async () => {
-    const { t, userId, owned, shared, invite } = await setupNative();
-    const foreign = await ticket(t, "another-google-subject");
+describe("native account cutover", () => {
+  test("only a browser-bound link recovers an existing verified account and its access", async () => {
+    const { t, userId, owned, shared, invite } = await setup();
+    const proof = await getEmailLink(t, testEmail);
     expect(
-      await t.mutation(api.nativeAuth.completeSignInWithGoogle, {
-        ...foreign,
-        state: "foreign",
+      await t.mutation(api.nativeAuth.signInWithEmailMagicLink, {
+        ...proof,
+        browserSecret: "other-browser",
       }),
     ).toMatchObject({ status: "error" });
-    await expect(
-      t.mutation(api.nativeAuth.completeSignInWithGoogle, foreign),
-    ).rejects.toThrow("LEGACY_GOOGLE_REQUIRED");
-
-    const { tokens, native, sub, iss } = await nativeSignIn(t);
-    expect(tokens.userId).toBe(userId);
-    expect((await nativeSignIn(t)).tokens.userId).toBe(userId);
-    expect(iss).toBe(`${process.env.CONVEX_CLOUD_URL}/components/auth`);
+    await expect(t.query(api.queries.todoLists.list, {})).rejects.toThrow(
+      "signed in",
+    );
+    const result = await t.mutation(
+      api.nativeAuth.signInWithEmailMagicLink,
+      proof,
+    );
+    if (result.status !== "complete") throw new Error("Recovery failed.");
+    const { actor } = signedIn(t, result.tokens);
+    expect(await actor.query(api.nativeAccount.me, {})).toMatchObject({
+      id: userId,
+    });
+    const lists = await actor.query(api.queries.todoLists.list, {});
+    expect(lists.map((list) => list._id).sort()).toEqual(
+      [owned, shared].sort(),
+    );
     expect(
-      (await native.query(api.queries.todoLists.list, {}))
-        .map((list) => list._id)
-        .sort(),
-    ).toEqual([owned, shared].sort());
-    expect(
-      await native.query(api.queries.todoInvites.getByToken, {
+      await actor.query(api.queries.todoInvites.getByToken, {
         token: "test-invite",
       }),
     ).toMatchObject({ isCurrentUserMember: true });
@@ -250,339 +239,193 @@ describe("Convex Auth Google transition", () => {
         ?.createdByUserId,
     ).toBe("user_legacy_marko");
     expect(
-      await t
-        .withIdentity({ subject: sub, issuer: process.env.CONVEX_SITE_URL })
-        .query(api.nativeAccount.me, {}),
-    ).toBeNull();
+      await t.mutation(api.nativeAuth.signInWithEmailMagicLink, proof),
+    ).toMatchObject({ status: "error" });
 
-    await native.mutation(api.nativeAccount.updateName, { name: "New Name" });
-    expect(await native.query(api.nativeAccount.me, {})).toMatchObject({
-      id: userId,
-      name: "New Name",
+    await actor.mutation(api.nativeAccount.updateName, { name: "New Name" });
+    await t.mutation(internal.system.users.syncFromClerk, {
+      clerkId: "user_legacy_marko",
+      email: "old@example.test",
+      firstName: "Old",
     });
-    const legacy = await t.fetch("/api/auth/get-session", authRequest());
-    expect(await legacy.json()).toMatchObject({ user: { name: "New Name" } });
+    expect(await actor.query(api.nativeAccount.me, {})).toMatchObject({
+      name: "New Name",
+      email: testEmail,
+      id: userId,
+    });
   });
 
-  test("native sessions refresh after 45 days and stop at the 90-day creation deadline", async () => {
-    const { t } = await setupNative();
-    const start = Date.now();
-    const { tokens, iat, exp } = await nativeSignIn(t);
-    expect(exp - iat).toBe(60);
+  test("an unverified legacy email never grants access through a magic link", async () => {
+    const { t, userId } = await setup({ verified: false });
+    const { actor } = await finishEmail(t);
+    expect((await actor.query(api.nativeAccount.me, {}))?.id).not.toBe(userId);
+    expect(await actor.query(api.queries.todoLists.list, {})).toEqual([]);
+  });
+
+  test("Google retains exact subject ownership and requires recovery for an unbound legacy address", async () => {
+    const { t, userId } = await setup();
+    const known = await googleTicket(
+      t,
+      "legacy-google-subject",
+      "changed@example.test",
+    );
     expect(
-      Math.abs(tokens.refreshTokenExpiresAt - start - maxAge),
-    ).toBeLessThan(1000);
+      await t.mutation(api.nativeAuth.completeSignInWithGoogle, {
+        ...known,
+        state: "other-browser",
+      }),
+    ).toMatchObject({ status: "error" });
+    const result = await t.mutation(
+      api.nativeAuth.completeSignInWithGoogle,
+      known,
+    );
+    if (result.status !== "complete") throw new Error("Google sign-in failed.");
+    expect(
+      await signedIn(t, result.tokens).actor.query(api.nativeAccount.me, {}),
+    ).toMatchObject({ id: userId });
+    const unknown = await googleTicket(t, "unbound");
+    await expect(
+      t.mutation(api.nativeAuth.completeSignInWithGoogle, unknown),
+    ).rejects.toThrow("USE_EMAIL_LINK");
+
+    const { actor } = await finishEmail(t);
+    expect((await actor.query(api.nativeAccount.me, {}))?.id).toBe(userId);
+    const afterRecovery = await t.mutation(
+      api.nativeAuth.completeSignInWithGoogle,
+      unknown,
+    );
+    if (afterRecovery.status !== "complete")
+      throw new Error("Google sign-in after recovery failed.");
+    expect(
+      await signedIn(t, afterRecovery.tokens).actor.query(
+        api.nativeAccount.me,
+        {},
+      ),
+    ).toMatchObject({ id: userId });
+
+    await finishEmail(t, "outside-google@example.test");
+    await expect(
+      t.mutation(
+        api.nativeAuth.completeSignInWithGoogle,
+        await googleTicket(t, "outside-google", "outside-google@example.test"),
+      ),
+    ).rejects.toThrow("USE_EMAIL_LINK");
+  });
+
+  test("native refresh works after 45 days and expires at the 90-day absolute cap", async () => {
+    const { t } = await setup();
+    const start = Date.now();
+    const { tokens, exp, iat } = await finishEmail(t);
+    expect(exp - iat).toBe(60);
     const clock = spyOn(Date, "now");
     try {
-      clock.mockReturnValue(start + 45 * 86400000);
-      const rotated = await t.mutation(api.nativeAuth.refreshSession, {
+      clock.mockReturnValue(start + 45 * day);
+      const refreshed = await t.mutation(api.nativeAuth.refreshSession, {
         refreshToken: tokens.refreshToken,
       });
-      if (rotated.kind !== "rotated")
-        throw new Error("Fixture refresh failed.");
+      if (refreshed.kind !== "rotated") throw new Error("Refresh failed.");
       expect(
         Math.abs(
-          rotated.tokens.refreshTokenExpiresAt - tokens.refreshTokenExpiresAt,
+          refreshed.tokens.refreshTokenExpiresAt - tokens.refreshTokenExpiresAt,
         ),
       ).toBeLessThan(1);
-      clock.mockReturnValue(start + maxAge + 1000);
+      clock.mockReturnValue(start + 90 * day + 1000);
       expect(
         await t.mutation(api.nativeAuth.refreshSession, {
-          refreshToken: rotated.tokens.refreshToken,
+          refreshToken: refreshed.tokens.refreshToken,
         }),
       ).toEqual({ kind: "noSession" });
     } finally {
       clock.mockRestore();
     }
   });
+});
 
-  test("native settings manage the same keys while enforcing session and owner checks", async () => {
-    const { t, authUser } = await setupNative();
-    const legacy = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Existing key" }),
+describe("MCP key compatibility", () => {
+  test("existing clients keep their access and rate limit, and only the owner can revoke", async () => {
+    const { t, keyId } = await setup();
+    const owner = await finishEmail(t);
+    const other = await finishEmail(t, "other@example.test");
+    const listArgs = { offset: 0, limit: 20 };
+    const listed = await owner.actor.action(
+      api.nativeAccount.listKeys,
+      listArgs,
     );
-    expect(legacy.status).toBe(200);
-    const old = z
-      .object({ id: z.string(), key: z.string() })
-      .parse(await legacy.json());
-    const { native, tokens } = await nativeSignIn(t);
-    const listArgs = { limit: 20, offset: 0 };
-    expect(
-      await native.action(api.nativeAccount.listKeys, listArgs),
-    ).toMatchObject({ total: 1, apiKeys: [{ id: old.id }] });
-    await expect(
-      t.mutation(api.nativeAccount.revokeKey, { keyId: old.id }),
-    ).rejects.toThrow("signed in");
-
-    const foreign = await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.updateOne, {
-        input: {
-          model: "apikey",
-          where: [{ field: "_id", value: old.id }],
-          update: { referenceId: "another-account" },
+    expect(listed).toEqual({
+      total: 1,
+      apiKeys: [
+        {
+          id: keyId,
+          name: "Existing client",
+          start: "ritodo",
+          expiresAt: expect.any(Number),
         },
-      }),
-    );
-    await expect(
-      native.mutation(api.nativeAccount.revokeKey, { keyId: foreign._id }),
-    ).rejects.toThrow("API key not found");
-    await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.updateOne, {
-        input: {
-          model: "apikey",
-          where: [{ field: "_id", value: old.id }],
-          update: { referenceId: authUser._id },
-        },
-      }),
-    );
-
-    const mcp = (token: string) =>
-      t.fetch("/mcp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/call",
-          params: { name: "list_todo_lists", arguments: {} },
-        }),
-      });
-    const { key } = await native.mutation(api.nativeAccount.createKey, {
-      name: "Native key",
+      ],
     });
-    for (const secret of [old.key, key]) {
-      const response = await mcp(secret);
-      expect(response.status).toBe(200);
-      const result = await response.json();
-      expect(JSON.parse(result.result.content[0].text).lists).toHaveLength(2);
+    expect(
+      await other.actor.action(api.nativeAccount.listKeys, listArgs),
+    ).toMatchObject({ total: 0 });
+    await expect(
+      other.actor.mutation(api.nativeAccount.revokeKey, { keyId }),
+    ).rejects.toThrow("API key not found");
+    const accepted = await callMcp(t, legacyKey);
+    expect(accepted.status).toBe(200);
+    expect(await accepted.text()).toContain("Legacy owned");
+    expect((await callMcp(t, legacyKey)).status).toBe(401);
+
+    const now = Date.now();
+    const clock = spyOn(Date, "now");
+    try {
+      clock.mockReturnValue(now + 60_001);
+      expect((await callMcp(t, legacyKey)).status).toBe(200);
+      clock.mockReturnValue(now + 90 * day + 1000);
+      expect((await callMcp(t, legacyKey)).status).toBe(401);
+      clock.mockReturnValue(now + 120_002);
+      await owner.actor.mutation(api.nativeAccount.revokeKey, { keyId });
+      expect((await callMcp(t, legacyKey)).status).toBe(401);
+    } finally {
+      clock.mockRestore();
     }
-    await native.mutation(api.nativeAccount.revokeKey, { keyId: old.id });
-    expect((await mcp(old.key)).status).toBe(401);
+  });
+
+  test("native-only accounts create keys, and keys grant MCP access only", async () => {
+    const { t } = await setup();
+    const { actor, tokens } = await finishEmail(t, "native@example.test");
+    await actor.mutation(api.mutations.todoLists.create, {
+      title: "Native list",
+      kind: "regular",
+    });
+    const { key } = await actor.mutation(api.nativeAccount.createKey, {
+      name: "New client",
+    });
+    expect(key.startsWith("ritodo_")).toBe(true);
+    const accepted = await callMcp(t, key);
+    expect(accepted.status).toBe(200);
+    expect(await accepted.text()).toContain("Native list");
+    await expect(
+      t
+        .withIdentity({ subject: key })
+        .mutation(api.nativeAccount.createKey, { name: "Forbidden" }),
+    ).rejects.toThrow("signed in");
     await t.mutation(api.nativeAuth.signOut, {
       refreshToken: tokens.refreshToken,
     });
-    expect(await native.query(api.nativeAuth.isAuthenticated, {})).toBe(false);
-    await expect(
-      native.action(api.nativeAccount.listKeys, listArgs),
-    ).rejects.toThrow("signed in");
-    expect((await mcp(key)).status).toBe(200);
+    expect(await actor.query(api.nativeAuth.isAuthenticated, {})).toBe(false);
+    expect((await callMcp(t, key)).status).toBe(200);
   });
 });
-
-describe("MCP keys", () => {
-  test("another user cannot manage a key, and an expired key cannot authenticate", async () => {
-    const { t } = await setup();
-    const created = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Private" }),
-    );
-    const key = z
-      .object({ id: z.string(), key: z.string() })
-      .parse(await created.json());
-    await t.run(async (ctx) => {
-      const now = Date.now();
-      const stranger = await ctx.runMutation(
-        components.betterAuth.adapter.create,
-        {
-          input: {
-            model: "user",
-            data: {
-              email: "other@example.test",
-              name: "Other",
-              emailVerified: true,
-              createdAt: now,
-              updatedAt: now,
-            },
-          },
-        },
-      );
-      await ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "session",
-          data: {
-            userId: stranger._id,
-            token: "other-session",
-            createdAt: now,
-            updatedAt: now,
-            expiresAt: now + 86400000,
-          },
-        },
-      });
-    });
-    expect(
-      (
-        await t.fetch(
-          "/api/auth/api-key/delete",
-          authRequest({ keyId: key.id }, "other-session"),
-        )
-      ).status,
-    ).toBe(404);
-    const listed = await t.fetch(
-      "/api/auth/api-key/list",
-      authRequest(undefined, "other-session"),
-    );
-    expect((await listed.json()).apiKeys).toEqual([]);
-    await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.updateOne, {
-        input: {
-          model: "apikey",
-          where: [{ field: "_id", value: key.id }],
-          update: { expiresAt: Date.now() - 1 },
-        },
-      }),
-    );
-    const response = await t.fetch("/mcp", {
-      headers: { Authorization: `Bearer ${key.key}` },
-    });
-    expect(response.status).toBe(401);
-  });
-
-  test("a new key accesses mapped legacy lists, stays hashed and is revocable", async () => {
-    const { t, authUser } = await setup();
-    const created = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Codex" }),
-    );
-    expect(created.status).toBe(200);
-    const key = z
-      .object({
-        id: z.string(),
-        key: z.string(),
-        expiresAt: z.union([z.string(), z.number()]),
-      })
-      .parse(await created.json());
-    expect(key.key.startsWith("ritodo_")).toBe(true);
-    expect(
-      Math.abs(new Date(key.expiresAt).getTime() - Date.now() - 86400000 * 90),
-    ).toBeLessThan(5000);
-    const stored = await t.run((ctx) =>
-      ctx.runQuery(components.betterAuth.adapter.findOne, {
-        model: "apikey",
-        where: [{ field: "_id", value: key.id }],
-      }),
-    );
-    expect(stored?.key).not.toBe(key.key);
-    expect(stored?.referenceId).toBe(authUser._id);
-    const listed = await t.fetch("/api/auth/api-key/list", authRequest());
-    expect(listed.status).toBe(200);
-    const list = await listed.json();
-    expect(list.apiKeys).toHaveLength(1);
-    expect(list.apiKeys[0].key).toBeUndefined();
-    const request = () =>
-      t.fetch("/mcp", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json, text/event-stream",
-          Authorization: `Bearer ${key.key}`,
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: 1,
-          method: "tools/call",
-          params: { name: "list_todo_lists", arguments: {} },
-        }),
-      });
-    const response = await request();
-    expect(response.status).toBe(200);
-    const result = await response.json();
-    expect(result.result.isError).not.toBe(true);
-    expect(JSON.parse(result.result.content[0].text).lists).toHaveLength(2);
-    // API keys cannot act as account-management browser sessions.
-    const elevated = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Forbidden" }, key.key),
-    );
-    expect(elevated.status).toBe(401);
-    const revoked = await t.fetch(
-      "/api/auth/api-key/delete",
-      authRequest({ keyId: key.id }),
-    );
-    expect(revoked.status).toBe(200);
-    expect((await request()).status).toBe(401);
-  });
-
-  test("keys cannot claim another identity, survive deletion, or choose a foreign prefix", async () => {
-    const { t, authUser } = await setup({ linked: false });
-    const forged = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Forged", userId: "user_legacy_marko" }),
-    );
-    expect(forged.status).toBe(401);
-    const prefix = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Wrong prefix", prefix: "clerk_" }),
-    );
-    expect(prefix.status).toBe(400);
-    const created = await t.fetch(
-      "/api/auth/api-key/create",
-      authRequest({ name: "Codex" }),
-    );
-    expect(created.status).toBe(200);
-    const key = z
-      .object({ id: z.string(), key: z.string() })
-      .parse(await created.json());
-    const clerk = mock(async () => ({ subject: "user_legacy_marko" }));
-    const authenticate = () =>
-      t.action(async (ctx) => {
-        const result = await authenticateMcpRequest(
-          ctx,
-          new Request("https://auth.example.test/mcp", {
-            headers: { Authorization: `Bearer ${key.key}` },
-          }),
-          clerk,
-        );
-        return result.authenticated ? result.userId : null;
-      });
-    expect(await authenticate()).toBe(`better-auth:${authUser._id}`);
-    await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.deleteOne, {
-        input: {
-          model: "user",
-          where: [{ field: "_id", value: authUser._id }],
-        },
-      }),
-    );
-    expect(await authenticate()).toBeNull();
-    expect(clerk).not.toHaveBeenCalled();
-  });
-
-  test("Clerk keys keep their legacy identity during the transition", async () => {
-    const { t } = await setup();
-    const previous = process.env.CLERK_SECRET_KEY;
-    process.env.CLERK_SECRET_KEY = "sk_test_fixture_only";
-    try {
-      const clerk = mock(async () => ({ subject: "user_legacy_marko" }));
-      const result = await t.action(async (ctx) => {
-        const auth = await authenticateMcpRequest(
-          ctx,
-          new Request("https://auth.example.test/mcp", {
-            headers: { Authorization: "Bearer clerk_fixture_key" },
-          }),
-          clerk,
-        );
-        return auth.authenticated ? auth.userId : null;
-      });
-      expect(result).toBe("user_legacy_marko");
-      expect(clerk).toHaveBeenCalledTimes(1);
-    } finally {
-      if (previous === undefined) delete process.env.CLERK_SECRET_KEY;
-      else process.env.CLERK_SECRET_KEY = previous;
-    }
-  });
-});
-
 describe("reviewed identity links", () => {
   test("preview is read-only; gated application preserves legacy data and is idempotent", async () => {
-    const { t, signedIn, authUser, userId, owned } = await setup({
+    const { t, authUser, userId, owned } = await setup({
       linked: false,
     });
-    await t.run((ctx) => syncBetterAuthUser(ctx, authUser));
+    await t.run((ctx) =>
+      ctx.db.insert("users", {
+        betterAuthId: authUser._id,
+        email: testEmail,
+        updatedAt: Date.now(),
+      }),
+    );
     const pair = { clerkId: "user_legacy_marko", betterAuthId: authUser._id };
     const preview = await t.query(internal.system.identityLinks.preview, pair);
     expect(preview.status).toBe("ready");
@@ -611,7 +454,8 @@ describe("reviewed identity links", () => {
       expect(await t.mutation(internal.system.identityLinks.apply, args)).toBe(
         userId,
       );
-      expect(await signedIn.query(api.queries.todoLists.list)).toHaveLength(2);
+      const { actor } = await finishEmail(t);
+      expect(await actor.query(api.queries.todoLists.list)).toHaveLength(2);
       await expect(
         t.mutation(internal.mutations.todoLists.createForUser, {
           userId: `better-auth:${authUser._id}`,
@@ -706,305 +550,29 @@ describe("reviewed identity links", () => {
   });
 });
 
-describe("Better Auth ownership mapping", () => {
-  test("profile edits sync without changing ownership and reject an email overwrite", async () => {
-    const { t, userId } = await setup();
-    const updated = await t.fetch(
-      "/api/auth/update-user",
-      authRequest({ name: "Marko Updated" }),
-    );
-    expect(updated.status).toBe(200);
-    await t.mutation(internal.system.users.syncFromClerk, {
-      clerkId: "user_legacy_marko",
-      email: "old-email@example.test",
-      firstName: "Old",
-    });
-    expect(await t.run((ctx) => ctx.db.get(userId))).toMatchObject({
-      clerkId: "user_legacy_marko",
-      firstName: "Marko",
-      lastName: "Updated",
-    });
-    const forged = await t.fetch(
-      "/api/auth/update-user",
-      authRequest({ email: "attacker@example.test" }),
-    );
-    expect(forged.status).toBe(400);
-    expect((await t.run((ctx) => ctx.db.get(userId)))?.email).toBe(
-      "marko@example.test",
-    );
-  });
-
-  test("Google sign-in without credentials returns an actionable error", async () => {
+describe("Clerk MCP fallback", () => {
+  test("Clerk keys keep their legacy identity during the transition", async () => {
     const { t } = await setup();
-    delete process.env.GOOGLE_CLIENT_ID;
-    delete process.env.GOOGLE_CLIENT_SECRET;
+    const previous = process.env.CLERK_SECRET_KEY;
+    process.env.CLERK_SECRET_KEY = "sk_test_fixture_only";
     try {
-      const response = await t.fetch("/api/auth/sign-in/social", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Origin: "http://localhost:5174",
-          "Better-Auth-Cookie": "",
-        },
-        body: JSON.stringify({
-          provider: "google",
-          callbackURL: "http://localhost:5174/",
-          disableRedirect: true,
-        }),
+      const clerk = mock(async () => ({ subject: "user_legacy_marko" }));
+      const result = await t.action(async (ctx) => {
+        const auth = await authenticateMcpRequest(
+          ctx,
+          new Request("https://auth.example.test/mcp", {
+            headers: { Authorization: "Bearer clerk_fixture_key" },
+          }),
+          clerk,
+        );
+        return auth.authenticated ? auth.userId : null;
       });
-      expect(response.status).toBe(503);
-      expect(await response.json()).toMatchObject({
-        message: "Google sign-in is unavailable. Continue with email.",
-      });
+      expect(result).toBe("user_legacy_marko");
+      expect(clerk).toHaveBeenCalledTimes(1);
     } finally {
-      process.env.GOOGLE_CLIENT_ID = "test-only-client";
-      process.env.GOOGLE_CLIENT_SECRET = "test-only-secret";
+      if (previous === undefined) delete process.env.CLERK_SECRET_KEY;
+      else process.env.CLERK_SECRET_KEY = previous;
     }
-  });
-
-  test("configured Google sign-in generates the Convex callback URL", async () => {
-    const { t } = await setup();
-    const response = await t.fetch("/api/auth/sign-in/social", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Origin: "http://localhost:5174",
-        "Better-Auth-Cookie": "",
-      },
-      body: JSON.stringify({
-        provider: "google",
-        callbackURL: "http://localhost:5174/invite/test-invite",
-        disableRedirect: true,
-      }),
-    });
-    expect(response.status).toBe(200);
-    const result = z
-      .object({ url: z.string(), redirect: z.boolean() })
-      .parse(await response.json());
-    const url = new URL(result.url);
-    expect(url.origin).toBe("https://accounts.google.com");
-    expect(url.searchParams.get("client_id")).toBe("test-only-client");
-    expect(url.searchParams.get("redirect_uri")).toBe(
-      "https://auth.example.test/api/auth/callback/google",
-    );
-    expect(result.redirect).toBe(false);
-  });
-
-  test("email OTP signs in with a persistent session through the Resend callback", async () => {
-    const { t } = await setup();
-    // Mock the component client before any auth requests. No emails or network calls.
-    const sendEmail = spyOn(Resend.prototype, "sendEmail").mockResolvedValue(
-      "test-email-id" as EmailId,
-    );
-    const headers = {
-      "Content-Type": "application/json",
-      Origin: "http://localhost:5174",
-      "Better-Auth-Cookie": "",
-    };
-    try {
-      const sent = await t.fetch("/api/auth/email-otp/send-verification-otp", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ email: "new@example.test", type: "sign-in" }),
-      });
-      expect(sent.status).toBe(200);
-      expect(sendEmail).toHaveBeenCalledTimes(1);
-      const message = z
-        .object({
-          from: z.string(),
-          to: z.string(),
-          subject: z.string(),
-          text: z.string(),
-        })
-        .parse(sendEmail.mock.calls[0]?.[1]);
-      expect(message.from).toBe("RiTodo <login@rinadely.com>");
-      expect(message.to).toBe("new@example.test");
-      expect(message.subject).toBe("Your RiTodo sign-in code");
-      const otp = message.text.match(/\b[0-9]{6}\b/)?.[0];
-      expect(otp).toBeDefined();
-      expect(await sent.text()).not.toContain(otp!);
-      const verifyRequest = {
-        method: "POST",
-        headers,
-        body: JSON.stringify({ email: "new@example.test", otp }),
-      };
-      const signedIn = await t.fetch(
-        "/api/auth/sign-in/email-otp",
-        verifyRequest,
-      );
-      expect(signedIn.status).toBe(200);
-      const user = z
-        .object({
-          token: z.string(),
-          user: z.object({ emailVerified: z.boolean() }),
-        })
-        .parse(await signedIn.json());
-      expect(user.user.emailVerified).toBe(true);
-      expect(signedIn.headers.get("set-better-auth-cookie")).toContain(
-        "Max-Age=7776000",
-      );
-      const session = await t.fetch("/api/auth/get-session", {
-        headers: { Authorization: `Bearer ${user.token}` },
-      });
-      const data = await session.json();
-      expect(
-        Math.abs(
-          new Date(data.session.expiresAt).getTime() -
-            Date.now() -
-            86400000 * 90,
-        ),
-      ).toBeLessThan(5000);
-      const replay = await t.fetch(
-        "/api/auth/sign-in/email-otp",
-        verifyRequest,
-      );
-      expect(replay.status).toBe(400);
-    } finally {
-      sendEmail.mockRestore();
-    }
-  });
-
-  test("missing email configuration fails before queueing delivery", async () => {
-    const { t } = await setup();
-    const sendEmail = spyOn(Resend.prototype, "sendEmail");
-    const logError = spyOn(console, "error").mockImplementation(() => {});
-    delete process.env.AUTH_EMAIL_FROM;
-    try {
-      const response = await t.fetch(
-        "/api/auth/email-otp/send-verification-otp",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Origin: "http://localhost:5174",
-          },
-          body: JSON.stringify({ email: "new@example.test", type: "sign-in" }),
-        },
-      );
-      // Better Auth catches delivery errors and returns a generic response.
-      expect(response.status).toBe(200);
-      expect(sendEmail).not.toHaveBeenCalled();
-      expect(logError).toHaveBeenCalled();
-    } finally {
-      process.env.AUTH_EMAIL_FROM = "RiTodo <login@rinadely.com>";
-      sendEmail.mockRestore();
-      logError.mockRestore();
-    }
-  });
-
-  test("HTTP session use after 45 days renews to 90 days with daily throttling", async () => {
-    const { t } = await setup({ age: 86400000 * 45 });
-    const request = {
-      headers: {
-        Authorization: "Bearer test-session",
-        Origin: "http://localhost:5174",
-      },
-    };
-    const response = await t.fetch("/api/auth/get-session", request);
-    expect(response.status).toBe(200);
-    const data = await response.json();
-    const expiresAt = new Date(data.session.expiresAt).getTime();
-    expect(Math.abs(expiresAt - Date.now() - 86400000 * 90)).toBeLessThan(5000);
-    const next = await t.fetch("/api/auth/get-session", request);
-    expect(next.status).toBe(200);
-    expect((await next.json()).session.updatedAt).toBe(data.session.updatedAt);
-  });
-
-  test("a linked identity keeps owned lists, shared membership and invites", async () => {
-    const { signedIn, t, owned, shared } = await setup();
-    expect(await signedIn.query(api.queries.todoLists.list)).toHaveLength(2);
-    await signedIn.mutation(api.mutations.todoLists.rename, {
-      listId: owned,
-      title: "Renamed",
-    });
-    const invite = await signedIn.query(api.queries.todoInvites.getByToken, {
-      token: "test-invite",
-    });
-    expect(invite?.isCurrentUserMember).toBe(true);
-    expect(invite?.createdByUserId).toBe("user_legacy_marko");
-    await expect(
-      signedIn.mutation(api.mutations.todoLists.remove, { listId: shared }),
-    ).rejects.toThrow();
-    expect((await t.run((ctx) => ctx.db.get(owned)))?.userId).toBe(
-      "user_legacy_marko",
-    );
-    // The unchanged MCP internal path still uses Clerk ownership IDs.
-    expect(
-      await t.query(internal.mcp.queries.listTodoLists, {
-        userId: "user_legacy_marko",
-      }),
-    ).toHaveLength(2);
-  });
-
-  test("a matching email cannot claim a legacy account", async () => {
-    const { signedIn, owned, authUser } = await setup({ linked: false });
-    expect(await signedIn.query(api.queries.todoLists.list)).toEqual([]);
-    expect(await signedIn.query(requireAppUserId)).toBe(
-      `better-auth:${authUser._id}`,
-    );
-    await expect(
-      signedIn.mutation(api.mutations.todoLists.rename, {
-        listId: owned,
-        title: "Denied",
-      }),
-    ).rejects.toThrow();
-    const created = await signedIn.mutation(api.mutations.todoLists.create, {
-      title: "New",
-      kind: "regular",
-    });
-    expect(created).toBeDefined();
-    expect(await signedIn.query(api.queries.todoLists.list)).toHaveLength(1);
-  });
-
-  test("expired and signed-out sessions cannot access legacy lists", async () => {
-    const { signedIn, t } = await setup({ expired: true });
-    await expect(signedIn.query(api.queries.todoLists.list)).rejects.toThrow(
-      "You must be signed in.",
-    );
-    await expect(t.query(api.queries.todoLists.list)).rejects.toThrow(
-      "You must be signed in.",
-    );
-  });
-
-  test("profile sync preserves a verified mapping and never links by email", async () => {
-    const { t, authUser, userId } = await setup();
-    await t.run((ctx) =>
-      syncBetterAuthUser(ctx, { ...authUser, name: "Marko Updated" }),
-    );
-    expect(await t.run((ctx) => ctx.db.get(userId))).toMatchObject({
-      clerkId: "user_legacy_marko",
-      betterAuthId: authUser._id,
-      lastName: "Updated",
-    });
-    await t.run((ctx) => syncBetterAuthUser(ctx, { ...authUser, name: "" }));
-    expect((await t.run((ctx) => ctx.db.get(userId)))?.lastName).toBe(
-      "Updated",
-    );
-    await t.run((ctx) =>
-      syncBetterAuthUser(ctx, { ...authUser, _id: "another-auth-id" }),
-    );
-    expect(
-      await t.run((ctx) =>
-        ctx.db
-          .query("users")
-          .withIndex("by_better_auth_id", (q) =>
-            q.eq("betterAuthId", "another-auth-id"),
-          )
-          .unique(),
-      ),
-    ).toMatchObject({ email: authUser.email });
-    expect(
-      (
-        await t.run((ctx) =>
-          ctx.db
-            .query("users")
-            .withIndex("by_better_auth_id", (q) =>
-              q.eq("betterAuthId", "another-auth-id"),
-            )
-            .unique(),
-        )
-      )?.clerkId,
-    ).toBeUndefined();
   });
 });
 

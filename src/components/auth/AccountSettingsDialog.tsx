@@ -10,13 +10,13 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useT } from "@/hooks";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { authClient } from "@/lib/auth-client";
+import type { FunctionReturnType } from "convex/server";
+import type { api } from "@convex/_generated/api";
 import ProfileSettings from "./ProfileSettings";
 import McpKeySettings from "./McpKeySettings";
 
-type SettingsUser = Pick<
-  typeof authClient.$Infer.Session.user,
-  "id" | "name" | "email"
+type SettingsUser = NonNullable<
+  FunctionReturnType<typeof api.nativeAccount.me>
 >;
 
 // Light backdrop so the app stays visible. McpKeySettings uses the same one.
