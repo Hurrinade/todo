@@ -1,36 +1,79 @@
-import { authComponent } from "../auth";
-import type { Id } from "../_generated/dataModel";
+import { getAuthUserId } from "@convex-dev/auth/server";
+import { components } from "../_generated/api";
+import type { Doc, Id } from "../_generated/dataModel";
 import type { MutationCtx, QueryCtx } from "../_generated/server";
 import { appError, notFoundError } from "./errors";
 
 type AuthContext = QueryCtx | MutationCtx;
 
-// Keep persisted Clerk IDs for linked users. New identities cannot collide with them.
-export async function getAppUserId(ctx: AuthContext) {
-  const authUser = await authComponent.safeGetAuthUser(ctx);
-  if (!authUser) {
-    return null;
-  }
-
-  return resolveAppUserId(ctx, authUser._id);
+export async function getProfile(ctx: AuthContext) {
+  const userId = await getAuthUserId<"authIdentities">(ctx);
+  const id = userId && ctx.db.normalizeId("authIdentities", userId);
+  const identity = id && (await ctx.db.get("authIdentities", id));
+  return identity?.profileId ? ctx.db.get("users", identity.profileId) : null;
 }
 
-// Caller must first verify the session or API key and that its auth user exists.
-export async function resolveAppUserId(ctx: AuthContext, betterAuthId: string) {
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", betterAuthId))
-    .unique();
+export async function requireProfile(ctx: AuthContext) {
+  const profile = await getProfile(ctx);
+  if (!profile) {
+    throw appError("unauthenticated", "You must be signed in.", "signedOut");
+  }
+  return profile;
+}
 
-  return user?.clerkId ?? `better-auth:${betterAuthId}`;
+export const CONVEX_OWNER_PREFIX = "convex-auth:";
+const LEGACY_OWNER_PREFIX = "better-auth:";
+
+export function profileOwnerId(profile: Doc<"users">) {
+  return (
+    profile.clerkId ??
+    (profile.betterAuthId
+      ? `${LEGACY_OWNER_PREFIX}${profile.betterAuthId}`
+      : `${CONVEX_OWNER_PREFIX}${profile._id}`)
+  );
+}
+
+// Reactive reads can return an empty result if the session ends before their
+// subscriptions are removed. Writes should use requireAppUserId instead.
+export async function getAppUserId(ctx: AuthContext) {
+  const profile = await getProfile(ctx);
+  return profile ? profileOwnerId(profile) : null;
 }
 
 export async function requireAppUserId(ctx: AuthContext) {
-  const userId = await getAppUserId(ctx);
-  if (!userId) {
-    throw appError("unauthenticated", "You must be signed in.", "signedOut");
+  return profileOwnerId(await requireProfile(ctx));
+}
+
+export function findLegacyProfile(ctx: AuthContext, id: string) {
+  return ctx.db
+    .query("users")
+    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", id))
+    .unique();
+}
+
+// An MCP key may belong to a historical owner with no app profile yet.
+export async function resolveLegacyOwner(ctx: AuthContext, id: string) {
+  const user = await ctx.runQuery(components.betterAuth.accounts.byId, { id });
+  if (!user) return null;
+  const profile = await findLegacyProfile(ctx, id);
+  return profile ? profileOwnerId(profile) : `${LEGACY_OWNER_PREFIX}${id}`;
+}
+
+export function getProfileByOwnerId(ctx: AuthContext, ownerId: string) {
+  if (ownerId.startsWith(CONVEX_OWNER_PREFIX)) {
+    const id = ctx.db.normalizeId(
+      "users",
+      ownerId.slice(CONVEX_OWNER_PREFIX.length),
+    );
+    return id ? ctx.db.get("users", id) : Promise.resolve(null);
   }
-  return userId;
+  if (ownerId.startsWith(LEGACY_OWNER_PREFIX)) {
+    return findLegacyProfile(ctx, ownerId.slice(LEGACY_OWNER_PREFIX.length));
+  }
+  return ctx.db
+    .query("users")
+    .withIndex("by_clerk_id", (q) => q.eq("clerkId", ownerId))
+    .unique();
 }
 
 export async function requireListAccess(

@@ -4,45 +4,48 @@ import {
   internalQuery,
   type MutationCtx,
 } from "../_generated/server";
-import { authComponent } from "../auth";
-import { resolveAppUserId } from "../shared/auth";
+import {
+  CONVEX_OWNER_PREFIX,
+  profileOwnerId,
+  resolveLegacyOwner,
+} from "../shared/auth";
+import type { LegacyUser } from "../betterAuth/accounts";
 
 // MCP keys are verified before this internal lookup. Deleted users cannot use keys.
 export const resolveMcpOwner = internalQuery({
-  args: { betterAuthId: v.string() },
+  args: { referenceId: v.string() },
   returns: v.union(v.string(), v.null()),
-  handler: async (ctx, { betterAuthId }) => {
-    const user = await authComponent.getAnyUserById(ctx, betterAuthId);
-    return user ? resolveAppUserId(ctx, user._id) : null;
+  handler: async (ctx, { referenceId }) => {
+    if (!referenceId.startsWith(CONVEX_OWNER_PREFIX))
+      return resolveLegacyOwner(ctx, referenceId);
+    const id = ctx.db.normalizeId(
+      "users",
+      referenceId.slice(CONVEX_OWNER_PREFIX.length),
+    );
+    const profile = id && (await ctx.db.get("users", id));
+    return profile && profileOwnerId(profile) === referenceId
+      ? referenceId
+      : null;
   },
 });
 
-// Profile sync never claims a legacy user by email. See docs/better-auth-migration.md.
-export async function syncBetterAuthUser(
-  ctx: MutationCtx,
-  authUser: { _id: string; email: string; name: string; image?: string | null },
-) {
-  const user = await ctx.db
-    .query("users")
-    .withIndex("by_better_auth_id", (q) => q.eq("betterAuthId", authUser._id))
-    .unique();
-  const [firstName, ...lastName] = authUser.name.trim().split(/\s+/);
-  const profile = {
-    betterAuthId: authUser._id,
-    email: authUser.email,
-    // OTP signup can have no name. Keep a linked legacy profile's name in that case.
-    ...(firstName
-      ? { firstName, lastName: lastName.join(" ") || undefined }
-      : {}),
-    imageUrl: authUser.image ?? undefined,
-    updatedAt: Date.now(),
+export function profileNameFields(name: string) {
+  const [firstName, ...lastName] = name.trim().split(/\s+/);
+  return {
+    firstName: firstName || undefined,
+    lastName: lastName.join(" ") || undefined,
   };
+}
 
-  if (user) {
-    await ctx.db.patch(user._id, profile);
-  } else {
-    await ctx.db.insert("users", profile);
-  }
+// A historical auth owner may predate the app profile trigger.
+export function insertLegacyProfile(ctx: MutationCtx, user: LegacyUser) {
+  return ctx.db.insert("users", {
+    betterAuthId: user.id,
+    email: user.email,
+    ...profileNameFields(user.name),
+    imageUrl: user.image,
+    updatedAt: Date.now(),
+  });
 }
 
 export const syncFromClerk = internalMutation({
@@ -72,8 +75,7 @@ export const syncFromClerk = internalMutation({
       });
     }
 
-    // Once linked, Better Auth owns the profile. Delayed Clerk webhooks must not
-    // overwrite edits made in the new account settings.
+    // Delayed Clerk webhooks must not overwrite edits made in RiTodo.
     if (user.betterAuthId) return user._id;
 
     await ctx.db.patch(user._id, {

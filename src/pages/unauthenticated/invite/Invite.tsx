@@ -213,7 +213,7 @@ export default function Invite() {
                   </>
                 ) : (
                   <>
-                    <AuthDialog>
+                    <AuthDialog openOnGoogleError>
                       <Button
                         type="button"
                         className="h-11 w-full"

@@ -1,11 +1,11 @@
 import { useId, useState, type FormEvent } from "react";
 import { useMutation } from "@tanstack/react-query";
+import { useMutation as useConvexMutation } from "convex/react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { authClient } from "@/lib/auth-client";
+import { api } from "@convex/_generated/api";
 import { useT } from "@/hooks";
-import { translateServerMessage } from "@/i18n";
 import { useNetworkStore } from "@/stores";
 
 /** Name editing for account settings. `onSaved` runs only after a successful save. */
@@ -22,17 +22,13 @@ export default function ProfileSettings({
   const [draftName, setDraftName] = useState(name);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
+  const updateName = useConvexMutation(api.nativeAccount.updateName);
   const save = useMutation({
     mutationFn: async (nextName: string) => {
-      const result = await authClient.updateUser({ name: nextName });
-      if (result.error) {
-        throw new Error(
-          translateServerMessage(
-            t,
-            result.error.message,
-            t.settings.profileNotSaved,
-          ),
-        );
+      try {
+        await updateName({ name: nextName });
+      } catch {
+        throw new Error(t.settings.profileNotSaved);
       }
     },
     onSuccess: onSaved,

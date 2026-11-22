@@ -1,12 +1,17 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { requireAppUserId, requireListAccess } from "../shared/auth";
+import {
+  getProfileByOwnerId,
+  getAppUserId,
+  requireListAccess,
+} from "../shared/auth";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     const memberships = await ctx.db
       .query("todoListUsers")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -26,7 +31,8 @@ export const members = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     await requireListAccess(ctx, args.listId, userId);
 
     const memberships = await ctx.db
@@ -34,21 +40,9 @@ export const members = query({
       .withIndex("by_list_id", (q) => q.eq("listId", args.listId))
       .collect();
     const memberUsers = await Promise.all(
-      memberships.map((membership) => {
-        const prefix = "better-auth:";
-        if (membership.userId.startsWith(prefix)) {
-          return ctx.db
-            .query("users")
-            .withIndex("by_better_auth_id", (q) =>
-              q.eq("betterAuthId", membership.userId.slice(prefix.length)),
-            )
-            .unique();
-        }
-        return ctx.db
-          .query("users")
-          .withIndex("by_clerk_id", (q) => q.eq("clerkId", membership.userId))
-          .unique();
-      }),
+      memberships.map((membership) =>
+        getProfileByOwnerId(ctx, membership.userId),
+      ),
     );
 
     return memberships

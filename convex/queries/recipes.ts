@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { getAppUserId, requireListAccess } from "../shared/auth";
 
 // The recipe lines still open on a list, from todos added with
 // todos.createFromRecipe. Only lists the viewer belongs to are included, so a
@@ -12,7 +12,8 @@ export const shoppingLinks = query({
     recipeId: v.id("recipes"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     const recipe = await ctx.db.get(args.recipeId);
 
     // A recipe deleted while open shows no links instead of failing the page.
@@ -69,7 +70,8 @@ export const list = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     await requireListAccess(ctx, args.listId, userId);
 
     const [todos, recipes] = await Promise.all([

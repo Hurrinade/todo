@@ -1,6 +1,6 @@
 import { v, type Infer } from "convex/values";
-import { authComponent } from "../auth";
-import { syncBetterAuthUser } from "./users";
+import { components } from "../_generated/api";
+import { profileNameFields } from "./users";
 import {
   internalMutation,
   internalQuery,
@@ -39,7 +39,9 @@ async function inspect(
   });
   if (!pair.clerkId.startsWith("user_"))
     return blocked("A legacy Clerk user ID is required.");
-  const authUser = await authComponent.getAnyUserById(ctx, pair.betterAuthId);
+  const authUser = await ctx.runQuery(components.betterAuth.accounts.byId, {
+    id: pair.betterAuthId,
+  });
   if (!authUser || !authUser.emailVerified)
     return blocked("The target auth user must exist with a verified email.");
 
@@ -96,6 +98,17 @@ async function inspect(
   if (legacyAudit || targetAudit)
     return blocked(
       "An audit exists without its mapping. Review before retrying.",
+    );
+  if (
+    target &&
+    (target.nativeGoogleLinked ||
+      (await ctx.db
+        .query("authIdentities")
+        .withIndex("by_profile_id", (q) => q.eq("profileId", target._id))
+        .first()))
+  )
+    return blocked(
+      "Convex Auth uses the target profile. Review both account mappings before linking.",
     );
 
   const newOwner = `better-auth:${pair.betterAuthId}`;
@@ -177,14 +190,18 @@ export const apply = internalMutation({
         "Profiles changed after review. Run preview and review again.",
       );
     }
+    const authUser = await ctx.runQuery(components.betterAuth.accounts.byId, {
+      id: args.betterAuthId,
+    });
+    if (!authUser) throw new Error("The target auth user no longer exists.");
     await ctx.db.patch(report.legacyUserId, {
       betterAuthId: args.betterAuthId,
+      email: authUser.email,
+      ...(authUser.name.trim() ? profileNameFields(authUser.name) : {}),
+      imageUrl: authUser.image,
       updatedAt: Date.now(),
     });
     if (report.newProfileId) await ctx.db.delete(report.newProfileId);
-    const authUser = await authComponent.getAnyUserById(ctx, args.betterAuthId);
-    if (!authUser) throw new Error("The target auth user no longer exists.");
-    await syncBetterAuthUser(ctx, authUser);
     await ctx.db.insert("identityLinks", {
       clerkId: args.clerkId,
       betterAuthId: args.betterAuthId,

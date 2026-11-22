@@ -8,8 +8,8 @@
  * @module
  */
 
-import type * as auth from "../auth.js";
 import type * as crons from "../crons.js";
+import type * as emailSignInCodes from "../emailSignInCodes.js";
 import type * as http from "../http.js";
 import type * as mcp_auth from "../mcp/auth.js";
 import type * as mcp_format from "../mcp/format.js";
@@ -21,13 +21,18 @@ import type * as mutations_todoInvites from "../mutations/todoInvites.js";
 import type * as mutations_todoLists from "../mutations/todoLists.js";
 import type * as mutations_todoSections from "../mutations/todoSections.js";
 import type * as mutations_todos from "../mutations/todos.js";
+import type * as nativeAccount from "../nativeAccount.js";
+import type * as nativeAuth from "../nativeAuth.js";
 import type * as queries_recipes from "../queries/recipes.js";
 import type * as queries_todoInvites from "../queries/todoInvites.js";
 import type * as queries_todoLists from "../queries/todoLists.js";
 import type * as queries_todoSections from "../queries/todoSections.js";
 import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
+import type * as shared_emailSignIn from "../shared/emailSignIn.js";
 import type * as shared_errors from "../shared/errors.js";
+import type * as shared_googleSignIn from "../shared/googleSignIn.js";
+import type * as shared_mcpKeys from "../shared/mcpKeys.js";
 import type * as shared_recipe from "../shared/recipe.js";
 import type * as shared_todo from "../shared/todo.js";
 import type * as shared_todoListStats from "../shared/todoListStats.js";
@@ -47,8 +52,8 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
-  auth: typeof auth;
   crons: typeof crons;
+  emailSignInCodes: typeof emailSignInCodes;
   http: typeof http;
   "mcp/auth": typeof mcp_auth;
   "mcp/format": typeof mcp_format;
@@ -60,13 +65,18 @@ declare const fullApi: ApiFromModules<{
   "mutations/todoLists": typeof mutations_todoLists;
   "mutations/todoSections": typeof mutations_todoSections;
   "mutations/todos": typeof mutations_todos;
+  nativeAccount: typeof nativeAccount;
+  nativeAuth: typeof nativeAuth;
   "queries/recipes": typeof queries_recipes;
   "queries/todoInvites": typeof queries_todoInvites;
   "queries/todoLists": typeof queries_todoLists;
   "queries/todoSections": typeof queries_todoSections;
   "queries/todos": typeof queries_todos;
   "shared/auth": typeof shared_auth;
+  "shared/emailSignIn": typeof shared_emailSignIn;
   "shared/errors": typeof shared_errors;
+  "shared/googleSignIn": typeof shared_googleSignIn;
+  "shared/mcpKeys": typeof shared_mcpKeys;
   "shared/recipe": typeof shared_recipe;
   "shared/todo": typeof shared_todo;
   "shared/todoListStats": typeof shared_todoListStats;
@@ -109,4 +119,7 @@ export declare const internal: FilterApi<
 export declare const components: {
   betterAuth: import("../betterAuth/_generated/component.js").ComponentApi<"betterAuth">;
   resend: import("@convex-dev/resend/_generated/component.js").ComponentApi<"resend">;
+  auth: import("@convex-dev/auth/_generated/component.js").ComponentApi<"auth">;
+  authEmail: import("@convex-dev/auth/components/email/_generated/component.js").ComponentApi<"authEmail">;
+  authGoogle: import("@convex-dev/auth/components/google/_generated/component.js").ComponentApi<"authGoogle">;
 };

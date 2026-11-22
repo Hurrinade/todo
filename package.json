@@ -15,9 +15,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@better-auth/api-key": "1.6.34",
     "@clerk/backend": "^3.26.5",
-    "@convex-dev/better-auth": "^0.12.6",
+    "@convex-dev/auth": "2.1.0",
     "@convex-dev/resend": "^0.2.10",
     "@dnd-kit/abstract": "^0.5.3",
     "@dnd-kit/dom": "^0.5.3",
@@ -33,7 +32,6 @@
     "@tiptap/pm": "^3.32.2",
     "@tiptap/react": "^3.32.2",
     "@tiptap/starter-kit": "^3.32.2",
-    "better-auth": "~1.6.34",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "^1.49.0",

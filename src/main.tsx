@@ -1,7 +1,7 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter } from "react-router";
-import ConvexBetterAuthProvider from "@/context/convex/ConvexBetterAuthProvider";
+import AuthProvider from "@/context/convex/AuthProvider";
 import { ModalProvider } from "@/context/modal/ModalProvider";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import App from "@/App.tsx";
@@ -12,7 +12,7 @@ const root = createRoot(document.getElementById("root")!);
 function startApp() {
   root.render(
     <StrictMode>
-      <ConvexBetterAuthProvider>
+      <AuthProvider>
         <BrowserRouter>
           <TooltipProvider>
             <ModalProvider>
@@ -20,7 +20,7 @@ function startApp() {
             </ModalProvider>
           </TooltipProvider>
         </BrowserRouter>
-      </ConvexBetterAuthProvider>
+      </AuthProvider>
     </StrictMode>,
   );
 }

@@ -1,16 +1,12 @@
 import { expect, test } from "bun:test";
 import { convexTest } from "convex-test";
+import { dirname, join } from "node:path";
 
 import { api, components, internal } from "../convex/_generated/api";
-import betterAuthSchema from "../convex/betterAuth/schema";
 import schema from "../convex/schema";
+import { profileOwnerId } from "../convex/shared/auth";
+import { registerPackageComponents } from "./auth-fixtures";
 import { modulesIn } from "./convex-modules";
-
-// Test-process values only. No environment files or external services are used.
-process.env.SITE_URL = "http://localhost:5174";
-process.env.CONVEX_SITE_URL = "https://auth.example.test";
-process.env.BETTER_AUTH_SECRET =
-  "test-only-secret-not-for-use-outside-tests-123456789";
 
 const RICE = "300 g rice";
 
@@ -18,46 +14,50 @@ const RICE = "300 g rice";
 // the shopping list.
 async function setup() {
   const t = convexTest(schema, modulesIn("convex"));
-  t.registerComponent(
-    "betterAuth",
-    betterAuthSchema,
-    modulesIn("convex/betterAuth"),
+  const authPackage = Bun.resolveSync(
+    "@convex-dev/auth/package.json",
+    import.meta.dir,
+  );
+  await registerPackageComponents(
+    t,
+    join(dirname(authPackage), "src/component"),
+    "auth",
   );
 
   const signIn = async (email: string) => {
-    const now = Date.now();
-    const authUser = await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "user",
-          data: {
-            email,
-            name: email,
-            emailVerified: true,
-            createdAt: now,
-            updatedAt: now,
-          },
+    const { userId, accessToken, refreshToken } = await t.run(async (ctx) => {
+      const profileId = await ctx.db.insert("users", {
+        email,
+        updatedAt: Date.now(),
+      });
+      const profile = await ctx.db.get("users", profileId);
+      if (!profile) throw new Error("Fixture profile missing.");
+      const identity = await ctx.db.insert("authIdentities", { profileId });
+      // Mint a real core session without running an email or OAuth flow.
+      const tokens = await ctx.runMutation(
+        components.auth.public._internal_dangerous_signIn,
+        {
+          userId: identity,
+          claims: { method: "fixture", profile: {} },
+          componentPath: "authEmail",
+          accessTokenTtlSeconds: 60,
+          refreshInactivityTimeoutSeconds: 86400,
+          sessionMaxLifetimeSeconds: 86400,
         },
-      }),
+      );
+      return {
+        userId: profileOwnerId(profile),
+        accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
+      };
+    });
+    const { sub, iss } = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64url").toString(),
     );
-    const session = await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "session",
-          data: {
-            userId: authUser._id,
-            token: `session-${email}`,
-            expiresAt: now + 86400000,
-            createdAt: now,
-            updatedAt: now,
-          },
-        },
-      }),
-    );
-
     return {
-      userId: `better-auth:${authUser._id}`,
-      client: t.withIdentity({ subject: authUser._id, sessionId: session._id }),
+      userId,
+      refreshToken,
+      client: t.withIdentity({ subject: sub, issuer: iss }),
     };
   };
 
@@ -101,10 +101,10 @@ async function setup() {
       updatedAt: 0,
     });
 
-    return { shoppingListId, recipeId };
+    return { shoppingListId, recipeListId, recipeId, todoId };
   });
 
-  return { cook, guest, ...ids };
+  return { t, cook, guest, ...ids };
 }
 
 test("an added line shows until it is checked off, once per list", async () => {
@@ -156,4 +156,34 @@ test("links into lists a viewer cannot open stay hidden and closed to them", asy
       title: RICE,
     }),
   ).rejects.toThrow("Todo list was not found.");
+});
+
+test("live recipe reads clear after session revocation and writes still require sign-in", async () => {
+  const { t, cook, guest, recipeListId, shoppingListId, recipeId, todoId } =
+    await setup();
+  expect(
+    await cook.client.query(api.queries.recipes.list, { listId: recipeListId }),
+  ).toMatchObject([{ _id: todoId }]);
+  await expect(
+    guest.client.query(api.queries.recipes.list, { listId: shoppingListId }),
+  ).rejects.toThrow("Todo list was not found.");
+
+  // A subscription can rerun with its original JWT after the session is deleted.
+  await t.mutation(api.nativeAuth.signOut, { refreshToken: cook.refreshToken });
+  expect(await cook.client.query(api.queries.todoLists.list, {})).toEqual([]);
+  expect(
+    await cook.client.query(api.queries.recipes.list, { listId: recipeListId }),
+  ).toEqual([]);
+  expect(
+    await cook.client.query(api.queries.recipes.shoppingLinks, { recipeId }),
+  ).toEqual([]);
+  expect(await cook.client.query(api.queries.todos.get, { todoId })).toBeNull();
+  await expect(
+    cook.client.mutation(api.mutations.todos.createFromRecipe, {
+      recipeId,
+      ingredient: RICE,
+      listId: shoppingListId,
+      title: RICE,
+    }),
+  ).rejects.toThrow("You must be signed in.");
 });

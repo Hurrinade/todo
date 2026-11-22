@@ -13,6 +13,8 @@ export default defineSchema({
     // Legacy ownership IDs stay unchanged. Linking requires a verified backfill.
     clerkId: v.optional(v.string()),
     betterAuthId: v.optional(v.string()),
+    // Optional field from the staged Google rollout.
+    nativeGoogleLinked: v.optional(v.boolean()),
     email: v.string(),
     imageUrl: v.optional(v.string()),
     firstName: v.optional(v.string()),
@@ -21,6 +23,32 @@ export default defineSchema({
   })
     .index("by_clerk_id", ["clerkId"])
     .index("by_better_auth_id", ["betterAuthId"]),
+  authIdentities: defineTable({
+    // Email signup assigns the profile in its verified onSignIn callback.
+    profileId: v.optional(v.id("users")),
+  }).index("by_profile_id", ["profileId"]),
+  verifiedLoginEmails: defineTable({
+    email: v.string(),
+    profileId: v.id("users"),
+  }).index("by_email", ["email"]),
+  emailSignInCodes: defineTable({
+    email: v.string(),
+    expiresAt: v.number(),
+    state: v.union(
+      v.object({
+        kind: v.literal("pending"),
+        code: v.string(),
+        nativeCode: v.optional(v.string()),
+      }),
+      v.object({
+        kind: v.literal("ready"),
+        codeHash: v.string(),
+        browserSecretHash: v.string(),
+        nativeCode: v.string(),
+        attemptsLeft: v.number(),
+      }),
+    ),
+  }).index("by_email_and_kind", ["email", "state.kind"]),
   identityLinks: defineTable({
     clerkId: v.string(),
     betterAuthId: v.string(),

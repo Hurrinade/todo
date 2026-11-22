@@ -1,14 +1,15 @@
 import { v } from "convex/values";
 
 import { query } from "../_generated/server";
-import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { getAppUserId, requireListAccess } from "../shared/auth";
 
 export const list = query({
   args: {
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     await requireListAccess(ctx, args.listId, userId);
 
     const sections = await ctx.db

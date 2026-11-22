@@ -1,4 +1,6 @@
 import { useRef, useState } from "react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useQuery } from "convex/react";
 import { Languages, LogOut, Settings } from "lucide-react";
 import AccountSettingsDialog from "@/components/auth/AccountSettingsDialog";
 
@@ -10,7 +12,7 @@ import {
 } from "@/components/ui/popover";
 import { useT } from "@/hooks";
 import { LANGUAGES } from "@/i18n";
-import { authClient } from "@/lib/auth-client";
+import { api } from "@convex/_generated/api";
 import { cn } from "@/lib/utils";
 import { useLanguageStore } from "@/stores";
 
@@ -19,7 +21,8 @@ const menuItemClassName =
   "h-11 w-full justify-start gap-2.5 px-2.5 pointer-fine:h-9 [&_svg]:size-4";
 
 export default function AccountMenu() {
-  const { data: session } = authClient.useSession();
+  const user = useQuery(api.nativeAccount.me, {});
+  const { signOut } = useAuthActions();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -27,17 +30,13 @@ export default function AccountMenu() {
   const triggerRef = useRef<HTMLButtonElement>(null);
   const t = useT();
 
-  async function signOut() {
+  async function handleSignOut() {
     setPending(true);
     setError(null);
     try {
-      const result = await authClient.signOut();
-      if (result.error) {
-        setError(t.account.signOutFailed);
-      } else {
-        setMenuOpen(false);
-        setSettingsOpen(false);
-      }
+      await signOut();
+      setMenuOpen(false);
+      setSettingsOpen(false);
     } catch {
       setError(t.account.signOutFailed);
     } finally {
@@ -45,7 +44,7 @@ export default function AccountMenu() {
     }
   }
 
-  if (!session) {
+  if (!user) {
     return null;
   }
 
@@ -60,9 +59,7 @@ export default function AccountMenu() {
             className="max-w-full truncate"
             aria-label={t.account.menu}
           >
-            <span className="truncate">
-              {session.user.name || session.user.email}
-            </span>
+            <span className="truncate">{user.name || user.email}</span>
           </Button>
         </PopoverTrigger>
         <PopoverContent
@@ -75,12 +72,10 @@ export default function AccountMenu() {
           }}
         >
           <div className="min-w-0 px-2.5 py-2">
-            <p className="truncate">
-              {session.user.name || session.user.email}
-            </p>
-            {session.user.name && (
+            <p className="truncate">{user.name || user.email}</p>
+            {user.name && (
               <p className="truncate text-xs text-muted-foreground">
-                {session.user.email}
+                {user.email}
               </p>
             )}
           </div>
@@ -101,7 +96,7 @@ export default function AccountMenu() {
             variant="ghost"
             className={menuItemClassName}
             disabled={pending}
-            onClick={() => void signOut()}
+            onClick={() => void handleSignOut()}
           >
             <LogOut />
             {pending ? t.account.signingOut : t.account.signOut}
@@ -116,8 +111,8 @@ export default function AccountMenu() {
         </PopoverContent>
       </Popover>
       <AccountSettingsDialog
-        key={session.user.id}
-        user={session.user}
+        key={user.id}
+        user={user}
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
         onReturnFocus={() => triggerRef.current?.focus()}
