@@ -2,7 +2,7 @@ import { api } from "@convex/_generated/api";
 import { MAX_RECIPE_URL_LENGTH } from "@convex/shared/recipe";
 import { useMutation, useQuery } from "convex/react";
 import { CircleSlash } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router";
 
 import { RecipeList } from "@/components/recipe/RecipeList";
@@ -25,7 +25,7 @@ import {
 import { useT } from "@/hooks";
 import { translateAppError } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { useNetworkStore, useTodoErrorStore, useTodoStore } from "@/stores";
+import { useNetworkStore, useTodoErrorStore } from "@/stores";
 import type {
   TodoListItem,
   TodoListSummary,
@@ -48,7 +48,7 @@ export function TodoWorkspace({
   detailPanel,
   onActiveListIdChange,
 }: TodoWorkspaceProps) {
-  const listsResult = useQuery(api.queries.todoLists.list);
+  const lists = useQuery(api.queries.todoLists.list) ?? [];
 
   const createSection = useMutation(api.mutations.todoSections.create);
   const renameSection = useMutation(api.mutations.todoSections.rename);
@@ -72,17 +72,12 @@ export function TodoWorkspace({
   const createRecipe = useMutation(api.mutations.recipes.create);
   const navigate = useNavigate();
 
-  const setLists = useTodoStore((state) => state.setLists);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
   const [newTodoTitle, setNewTodoTitle] = useState("");
   const [createTodoError, setCreateTodoError] = useState<string | null>(null);
   const titleEditVersion = useRef(0);
 
-  const storeLists = useTodoStore((state) => state.lists);
-
-  // Use query results but initially cached fallback
-  const lists = listsResult ?? storeLists;
   const activeList = getActiveList(lists, activeListId);
 
   const errorMessage = useTodoErrorStore((state) => state.errorMessage);
@@ -108,15 +103,6 @@ export function TodoWorkspace({
   );
   const sections = useMemo(() => sectionResult ?? [], [sectionResult]);
   const openTodos = useMemo(() => openTodoResult ?? [], [openTodoResult]);
-
-  // Set zustand data from queries, for local cache
-  useEffect(() => {
-    if (listsResult === undefined) {
-      return;
-    }
-
-    setLists(listsResult);
-  }, [listsResult, setLists]);
 
   // Clears the composer right away; the optimistic update shows the todo
   // instantly. On failure the title is restored unless the user typed again.

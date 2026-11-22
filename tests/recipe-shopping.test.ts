@@ -25,7 +25,7 @@ async function setup() {
   );
 
   const signIn = async (email: string) => {
-    const { userId, accessToken } = await t.run(async (ctx) => {
+    const { userId, accessToken, refreshToken } = await t.run(async (ctx) => {
       const profileId = await ctx.db.insert("users", {
         email,
         updatedAt: Date.now(),
@@ -48,12 +48,17 @@ async function setup() {
       return {
         userId: profileOwnerId(profile),
         accessToken: tokens.accessToken,
+        refreshToken: tokens.refreshToken,
       };
     });
     const { sub, iss } = JSON.parse(
       Buffer.from(accessToken.split(".")[1], "base64url").toString(),
     );
-    return { userId, client: t.withIdentity({ subject: sub, issuer: iss }) };
+    return {
+      userId,
+      refreshToken,
+      client: t.withIdentity({ subject: sub, issuer: iss }),
+    };
   };
 
   const cook = await signIn("cook@example.test");
@@ -96,10 +101,10 @@ async function setup() {
       updatedAt: 0,
     });
 
-    return { shoppingListId, recipeId };
+    return { shoppingListId, recipeListId, recipeId, todoId };
   });
 
-  return { cook, guest, ...ids };
+  return { t, cook, guest, ...ids };
 }
 
 test("an added line shows until it is checked off, once per list", async () => {
@@ -151,4 +156,34 @@ test("links into lists a viewer cannot open stay hidden and closed to them", asy
       title: RICE,
     }),
   ).rejects.toThrow("Todo list was not found.");
+});
+
+test("live recipe reads clear after session revocation and writes still require sign-in", async () => {
+  const { t, cook, guest, recipeListId, shoppingListId, recipeId, todoId } =
+    await setup();
+  expect(
+    await cook.client.query(api.queries.recipes.list, { listId: recipeListId }),
+  ).toMatchObject([{ _id: todoId }]);
+  await expect(
+    guest.client.query(api.queries.recipes.list, { listId: shoppingListId }),
+  ).rejects.toThrow("Todo list was not found.");
+
+  // A subscription can rerun with its original JWT after the session is deleted.
+  await t.mutation(api.nativeAuth.signOut, { refreshToken: cook.refreshToken });
+  expect(await cook.client.query(api.queries.todoLists.list, {})).toEqual([]);
+  expect(
+    await cook.client.query(api.queries.recipes.list, { listId: recipeListId }),
+  ).toEqual([]);
+  expect(
+    await cook.client.query(api.queries.recipes.shoppingLinks, { recipeId }),
+  ).toEqual([]);
+  expect(await cook.client.query(api.queries.todos.get, { todoId })).toBeNull();
+  await expect(
+    cook.client.mutation(api.mutations.todos.createFromRecipe, {
+      recipeId,
+      ingredient: RICE,
+      listId: shoppingListId,
+      title: RICE,
+    }),
+  ).rejects.toThrow("You must be signed in.");
 });

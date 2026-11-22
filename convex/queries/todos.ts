@@ -3,7 +3,7 @@ import { v } from "convex/values";
 
 import type { Doc } from "../_generated/dataModel";
 import { query } from "../_generated/server";
-import { requireAppUserId, requireListAccess } from "../shared/auth";
+import { getAppUserId, requireListAccess } from "../shared/auth";
 import { getRecipeView } from "../shared/recipe";
 
 export const get = query({
@@ -11,7 +11,8 @@ export const get = query({
     todoId: v.id("todos"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return null;
     const todo = await ctx.db.get(args.todoId);
 
     if (!todo) {
@@ -52,7 +53,8 @@ export const listOpen = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     await requireListAccess(ctx, args.listId, userId);
 
     const todos = await ctx.db
@@ -73,7 +75,8 @@ export const listCompleted = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return { page: [], isDone: true, continueCursor: "" };
     await requireListAccess(ctx, args.listId, userId);
 
     const result = await ctx.db

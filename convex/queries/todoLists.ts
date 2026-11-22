@@ -3,14 +3,15 @@ import { v } from "convex/values";
 import { query } from "../_generated/server";
 import {
   getProfileByOwnerId,
-  requireAppUserId,
+  getAppUserId,
   requireListAccess,
 } from "../shared/auth";
 
 export const list = query({
   args: {},
   handler: async (ctx) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     const memberships = await ctx.db
       .query("todoListUsers")
       .withIndex("by_user_id", (q) => q.eq("userId", userId))
@@ -30,7 +31,8 @@ export const members = query({
     listId: v.id("todoLists"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireAppUserId(ctx);
+    const userId = await getAppUserId(ctx);
+    if (!userId) return [];
     await requireListAccess(ctx, args.listId, userId);
 
     const memberships = await ctx.db

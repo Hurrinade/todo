@@ -33,6 +33,8 @@ export function profileOwnerId(profile: Doc<"users">) {
   );
 }
 
+// Reactive reads can return an empty result if the session ends before their
+// subscriptions are removed. Writes should use requireAppUserId instead.
 export async function getAppUserId(ctx: AuthContext) {
   const profile = await getProfile(ctx);
   return profile ? profileOwnerId(profile) : null;

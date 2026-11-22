@@ -204,9 +204,7 @@ describe("native account cutover", () => {
         browserSecret: "other-browser",
       }),
     ).toMatchObject({ status: "error" });
-    await expect(t.query(api.queries.todoLists.list, {})).rejects.toThrow(
-      "signed in",
-    );
+    expect(await t.query(api.queries.todoLists.list, {})).toEqual([]);
     const result = await t.mutation(api.emailSignInCodes.verify, proof);
     if (result.status !== "complete") throw new Error("Recovery failed.");
     const { actor } = signedIn(t, result.tokens);
