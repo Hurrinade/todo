@@ -1,13 +1,15 @@
 import { api } from "@convex/_generated/api";
 import { getRecipeHost, getRecipeLinkLabel } from "@convex/shared/recipe";
-import { useMutation } from "convex/react";
+import { useMutation, useQuery } from "convex/react";
 import {
   ArrowLeft,
   ArrowUpRight,
+  Check,
   Minus,
   Pencil,
   Plus,
   Save,
+  ShoppingCart,
   Sun,
   Trash2,
   X,
@@ -22,11 +24,17 @@ import { RECIPE_SECTION_HEADING } from "@/components/recipe/recipe-styles";
 import { TodoDetailTitle } from "@/components/todo/TodoDetailTitle";
 import { TodoNoteEditor } from "@/components/todo/TodoNoteEditor";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useModal, useT, useWakeLock } from "@/hooks";
 import { translateAppError } from "@/i18n";
 import { cn } from "@/lib/utils";
-import { useNetworkStore } from "@/stores";
+import { useNetworkStore, useShoppingListStore } from "@/stores";
 import type { RecipeDetailViewProps, TodoRecipe } from "@/types";
 import {
   getServingCount,
@@ -185,7 +193,7 @@ export function RecipeDetailView({
             ) : null}
             <RecipeOverview recipe={recipe} />
             <RecipeIngredients
-              // Edited servings or lines reset the stepper and ticks.
+              // Edited servings or lines reset the stepper.
               key={JSON.stringify([recipe.servings, recipe.ingredients])}
               recipe={recipe}
             />
@@ -540,44 +548,68 @@ function KeepScreenOnButton() {
   );
 }
 
-// Ticks are local, for checking the pantry while cooking. The stepper scales
-// every leading amount to the chosen number of servings.
+// The stepper scales every leading amount to the chosen number of servings.
+// The cart adds a line, at that scale, to the shopping list picked under the
+// heading (remembered per device). Lines still open on any list the viewer
+// can see show a check that removes the item again. The checks follow the
+// list live, so checking an item off in the shop frees its line here.
 function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
-  const [checked, setChecked] = useState<ReadonlySet<number>>(new Set());
   const baseCount = getServingCount(recipe.servings);
   const [count, setCount] = useState(baseCount ?? 1);
+  const [pending, setPending] = useState<ReadonlySet<string>>(new Set());
+  const [error, setError] = useState<string | null>(null);
   const t = useT();
+  const isOnline = useNetworkStore((state) => state.isOnline);
+  const savedListId = useShoppingListStore((state) => state.listId);
+  const setSavedListId = useShoppingListStore((state) => state.setListId);
+  const hasLines = recipe.ingredients.length > 0;
+  const lists = useQuery(api.queries.todoLists.list, hasLines ? {} : "skip");
+  const links = useQuery(
+    api.queries.recipes.shoppingLinks,
+    hasLines ? { recipeId: recipe._id } : "skip",
+  );
+  const createFromRecipe = useMutation(api.mutations.todos.createFromRecipe);
+  const removeTodo = useMutation(api.mutations.todos.remove);
   const factor = count / (baseCount ?? 1);
   const lines = recipe.ingredients.map(splitIngredientQuantity);
+  const shoppingLists = lists?.filter((list) => list.kind !== "recipe") ?? [];
+  const targetList =
+    shoppingLists.find((list) => list._id === savedListId) ?? shoppingLists[0];
 
-  if (lines.length === 0) {
+  if (!hasLines) {
     return null;
   }
 
-  const toggle = (index: number) => {
-    setChecked((current) => {
-      const next = new Set(current);
+  // Runs one add or remove for a line, keeping its button busy meanwhile.
+  const updateLine = async (
+    ingredient: string,
+    action: () => Promise<unknown>,
+  ) => {
+    if (!isOnline) {
+      setError(t.common.offlineAction);
+      return;
+    }
 
-      if (!next.delete(index)) {
-        next.add(index);
-      }
+    setError(null);
+    setPending((current) => new Set(current).add(ingredient));
 
-      return next;
-    });
+    try {
+      await action();
+    } catch (actionError) {
+      setError(translateAppError(actionError, t) ?? t.recipe.shoppingFailed);
+    } finally {
+      setPending((current) => {
+        const next = new Set(current);
+        next.delete(ingredient);
+        return next;
+      });
+    }
   };
 
   return (
     <section className="flex min-w-0 flex-col gap-2">
       <div className="flex min-h-11 flex-wrap items-center justify-between gap-x-4 gap-y-1">
-        <h2 className={RECIPE_SECTION_HEADING}>
-          {t.recipe.ingredients}
-          {checked.size > 0 ? (
-            <span className="font-normal tracking-normal normal-case tabular-nums">
-              {" "}
-              · {t.recipe.ready(checked.size, lines.length)}
-            </span>
-          ) : null}
-        </h2>
+        <h2 className={RECIPE_SECTION_HEADING}>{t.recipe.ingredients}</h2>
         {lines.some((line) => line.quantity) ? (
           <div className="-mr-2 flex items-center gap-1">
             <Button
@@ -618,42 +650,117 @@ function RecipeIngredients({ recipe }: { recipe: TodoRecipe }) {
           </div>
         ) : null}
       </div>
+      {targetList ? (
+        <div className="flex min-w-0 items-center gap-2 text-sm text-muted-foreground">
+          <span className="shrink-0">{t.recipe.shoppingList}</span>
+          <Select
+            value={targetList._id}
+            onValueChange={(value) => {
+              const list = shoppingLists.find(({ _id }) => _id === value);
+
+              if (list) {
+                setSavedListId(list._id);
+              }
+            }}
+          >
+            <SelectTrigger className="min-w-0 text-foreground">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent align="start">
+              {shoppingLists.map((list) => (
+                <SelectItem key={list._id} value={list._id}>
+                  {list.emoji ? `${list.emoji} ${list.title}` : list.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ) : null}
+      {error ? (
+        <p role="alert" className="text-sm text-destructive">
+          {error}
+        </p>
+      ) : null}
       <ul className="grid min-w-0 gap-x-8 @xl:grid-cols-2">
         {lines.map(({ quantity, name }, index) => {
-          const isChecked = checked.has(index);
+          const ingredient = recipe.ingredients[index] ?? name;
+          const scaledQuantity = quantity
+            ? scaleIngredientQuantity(quantity, factor)
+            : null;
+          // Prefer the link into the picked list when a line is on several.
+          const link =
+            links?.find(
+              (candidate) =>
+                candidate.ingredient === ingredient &&
+                candidate.list._id === targetList?._id,
+            ) ??
+            links?.find((candidate) => candidate.ingredient === ingredient);
 
           return (
             <li
-              key={`${index}-${recipe.ingredients[index]}`}
-              className="border-b border-border/60"
+              key={`${index}-${ingredient}`}
+              className="flex min-h-12 items-center gap-3 border-b border-border/60 py-1"
             >
-              <label className="flex cursor-pointer items-start gap-3 py-2.5 leading-snug">
-                <Checkbox
-                  checked={isChecked}
-                  onCheckedChange={() => {
-                    toggle(index);
+              <span className="min-w-0 flex-1 py-1.5 leading-snug wrap-break-word">
+                {scaledQuantity ? (
+                  <span
+                    className={cn(
+                      "font-semibold tabular-nums",
+                      factor !== 1 && "text-primary",
+                    )}
+                  >
+                    {scaledQuantity}{" "}
+                  </span>
+                ) : null}
+                {name}
+                {link ? (
+                  <span className="block text-xs text-success">
+                    {t.recipe.inList(link.list.title)}
+                  </span>
+                ) : null}
+              </span>
+              {link ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-mobile-sm"
+                  disabled={!isOnline || pending.has(ingredient)}
+                  onClick={() => {
+                    void updateLine(ingredient, () =>
+                      removeTodo({ todoId: link.todoId }),
+                    );
                   }}
-                  className="mt-px size-4.5 rounded-[5px]"
-                />
-                <span
-                  className={cn(
-                    "min-w-0 wrap-break-word",
-                    isChecked && "text-muted-foreground line-through",
-                  )}
+                  aria-label={t.recipe.removeFromList(link.list.title)}
+                  className="shrink-0 rounded-full bg-success-soft text-success hover:bg-success-soft hover:text-success"
                 >
-                  {quantity ? (
-                    <span
-                      className={cn(
-                        "font-semibold tabular-nums",
-                        factor !== 1 && !isChecked && "text-primary",
-                      )}
-                    >
-                      {scaleIngredientQuantity(quantity, factor)}{" "}
-                    </span>
-                  ) : null}
-                  {name}
-                </span>
-              </label>
+                  <Check />
+                </Button>
+              ) : targetList ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon-mobile-sm"
+                  disabled={
+                    !isOnline || links === undefined || pending.has(ingredient)
+                  }
+                  onClick={() => {
+                    void updateLine(ingredient, () =>
+                      createFromRecipe({
+                        recipeId: recipe._id,
+                        ingredient,
+                        listId: targetList._id,
+                        title: scaledQuantity
+                          ? `${scaledQuantity} ${name}`
+                          : name,
+                      }),
+                    );
+                  }}
+                  aria-label={t.recipe.addToList(targetList.title)}
+                  className="shrink-0 rounded-full text-muted-foreground hover:text-foreground"
+                >
+                  <ShoppingCart />
+                </Button>
+              ) : null}
             </li>
           );
         })}
