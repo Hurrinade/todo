@@ -1,9 +1,14 @@
 import { setupConvexAuth } from "@convex-dev/auth/server";
-import { setupEmailMagicLink } from "@convex-dev/auth/methods/email-magic-link/server";
+import {
+  setupEmailMagicLink,
+  type SendResult,
+  type SignInResult,
+} from "@convex-dev/auth/methods/email-magic-link/server";
 import {
   setupGoogle,
   vGoogleProfile,
 } from "@convex-dev/auth/methods/google/server";
+import type { RegisteredMutation } from "convex/server";
 import { ConvexError, v } from "convex/values";
 import { components, internal } from "./_generated/api";
 import {
@@ -13,7 +18,8 @@ import {
   type MutationCtx,
 } from "./_generated/server";
 import { getProfile, findLegacyProfile } from "./shared/auth";
-import { USE_EMAIL_LINK } from "./shared/googleSignIn";
+import { USE_EMAIL_CODE } from "./shared/googleSignIn";
+import { emailChallengeUrl } from "./shared/emailSignIn";
 import { insertLegacyProfile, profileNameFields } from "./system/users";
 import type { LegacyUser } from "./betterAuth/accounts";
 
@@ -41,20 +47,31 @@ export const { startSignInWithGoogle, completeSignInWithGoogle } = setupGoogle(
   },
 ).attachUserCallbacks({ createUser: internal.nativeAuth.createGoogleIdentity });
 
-export const { sendEmailMagicLink, signInWithEmailMagicLink } =
-  setupEmailMagicLink(auth, {
-    component: components.authEmail,
-    emailSender: {
-      kind: "resend",
-      sendEmail: components.resend.lib.sendEmail,
-      apiKey: env.RESEND_API_KEY,
-      from: env.AUTH_EMAIL_FROM,
-    },
-    url: new URL("/sign-in-with-link", env.SITE_URL).href,
-  }).attachUserCallbacks({
-    createUser: internal.nativeAuth.createEmailIdentity,
-    onSignIn: internal.nativeAuth.linkVerifiedEmail,
-  });
+const emailSignIn: {
+  sendEmailMagicLink: RegisteredMutation<
+    "public",
+    { email: string },
+    Promise<SendResult>
+  >;
+  signInWithEmailMagicLink: RegisteredMutation<
+    "public",
+    { emailCode: string; browserSecret: string },
+    Promise<SignInResult>
+  >;
+} = setupEmailMagicLink(auth, {
+  component: components.authEmail,
+  emailSender: {
+    kind: "resend",
+    sendEmail: internal.emailSignInCodes.deliverCode,
+    apiKey: env.RESEND_API_KEY,
+    from: env.AUTH_EMAIL_FROM,
+  },
+  url: emailChallengeUrl(env.SITE_URL),
+}).attachUserCallbacks({
+  createUser: internal.nativeAuth.createEmailIdentity,
+  onSignIn: internal.nativeAuth.linkVerifiedEmail,
+});
+export const { sendEmailMagicLink, signInWithEmailMagicLink } = emailSignIn;
 
 const emailMethod = v.object({
   name: v.literal("emailMagicLink"),
@@ -93,7 +110,7 @@ export const linkVerifiedEmail = internalMutation({
     if (!identity) throw new Error("Email sign-in has no identity.");
     if (identity.profileId) return null;
 
-    // Only Convex Auth can record this address, after consuming a browser-bound link.
+    // Only Convex Auth can record this address, after consuming the bound email challenge.
     const verified = await ctx.runQuery(
       components.authEmail.verifiedEmails.getPrimaryEmail,
       { userId },
@@ -141,7 +158,7 @@ export const createGoogleIdentity = internalMutation({
       return ctx.db.insert("authIdentities", { profileId });
     }
 
-    if (!profile.email) throw new ConvexError(USE_EMAIL_LINK);
+    if (!profile.email) throw new ConvexError(USE_EMAIL_CODE);
     const email = profile.email.toLowerCase();
     const domain = email.split("@").at(-1);
     // Google is authoritative for Gmail and a matching Workspace domain.
@@ -157,7 +174,7 @@ export const createGoogleIdentity = internalMutation({
       });
     }
     if (existing.binding || existing.legacy)
-      throw new ConvexError(USE_EMAIL_LINK);
+      throw new ConvexError(USE_EMAIL_CODE);
 
     const profileId = await ctx.db.insert("users", {
       email,

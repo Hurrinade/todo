@@ -1,5 +1,7 @@
 import { useState, type FormEvent, type ReactElement } from "react";
-import { useSendEmailMagicLink } from "@convex-dev/auth/methods/email-magic-link/react";
+import { useAuthActions } from "@convex-dev/auth/react";
+import { useMutation } from "convex/react";
+import { REGEXP_ONLY_DIGITS } from "input-otp";
 import {
   useOauth,
   useSignInWithGoogle,
@@ -7,7 +9,9 @@ import {
 import { ConvexError } from "convex/values";
 
 import { api } from "@convex/_generated/api";
-import { USE_EMAIL_LINK } from "@convex/shared/googleSignIn";
+import { USE_EMAIL_CODE } from "@convex/shared/googleSignIn";
+import { EMAIL_CODE_LENGTH } from "@convex/shared/emailSignIn";
+import type { Id } from "@convex/_generated/dataModel";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -18,7 +22,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { getLastUsedEmail } from "@/lib/last-used-email";
-import { saveEmailSignInReturn } from "@/lib/auth-return";
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSlot,
+} from "@/components/ui/input-otp";
 import { useT } from "@/hooks";
 import { useNetworkStore } from "@/stores";
 
@@ -53,8 +61,8 @@ export default function AuthDialog({
   const googleMessage = googleError
     ? googleError.error === "OTHER_ERROR" &&
       googleError.cause instanceof ConvexError &&
-      googleError.cause.data === USE_EMAIL_LINK
-      ? t.auth.useEmailLink
+      googleError.cause.data === USE_EMAIL_CODE
+      ? t.auth.useEmailCode
       : t.auth.googleNotStarted
     : null;
 
@@ -66,6 +74,9 @@ export default function AuthDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-md rounded-lg">
         <AuthForm
+          onSignedIn={() => {
+            onOpenChange(false);
+          }}
           title={
             initialMode === "sign-up"
               ? t.auth.createAccount
@@ -81,57 +92,113 @@ export default function AuthDialog({
 function AuthForm({
   title,
   googleMessage,
+  onSignedIn,
 }: {
   title: string;
   googleMessage: string | null;
+  onSignedIn: () => void;
 }) {
   const [email, setEmail] = useState(getLastUsedEmail);
-  const [linkSent, setLinkSent] = useState(false);
+  const [challenge, setChallenge] = useState<{
+    challengeId: Id<"emailSignInCodes">;
+    browserSecret: string;
+  } | null>(null);
+  const [code, setCode] = useState("");
   const [resent, setResent] = useState(false);
   const [error, setError] = useState<string | null>(googleMessage);
-  const [openingGoogle, setOpeningGoogle] = useState(false);
-  const { sendMagicLink, pending } = useSendEmailMagicLink(api.nativeAuth);
+  const [pendingAction, setPendingAction] = useState<
+    "send" | "verify" | "google" | null
+  >(null);
+  const sendEmailCode = useMutation(api.emailSignInCodes.send);
+  const verifyEmailCode = useMutation(api.emailSignInCodes.verify);
+  const { setSession } = useAuthActions();
   const { signIn } = useSignInWithGoogle(api.nativeAuth);
   const isOnline = useNetworkStore((state) => state.isOnline);
   const t = useT();
-  const disabled = pending || openingGoogle || !isOnline;
+  const pending = pendingAction != null;
+  const disabled = pending || !isOnline;
 
-  async function sendLink(resend: boolean) {
+  async function sendCode(resend: boolean) {
     if (disabled) {
       return;
     }
+    setPendingAction("send");
     setError(null);
     setResent(false);
-    const result = await sendMagicLink({ email: email.trim() });
-    if (!result.success) {
-      setError(t.auth.linkNotSent);
-      return;
+    try {
+      const result = await sendEmailCode({ email: email.trim() });
+      if (!result.success) {
+        setError(
+          result.error === "RATE_LIMITED"
+            ? t.auth.codeRateLimited
+            : t.auth.codeNotSent,
+        );
+        return;
+      }
+      setChallenge({
+        challengeId: result.challengeId,
+        browserSecret: result.browserSecret,
+      });
+      setCode("");
+      setResent(resend);
+    } catch {
+      setError(t.auth.codeNotSent);
+    } finally {
+      setPendingAction(null);
     }
-    saveEmailSignInReturn();
-    setLinkSent(true);
-    setResent(resend);
   }
 
   function submitEmail(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    void sendLink(false);
+    void sendCode(false);
+  }
+
+  async function verifyCode(codeToVerify: string) {
+    if (disabled || !challenge) {
+      return;
+    }
+    setPendingAction("verify");
+    setError(null);
+    setResent(false);
+    try {
+      const result = await verifyEmailCode({
+        ...challenge,
+        code: codeToVerify,
+      });
+      if (result.status === "error") {
+        setError(
+          result.error === "CODE_EXPIRED"
+            ? t.auth.codeExpired
+            : t.auth.codeNotVerified,
+        );
+        setCode("");
+        return;
+      }
+      await setSession(result.tokens);
+      onSignedIn();
+    } catch {
+      setCode("");
+      setError(t.auth.codeNotVerified);
+    } finally {
+      setPendingAction(null);
+    }
   }
 
   async function signInWithGoogle() {
     if (disabled) {
       return;
     }
-    setOpeningGoogle(true);
+    setPendingAction("google");
     setError(null);
     try {
       const result = await signIn();
       if (result.status === "error") {
         setError(t.auth.googleNotStarted);
-        setOpeningGoogle(false);
+        setPendingAction(null);
       }
     } catch {
       setError(t.auth.googleNotStarted);
-      setOpeningGoogle(false);
+      setPendingAction(null);
     }
   }
 
@@ -146,37 +213,68 @@ function AuthForm({
     </>
   );
 
-  if (linkSent) {
+  if (challenge) {
     return (
       <>
-        <DialogTitle className="pr-8">{t.auth.checkEmail}</DialogTitle>
+        <DialogTitle className="pr-8">{t.auth.enterCode}</DialogTitle>
         <DialogDescription className="break-words text-foreground">
-          {t.auth.linkSentTo(email.trim())}
-        </DialogDescription>
-        <p className="text-muted-foreground">{t.auth.openLinkHere}</p>
-        {feedback}
-        {resent && <p role="status">{t.auth.linkResent}</p>}
-        <div className="flex flex-wrap items-center gap-x-4">
-          <button
-            type="button"
-            className={textLinkClassName}
-            disabled={disabled}
-            onClick={() => void sendLink(true)}
-          >
-            {pending ? t.auth.sending : t.auth.sendNewLink}
-          </button>
+          {t.auth.codeSentTo(email.trim())}{" "}
           <button
             type="button"
             className={textLinkClassName}
             disabled={pending}
             onClick={() => {
-              setLinkSent(false);
+              setChallenge(null);
+              setCode("");
               setError(null);
               setResent(false);
             }}
           >
             {t.auth.changeEmail}
           </button>
+        </DialogDescription>
+        <InputOTP
+          aria-label={t.auth.codeLabel}
+          autoFocus
+          maxLength={EMAIL_CODE_LENGTH}
+          pattern={REGEXP_ONLY_DIGITS}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          value={code}
+          onChange={setCode}
+          onComplete={(value: string) => void verifyCode(value)}
+          disabled={!isOnline}
+          readOnly={pending}
+          aria-busy={pending}
+          containerClassName="w-full"
+        >
+          <InputOTPGroup className="w-full gap-2">
+            {Array.from({ length: EMAIL_CODE_LENGTH }, (_, index) => (
+              <InputOTPSlot
+                key={index}
+                index={index}
+                className="h-13 min-w-0 flex-1 rounded-md border font-mono text-xl first:rounded-md last:rounded-md bg-card dark:bg-card"
+              />
+            ))}
+          </InputOTPGroup>
+        </InputOTP>
+        {feedback}
+        {pendingAction === "verify" && (
+          <p role="status">{t.auth.checkingCode}</p>
+        )}
+        {resent && <p role="status">{t.auth.codeResent}</p>}
+        <div className="flex items-center justify-between gap-3 text-xs">
+          <button
+            type="button"
+            className={textLinkClassName}
+            disabled={disabled}
+            onClick={() => {
+              void sendCode(true);
+            }}
+          >
+            {pendingAction === "send" ? t.auth.sending : t.auth.sendNewCode}
+          </button>
+          <span className="text-muted-foreground">{t.auth.codeExpires}</span>
         </div>
       </>
     );
@@ -204,7 +302,7 @@ function AuthForm({
           height={20}
           className="size-5 shrink-0"
         />
-        {openingGoogle ? t.auth.openingGoogle : t.auth.google}
+        {pendingAction === "google" ? t.auth.openingGoogle : t.auth.google}
       </Button>
       <div className="flex items-center gap-3 text-xs text-muted-foreground">
         <span className="h-px flex-1 bg-border/50" />
@@ -226,7 +324,7 @@ function AuthForm({
           className="h-11 min-w-0 flex-1 rounded-md"
         />
         <Button type="submit" disabled={disabled} className="h-11 px-4">
-          {pending ? t.auth.sending : t.auth.sendLink}
+          {pending ? t.auth.sending : t.auth.sendCode}
         </Button>
       </form>
       {feedback}

@@ -38,6 +38,7 @@
     "convex-helpers": "^0.1.133",
     "dayjs": "^1.11.23",
     "emoji-mart": "^5.6.0",
+    "input-otp": "^1.5.0",
     "lucide-react": "^1.66.0",
     "motion": "^14.9.0",
     "radix-ui": "^1.8.1",

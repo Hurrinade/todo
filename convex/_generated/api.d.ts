@@ -9,6 +9,7 @@
  */
 
 import type * as crons from "../crons.js";
+import type * as emailSignInCodes from "../emailSignInCodes.js";
 import type * as http from "../http.js";
 import type * as mcp_auth from "../mcp/auth.js";
 import type * as mcp_format from "../mcp/format.js";
@@ -28,6 +29,7 @@ import type * as queries_todoLists from "../queries/todoLists.js";
 import type * as queries_todoSections from "../queries/todoSections.js";
 import type * as queries_todos from "../queries/todos.js";
 import type * as shared_auth from "../shared/auth.js";
+import type * as shared_emailSignIn from "../shared/emailSignIn.js";
 import type * as shared_errors from "../shared/errors.js";
 import type * as shared_googleSignIn from "../shared/googleSignIn.js";
 import type * as shared_mcpKeys from "../shared/mcpKeys.js";
@@ -51,6 +53,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   crons: typeof crons;
+  emailSignInCodes: typeof emailSignInCodes;
   http: typeof http;
   "mcp/auth": typeof mcp_auth;
   "mcp/format": typeof mcp_format;
@@ -70,6 +73,7 @@ declare const fullApi: ApiFromModules<{
   "queries/todoSections": typeof queries_todoSections;
   "queries/todos": typeof queries_todos;
   "shared/auth": typeof shared_auth;
+  "shared/emailSignIn": typeof shared_emailSignIn;
   "shared/errors": typeof shared_errors;
   "shared/googleSignIn": typeof shared_googleSignIn;
   "shared/mcpKeys": typeof shared_mcpKeys;

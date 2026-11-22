@@ -1,10 +1,10 @@
 # Convex Auth v2 cutover
 
 RiTodo uses Convex Auth 2.1.0 for Google and email sign-in. Users sign in again
-after the cutover. Email users request a link from the existing dialog and open
-it in the same browser within 10 minutes. The link returns them to an open
-invitation when they started there. A new link also creates an account. New email
-users can add their name in Settings.
+after the cutover. Email users request a six-digit code and enter it in the
+same dialog within five minutes. They can read the email on a different device.
+The code also works when signing up or opening an invitation. New email users can
+add their name in Settings.
 
 Both methods issue 60-second access tokens and rotate refresh tokens. Refresh can
 resume a session after inactivity, up to 90 days from sign-in. Users sign in again
@@ -16,14 +16,15 @@ token retains its one-minute lifetime. [Convex session API](https://docs.convex.
 - Google uses the verified provider subject to find the historical account.
   A matching profile email alone never lets a different Google subject claim
   historical data. Users with a verified legacy email and no matching Google
-  subject start with a sign-in link. After that recovery, a verified Gmail or
+  subject start with an email code. After that recovery, a verified Gmail or
   matching Google Workspace account can use the same profile. For addresses
-  managed by another provider, use the email link to recover access.
-- Email recovery runs after Convex Auth consumes the single-use link and verifies
-  the browser secret. RiTodo reads the email from Convex Auth's verified email
-  component. Recovery requires the historical auth record to mark that address
-  verified too. Conflicting bindings fail closed for review. Clerk profiles
-  without a reviewed link remain separate even if their email matches.
+  managed by another provider, use an email code to recover access.
+- Email recovery runs after Convex Auth consumes the single-use email challenge
+  and verifies the requesting browser's secret. RiTodo reads the email from
+  Convex Auth's verified email component. Recovery requires the historical
+  auth record to mark that address verified too. Conflicting bindings fail
+  closed for review. Clerk profiles without a reviewed link remain separate
+  even if their email matches.
 - Both methods resolve to the original RiTodo profile and ownership IDs when
   recovery succeeds. Existing lists, todos, shared memberships and invite creator
   IDs stay in place. The original Google account works even if its email changed.
@@ -35,8 +36,16 @@ token retains its one-minute lifetime. [Convex session API](https://docs.convex.
 The component mounted as `betterAuth` now contains only data and Convex functions.
 Its original mount and schema preserve the historical proof records and the key
 store. Better Auth packages, browser sessions, JWT trust and HTTP routes are
-gone. No passwords were enabled in the prior version. Convex Auth provides native
-magic links in this release. [Convex Auth 2.1.0 release](https://ship.convex.dev/changelog/convex-auth-v2-1-0)
+gone. No passwords were enabled in the prior version.
+
+RiTodo delivers a six-digit code using the Resend sender hook in Convex Auth
+2.1.0. The adapter uses the pinned release's plain-text email format to retain
+the native proof on the server, and sends only the code to the inbox. Convex
+Auth handles email verification, send rate limits and session issuance. RiTodo
+binds verification to the requesting browser, expires codes after five minutes
+or three wrong codes in that browser, and replaces a code when a new one is
+sent. The offline auth tests cover the sender contract and should run when
+upgrading Convex Auth. [Convex Auth 2.1.0 release](https://ship.convex.dev/changelog/convex-auth-v2-1-0)
 
 ## Release sequence
 
@@ -53,12 +62,14 @@ magic links in this release. [Convex Auth 2.1.0 release](https://ship.convex.dev
    the rollback window. Keep the existing `CLERK_SECRET_KEY`
    and `CLERK_WEBHOOK_SECRET` where legacy MCP keys and webhook sync are used.
    Retain the frontend's `VITE_CONVEX_URL` and `VITE_CONVEX_SITE_URL`.
+   The email code flow uses the same Resend sender and API key.
    [Convex Google configuration](https://docs.convex.dev/auth/convex-auth/methods/oauth)
 3. Deploy in place to retain the original `betterAuth` component data. Deploy
    the backend immediately before the frontend build. Give installed PWAs time
    to pick up the new bundle and reload older tabs before signing in. Tell users
-   that the next sign-in uses Google or a link. Confirm both methods, a pending
-   invitation, an existing MCP key, and key revocation on the approved target.
+   that the next sign-in uses Google or an email code. Confirm both methods,
+   a pending invitation, an existing MCP key, and key revocation on the
+   approved target.
 4. If the release fails before reopening, roll the app and backend revisions
    back together against the same database. The old web runtime can read the
    original accounts and the current key rows for those accounts. Once native-only

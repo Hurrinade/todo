@@ -125,25 +125,26 @@ function signedIn(
   };
 }
 
-async function getEmailLink(t: Fixture, email: string) {
+async function getEmailCode(t: Fixture, email: string) {
   const result = await t
     .withRequestMetadata({ ip: "192.0.2.10" })
-    .mutation(api.nativeAuth.sendEmailMagicLink, { email });
-  if (!result.success) throw new Error(JSON.stringify(result.userError));
+    .mutation(api.emailSignInCodes.send, { email });
+  if (!result.success) throw new Error(result.error);
   const mail = await t.query(latestMail, {});
-  const link = mail?.match(/https?:\/\/\S+\/sign-in-with-link\?code=\S+/)?.[0];
-  if (!link) throw new Error("No sign-in link was sent.");
-  const emailCode = new URL(link).searchParams.get("code");
-  if (!emailCode) throw new Error("No sign-in code was sent.");
-  return { browserSecret: result.browserSecret, emailCode };
+  expect(mail).not.toContain("https://");
+  expect(mail).not.toContain("http://");
+  const code = mail?.match(/code is ([0-9]{6})\./)?.[1];
+  if (!code) throw new Error("No six-digit sign-in code was sent.");
+  return {
+    challengeId: result.challengeId,
+    browserSecret: result.browserSecret,
+    code,
+  };
 }
 
 async function finishEmail(t: Fixture, email = testEmail) {
-  const proof = await getEmailLink(t, email);
-  const result = await t.mutation(
-    api.nativeAuth.signInWithEmailMagicLink,
-    proof,
-  );
+  const proof = await getEmailCode(t, email);
+  const result = await t.mutation(api.emailSignInCodes.verify, proof);
   if (result.status !== "complete")
     throw new Error("Fixture email sign-in failed.");
   return signedIn(t, result.tokens);
@@ -194,11 +195,11 @@ function callMcp(t: Fixture, token: string) {
 }
 
 describe("native account cutover", () => {
-  test("only a browser-bound link recovers an existing verified account and its access", async () => {
+  test("only a browser-bound code recovers an existing verified account and its access", async () => {
     const { t, userId, owned, shared, invite } = await setup();
-    const proof = await getEmailLink(t, testEmail);
+    const proof = await getEmailCode(t, testEmail);
     expect(
-      await t.mutation(api.nativeAuth.signInWithEmailMagicLink, {
+      await t.mutation(api.emailSignInCodes.verify, {
         ...proof,
         browserSecret: "other-browser",
       }),
@@ -206,10 +207,7 @@ describe("native account cutover", () => {
     await expect(t.query(api.queries.todoLists.list, {})).rejects.toThrow(
       "signed in",
     );
-    const result = await t.mutation(
-      api.nativeAuth.signInWithEmailMagicLink,
-      proof,
-    );
+    const result = await t.mutation(api.emailSignInCodes.verify, proof);
     if (result.status !== "complete") throw new Error("Recovery failed.");
     const { actor } = signedIn(t, result.tokens);
     expect(await actor.query(api.nativeAccount.me, {})).toMatchObject({
@@ -228,9 +226,9 @@ describe("native account cutover", () => {
       (await t.run((ctx) => ctx.db.get("todoListInvites", invite)))
         ?.createdByUserId,
     ).toBe("user_legacy_marko");
-    expect(
-      await t.mutation(api.nativeAuth.signInWithEmailMagicLink, proof),
-    ).toMatchObject({ status: "error" });
+    expect(await t.mutation(api.emailSignInCodes.verify, proof)).toMatchObject({
+      status: "error",
+    });
 
     await actor.mutation(api.nativeAccount.updateName, { name: "New Name" });
     await t.mutation(internal.system.users.syncFromClerk, {
@@ -245,7 +243,55 @@ describe("native account cutover", () => {
     });
   });
 
-  test("an unverified legacy email never grants access through a magic link", async () => {
+  test("an email code expires and a resend invalidates the previous challenge", async () => {
+    const { t } = await setup();
+    const first = await getEmailCode(t, testEmail.toUpperCase());
+    const resent = await getEmailCode(t, testEmail);
+    expect(await t.mutation(api.emailSignInCodes.verify, first)).toEqual({
+      status: "error",
+      error: "CODE_EXPIRED",
+    });
+    const now = Date.now();
+    const clock = spyOn(Date, "now").mockReturnValue(now + 5 * 60_000);
+    try {
+      expect(await t.mutation(api.emailSignInCodes.verify, resent)).toEqual({
+        status: "error",
+        error: "CODE_EXPIRED",
+      });
+    } finally {
+      clock.mockRestore();
+    }
+    await finishEmail(t);
+  });
+
+  test("incorrect code attempts are bounded and the raw sender cannot bypass the adapter", async () => {
+    const { t } = await setup();
+    await expect(
+      t
+        .withRequestMetadata({ ip: "192.0.2.10" })
+        .mutation(api.nativeAuth.sendEmailMagicLink, { email: testEmail }),
+    ).rejects.toThrow("An email code request is required.");
+    expect(await t.query(latestMail, {})).toBeNull();
+    const proof = await getEmailCode(t, testEmail);
+    const wrongCode = proof.code === "000000" ? "000001" : "000000";
+    for (let attempt = 0; attempt < 3; attempt++) {
+      expect(
+        await t.mutation(api.emailSignInCodes.verify, {
+          ...proof,
+          code: wrongCode,
+        }),
+      ).toEqual({
+        status: "error",
+        error: "CODE_INVALID",
+      });
+    }
+    expect(await t.mutation(api.emailSignInCodes.verify, proof)).toEqual({
+      status: "error",
+      error: "CODE_EXPIRED",
+    });
+  });
+
+  test("an unverified legacy email never grants access through an email code", async () => {
     const { t, userId } = await setup({ verified: false });
     const { actor } = await finishEmail(t);
     expect((await actor.query(api.nativeAccount.me, {}))?.id).not.toBe(userId);
@@ -276,7 +322,7 @@ describe("native account cutover", () => {
     const unknown = await googleTicket(t, "unbound");
     await expect(
       t.mutation(api.nativeAuth.completeSignInWithGoogle, unknown),
-    ).rejects.toThrow("USE_EMAIL_LINK");
+    ).rejects.toThrow("USE_EMAIL_CODE");
 
     const { actor } = await finishEmail(t);
     expect((await actor.query(api.nativeAccount.me, {}))?.id).toBe(userId);
@@ -299,7 +345,7 @@ describe("native account cutover", () => {
         api.nativeAuth.completeSignInWithGoogle,
         await googleTicket(t, "outside-google", "outside-google@example.test"),
       ),
-    ).rejects.toThrow("USE_EMAIL_LINK");
+    ).rejects.toThrow("USE_EMAIL_CODE");
   });
 
   test("native refresh works after 45 days and expires at the 90-day absolute cap", async () => {

@@ -6,7 +6,7 @@ Convex Auth, TanStack Virtual, Tailwind CSS 4, and shadcn UI.
 ## What is included
 
 - React 19 + Vite 8 + TypeScript 6
-- Convex Auth with Google and email sign-in links
+- Convex Auth with Google and six-digit email codes
 - Convex client wiring and todo schema/functions
 - TanStack Virtual for bounded regular-list DOM rendering
 - Vite-native PWA baseline via `vite-plugin-pwa`

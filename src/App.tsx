@@ -14,7 +14,6 @@ const TodoDetail = lazy(
 const ShareRecipe = lazy(
   () => import("@/pages/authenticated/share/ShareRecipe"),
 );
-const EmailSignIn = lazy(() => import("@/pages/unauthenticated/EmailSignIn"));
 const Invite = lazy(() => import("@/pages/unauthenticated/invite/Invite"));
 
 function ProtectedRoutes() {
@@ -39,7 +38,6 @@ function App() {
         <Suspense fallback={<RouteLoading />}>
           <Routes>
             <Route path="/" element={<Root />} />
-            <Route path="/sign-in-with-link" element={<EmailSignIn />} />
             <Route path="/invite/:token" element={<Invite />} />
 
             <Route element={<ProtectedRoutes />}>
