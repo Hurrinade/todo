@@ -1,16 +1,12 @@
 import { expect, test } from "bun:test";
 import { convexTest } from "convex-test";
+import { dirname, join } from "node:path";
 
 import { api, components, internal } from "../convex/_generated/api";
-import betterAuthSchema from "../convex/betterAuth/schema";
 import schema from "../convex/schema";
+import { profileOwnerId } from "../convex/shared/auth";
+import { registerPackageComponents } from "./auth-fixtures";
 import { modulesIn } from "./convex-modules";
-
-// Test-process values only. No environment files or external services are used.
-process.env.SITE_URL = "http://localhost:5174";
-process.env.CONVEX_SITE_URL = "https://auth.example.test";
-process.env.BETTER_AUTH_SECRET =
-  "test-only-secret-not-for-use-outside-tests-123456789";
 
 const RICE = "300 g rice";
 
@@ -18,47 +14,46 @@ const RICE = "300 g rice";
 // the shopping list.
 async function setup() {
   const t = convexTest(schema, modulesIn("convex"));
-  t.registerComponent(
-    "betterAuth",
-    betterAuthSchema,
-    modulesIn("convex/betterAuth"),
+  const authPackage = Bun.resolveSync(
+    "@convex-dev/auth/package.json",
+    import.meta.dir,
+  );
+  await registerPackageComponents(
+    t,
+    join(dirname(authPackage), "src/component"),
+    "auth",
   );
 
   const signIn = async (email: string) => {
-    const now = Date.now();
-    const authUser = await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "user",
-          data: {
-            email,
-            name: email,
-            emailVerified: true,
-            createdAt: now,
-            updatedAt: now,
-          },
+    const { userId, accessToken } = await t.run(async (ctx) => {
+      const profileId = await ctx.db.insert("users", {
+        email,
+        updatedAt: Date.now(),
+      });
+      const profile = await ctx.db.get("users", profileId);
+      if (!profile) throw new Error("Fixture profile missing.");
+      const identity = await ctx.db.insert("authIdentities", { profileId });
+      // Mint a real core session without running an email or OAuth flow.
+      const tokens = await ctx.runMutation(
+        components.auth.public._internal_dangerous_signIn,
+        {
+          userId: identity,
+          claims: { method: "fixture", profile: {} },
+          componentPath: "authEmail",
+          accessTokenTtlSeconds: 60,
+          refreshInactivityTimeoutSeconds: 86400,
+          sessionMaxLifetimeSeconds: 86400,
         },
-      }),
+      );
+      return {
+        userId: profileOwnerId(profile),
+        accessToken: tokens.accessToken,
+      };
+    });
+    const { sub, iss } = JSON.parse(
+      Buffer.from(accessToken.split(".")[1], "base64url").toString(),
     );
-    const session = await t.run((ctx) =>
-      ctx.runMutation(components.betterAuth.adapter.create, {
-        input: {
-          model: "session",
-          data: {
-            userId: authUser._id,
-            token: `session-${email}`,
-            expiresAt: now + 86400000,
-            createdAt: now,
-            updatedAt: now,
-          },
-        },
-      }),
-    );
-
-    return {
-      userId: `better-auth:${authUser._id}`,
-      client: t.withIdentity({ subject: authUser._id, sessionId: session._id }),
-    };
+    return { userId, client: t.withIdentity({ subject: sub, issuer: iss }) };
   };
 
   const cook = await signIn("cook@example.test");

@@ -12,6 +12,7 @@ import {
   latestMail,
   legacyKey,
   legacyModules,
+  registerPackageComponents,
   resendFixtureSchema,
   resendModules,
   seedLegacyRef,
@@ -30,17 +31,6 @@ const authDir = dirname(
   Bun.resolveSync("@convex-dev/auth/package.json", import.meta.dir),
 );
 const authSource = join(authDir, "src");
-
-async function registerPackageComponents(
-  t: ReturnType<typeof convexTest<typeof schema>>,
-  directory: string,
-  mount: string,
-) {
-  const { default: componentSchema } = await import(
-    join(directory, "schema.ts")
-  );
-  t.registerComponent(mount, componentSchema, modulesIn(directory));
-}
 
 async function setup({ linked = true, verified = true } = {}) {
   const t = convexTest(schema, modulesIn("convex"));

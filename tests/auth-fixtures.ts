@@ -1,3 +1,5 @@
+import type { convexTest } from "convex-test";
+import { join } from "node:path";
 import {
   componentsGeneric,
   defineSchema,
@@ -9,6 +11,8 @@ import {
 import { v } from "convex/values";
 import { mutation } from "../convex/betterAuth/_generated/server";
 import { KEY_PREFIX } from "../convex/shared/mcpKeys";
+import type schema from "../convex/schema";
+import { modulesIn } from "./convex-modules";
 
 const now = () => Date.now();
 export const legacyKey = "ritodo_old_fixture_key_9de2a920";
@@ -106,3 +110,14 @@ export const latestMail = componentsGeneric().resend.lib
   Record<string, never>,
   string | null
 >;
+
+export async function registerPackageComponents(
+  t: ReturnType<typeof convexTest<typeof schema>>,
+  directory: string,
+  mount: string,
+) {
+  const { default: componentSchema } = await import(
+    join(directory, "schema.ts")
+  );
+  t.registerComponent(mount, componentSchema, modulesIn(directory));
+}
