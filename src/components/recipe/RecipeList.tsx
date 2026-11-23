@@ -106,7 +106,7 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
           state: { selectedListId: item.listId },
         });
       }}
-      className="group flex w-full min-w-0 flex-col overflow-hidden rounded-2xl bg-card text-left text-card-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
+      className="group flex size-full min-w-0 flex-col overflow-hidden rounded-2xl bg-card text-left text-card-foreground outline-none focus-visible:ring-3 focus-visible:ring-ring/40"
       aria-label={t.recipe.open(title)}
     >
       <div className="flex aspect-4/3 w-full items-center justify-center overflow-hidden bg-muted text-muted-foreground">
@@ -120,33 +120,29 @@ function RecipeCard({ item }: { item: RecipeListItem }) {
         ) : recipe?.status === "importing" ? (
           <span className="text-sm">{t.recipe.savingCopy}</span>
         ) : recipe?.status === "failed" ? (
-          <Link2 className="size-6" />
+          <span className="flex flex-col items-center gap-2 px-3 text-center text-sm">
+            <Link2 className="size-6" />
+            {t.recipe.cardFailed}
+          </span>
         ) : (
           <ChefHat className="size-6" />
         )}
       </div>
 
       <div className="flex min-w-0 flex-col gap-1 p-3">
+        {/* Both lines keep their height when short or empty, so every card in
+            the grid is the same size. */}
         <p
           className={cn(
-            "line-clamp-2 text-sm leading-snug font-semibold wrap-break-word",
+            "line-clamp-2 min-h-[2lh] text-sm leading-snug font-semibold wrap-break-word",
             recipe?.status === "importing" && "text-muted-foreground",
           )}
         >
           {title}
         </p>
-        {recipe ? (
-          <p
-            className={cn(
-              "truncate text-xs",
-              recipe.status === "failed"
-                ? "text-destructive"
-                : "text-muted-foreground",
-            )}
-          >
-            {getRecipeCardDetails(recipe, t)}
-          </p>
-        ) : null}
+        <p className="min-h-[1lh] truncate text-xs text-muted-foreground">
+          {recipe ? getRecipeCardDetails(recipe, t) : null}
+        </p>
       </div>
     </button>
   );
@@ -158,10 +154,6 @@ function getRecipeCardDetails(
 ) {
   if (recipe.status === "importing") {
     return t.recipe.justAdded;
-  }
-
-  if (recipe.status === "failed") {
-    return t.recipe.cardFailed;
   }
 
   // Yields with a number read in the app's words ("4 osobe" -> "4 servings");

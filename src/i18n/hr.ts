@@ -283,7 +283,7 @@ export const hr: Messages = {
     open: (title: string) => `Otvori ${title}`,
     savingCopy: "Spremam kopiju",
     justAdded: "Upravo dodano",
-    cardFailed: "Kopija nije spremljena. Poveznica je sačuvana",
+    cardFailed: "Poveznica nije podržana",
     typedByHand: "Upisano ručno",
     saveFailed: "Recept nije spremljen. Pokušajte ponovno.",
     minutes: (minutes: number) => {
