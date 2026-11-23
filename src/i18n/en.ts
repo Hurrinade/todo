@@ -275,7 +275,7 @@ export const en = {
     open: (title: string) => `Open ${title}`,
     savingCopy: "Saving a copy",
     justAdded: "Just added",
-    cardFailed: "Couldn't save a copy. Link kept",
+    cardFailed: "Link not compatible",
     typedByHand: "Typed by hand",
     saveFailed: "Couldn't save recipe. Try again.",
     minutes: (minutes: number) => {
